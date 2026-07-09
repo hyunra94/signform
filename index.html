@@ -3,175 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>참석 확인서 - 서명 양식</title>
+<title>참석 확인서 - 시작하기</title>
 <link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
 <meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
 <meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
 <style>
   :root {
-    --bg-1: #FFF0F5;
-    --bg-2: #FFE4E1;
-    --accent: #F7B8C4;
-    --accent-dark: #E88FA2;
-    --lavender: #E6E0F8;
-    --text: #5A4A50;
-    --white: #FFFFFF;
+    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
+    --accent: #F7B8C4; --accent-dark: #E88FA2;
+    --lavender: #E6E0F8; --text: #5A4A50; --white: #FFFFFF;
     --shadow: rgba(232, 143, 162, 0.25);
   }
-
   * { box-sizing: border-box; }
-
   body {
     font-family: 'Noto Sans KR', sans-serif;
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
-    margin: 0;
-    padding: 24px 16px;
-    color: var(--text);
-    min-height: 100vh;
+    margin: 0; padding: 24px 16px; color: var(--text); min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
   }
-
   .card {
-    max-width: 480px;
-    margin: 0 auto;
-    background: var(--white);
-    border-radius: 20px;
-    box-shadow: 0 8px 24px var(--shadow);
-    padding: 28px 24px;
+    max-width: 460px; width: 100%; background: var(--white);
+    border-radius: 20px; box-shadow: 0 8px 24px var(--shadow); padding: 32px 24px;
   }
+  h1 { font-size: 20px; font-weight: 700; text-align: center; margin: 0 0 6px; color: var(--accent-dark); }
+  .subtitle { text-align: center; font-size: 13px; color: #a98a92; margin-bottom: 28px; }
 
-  h1 {
-    font-size: 20px;
-    font-weight: 700;
-    text-align: center;
-    margin: 0 0 4px;
-    color: var(--accent-dark);
+  .option-list { display: flex; flex-direction: column; gap: 12px; }
+  .option {
+    display: flex; align-items: center; gap: 14px; padding: 16px 18px;
+    border-radius: 16px; border: 1.5px solid var(--lavender); background: #FDFBFF;
+    text-decoration: none; color: var(--text); transition: all 0.15s;
   }
+  .option:hover { border-color: var(--accent); background: #FDF3F6; transform: translateY(-1px); }
+  .option .emoji { font-size: 26px; flex-shrink: 0; }
+  .option .info { flex: 1; }
+  .option .title { font-size: 14.5px; font-weight: 700; margin-bottom: 2px; }
+  .option .desc { font-size: 12px; color: #a98a92; line-height: 1.4; }
+  .option .arrow { color: var(--accent-dark); font-size: 18px; }
 
-  .subtitle {
-    text-align: center;
-    font-size: 13px;
-    color: #a98a92;
-    margin-bottom: 24px;
-  }
-
-  label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
-    margin: 14px 0 6px;
-    color: var(--text);
-  }
-
-  input[type="text"],
-  input[type="tel"] {
-    width: 100%;
-    padding: 11px 14px;
-    border: 1.5px solid var(--lavender);
-    border-radius: 12px;
-    font-family: inherit;
-    font-size: 14px;
-    background: #FDFBFF;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  input:focus {
-    border-color: var(--accent);
-  }
-
-  .agree-row {
-    margin-top: 16px;
-    padding: 10px 12px;
-    background: #FFF8FA;
-    border-radius: 10px;
-    font-size: 12.5px;
-    color: var(--text);
-  }
-
-  .signature-section {
-    margin-top: 22px;
-  }
-
-  .pad-wrap {
-    position: relative;
-    border: 2px dashed var(--accent);
-    border-radius: 14px;
-    background: #FFFDFE;
-    overflow: hidden;
-  }
-
-  #signature-pad {
-    display: block;
-    width: 100%;
-    height: 180px;
-    touch-action: none;
-    cursor: crosshair;
-  }
-
-  .pad-placeholder {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    color: #d8b8c0;
-    font-size: 13px;
-    pointer-events: none;
-  }
-
-  .pad-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .btn-clear {
-    background: none;
-    border: none;
-    color: var(--accent-dark);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    padding: 4px 8px;
-  }
-  .btn-clear:hover { text-decoration: underline; }
-
-  .submit-btn {
-    width: 100%;
-    margin-top: 22px;
-    padding: 13px;
-    border: none;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-    color: white;
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 4px 12px var(--shadow);
-    transition: transform 0.15s;
-  }
-  .submit-btn:active { transform: scale(0.98); }
-  .submit-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .status {
-    text-align: center;
-    font-size: 13px;
-    margin-top: 12px;
-    min-height: 18px;
-  }
-  .status.ok { color: #6FA875; }
-  .status.err { color: #D97070; }
+  .divider { display: flex; align-items: center; gap: 10px; margin: 22px 0 14px; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--lavender); }
+  .divider span { font-size: 11px; color: #c9a8b0; }
 
   .hint {
-    font-size: 11px;
-    color: #c9a8b0;
-    text-align: center;
-    margin-top: 6px;
+    font-size: 11.5px; color: #c9a8b0; text-align: center; margin-top: 20px; line-height: 1.6;
   }
 </style>
 </head>
@@ -179,154 +55,44 @@
 
 <div class="card">
   <h1>🌸 참석 확인서</h1>
-  <p class="subtitle">아래 정보를 입력하고 서명해주세요</p>
+  <p class="subtitle">상황에 맞는 방식을 선택해주세요</p>
 
-  <label for="name">성명</label>
-  <input type="text" id="name" placeholder="이름을 입력하세요">
+  <div class="option-list">
+    <a class="option" href="./signature_form.html">
+      <span class="emoji">📝</span>
+      <div class="info">
+        <div class="title">한 기기로 작성</div>
+        <div class="desc">태블릿 한 대에서 입력부터 서명까지 혼자 진행</div>
+      </div>
+      <span class="arrow">›</span>
+    </a>
 
-  <label for="phone">연락처</label>
-  <input type="tel" id="phone" placeholder="010-0000-0000">
+    <div class="divider"><span>두 기기 동시 사용</span></div>
 
-  <label for="org">소속</label>
-  <input type="text" id="org" placeholder="소속 기관/부서">
+    <a class="option" href="./signature_form_live.html">
+      <span class="emoji">💻</span>
+      <div class="info">
+        <div class="title">PC용 - 세션 시작</div>
+        <div class="desc">여기서 정보를 입력하고, 코드를 태블릿에 알려주세요</div>
+      </div>
+      <span class="arrow">›</span>
+    </a>
 
-  <div class="agree-row">
-    <input type="checkbox" id="agree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
-    <label for="agree" style="display:inline;margin:0;font-weight:400;">개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+    <a class="option" href="./signature_pad_tablet.html">
+      <span class="emoji">✍️</span>
+      <div class="info">
+        <div class="title">태블릿용 - 서명 전용</div>
+        <div class="desc">PC에서 받은 코드를 입력하고 서명만 크게</div>
+      </div>
+      <span class="arrow">›</span>
+    </a>
   </div>
 
-  <div class="signature-section">
-    <label>서명</label>
-    <div class="pad-wrap">
-      <canvas id="signature-pad"></canvas>
-      <span class="pad-placeholder" id="pad-placeholder">여기에 서명해주세요 ✍️</span>
-    </div>
-    <div class="pad-actions">
-      <button class="btn-clear" onclick="clearSignature()">다시 서명하기</button>
-    </div>
-  </div>
-
-  <button class="submit-btn" id="submitBtn" onclick="submitForm()">제출하기</button>
-  <div class="status" id="status"></div>
-  <p class="hint">서명 이미지는 PNG로 저장되어 함께 제출됩니다</p>
+  <p class="hint">
+    두 기기를 같이 쓰실 땐 PC에서 먼저 세션을 시작한 뒤,<br>
+    화면에 뜨는 4자리 코드를 태블릿에 입력해주세요.
+  </p>
 </div>
-
-<script>
-  const canvas = document.getElementById('signature-pad');
-  const placeholder = document.getElementById('pad-placeholder');
-  let signaturePad;
-
-  function resizeCanvas() {
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    canvas.width = canvas.offsetWidth * ratio;
-    canvas.height = canvas.offsetHeight * ratio;
-    canvas.getContext('2d').scale(ratio, ratio);
-    if (signaturePad) signaturePad.clear();
-  }
-
-  window.addEventListener('resize', resizeCanvas);
-  resizeCanvas();
-
-  // 세미나/과정별 고유 ID — 행사마다 다른 값으로 바꿔서 사용하세요 (예: '2025-khitec-summer')
-  const PROGRAM_ID = '2025-khitec-summer';
-
-  signaturePad = new SignaturePad(canvas, {
-    backgroundColor: 'rgba(255,255,255,0)',
-    penColor: '#5A4A50',
-    minWidth: 1,
-    maxWidth: 3
-  });
-
-  signaturePad.addEventListener('beginStroke', () => {
-    placeholder.style.display = 'none';
-  });
-
-  function clearSignature() {
-    signaturePad.clear();
-    placeholder.style.display = 'block';
-  }
-
-  async function submitForm() {
-    const name = document.getElementById('name').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const org = document.getElementById('org').value.trim();
-    const statusEl = document.getElementById('status');
-    const btn = document.getElementById('submitBtn');
-
-    const agree = document.getElementById('agree').checked;
-
-    if (!name) {
-      statusEl.textContent = '성명을 입력해주세요.';
-      statusEl.className = 'status err';
-      return;
-    }
-    if (!agree) {
-      statusEl.textContent = '개인정보 수집·이용에 동의해주세요.';
-      statusEl.className = 'status err';
-      return;
-    }
-    if (signaturePad.isEmpty()) {
-      statusEl.textContent = '서명을 완료해주세요.';
-      statusEl.className = 'status err';
-      return;
-    }
-
-    const signatureDataUrl = signaturePad.toDataURL('image/png');
-
-    const payload = {
-      programId: PROGRAM_ID,
-      소속: org,
-      연락처: phone,
-      성명: name,
-      signature: signatureDataUrl,
-      동의: agree
-    };
-
-    btn.disabled = true;
-    statusEl.textContent = '제출 중...';
-    statusEl.className = 'status';
-
-    try {
-      // ⚠️ 아래 URL을 본인 Cloudflare Worker 배포 주소로 교체하세요
-      const WORKER_URL = 'https://signature-sheet-worker.YOUR-SUBDOMAIN.workers.dev/submit';
-
-      const res = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) throw new Error('서버 응답 오류');
-      const result = await res.json();
-
-      statusEl.textContent = `제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 감사합니다 🌸`;
-      statusEl.className = 'status ok';
-    } catch (err) {
-      // Worker가 아직 연결 안 된 경우를 위한 로컬 다운로드 폴백
-      console.warn('Worker 전송 실패, 로컬 다운로드로 대체:', err);
-      downloadLocally(payload);
-      statusEl.textContent = '서버 연결 전이라 로컬에 저장되었습니다.';
-      statusEl.className = 'status ok';
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  function downloadLocally(payload) {
-    // 서명 이미지 다운로드
-    const link = document.createElement('a');
-    link.href = payload.signature;
-    link.download = `signature_${payload.성명}_${Date.now()}.png`;
-    link.click();
-
-    // JSON 데이터도 함께 다운로드
-    const jsonBlob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const jsonLink = document.createElement('a');
-    jsonLink.href = URL.createObjectURL(jsonBlob);
-    jsonLink.download = `submission_${payload.성명}_${Date.now()}.json`;
-    jsonLink.click();
-  }
-</script>
 
 </body>
 </html>

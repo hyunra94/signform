@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>참석 확인서 - 실시간 서명 (PC+태블릿)</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
+<meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
+<style>
+  :root {
+    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
+    --accent: #F7B8C4; --accent-dark: #E88FA2;
+    --lavender: #E6E0F8; --text: #5A4A50; --white: #FFFFFF;
+    --shadow: rgba(232, 143, 162, 0.25);
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    margin: 0; padding: 24px 16px; color: var(--text); min-height: 100vh;
+  }
+  .card {
+    max-width: 480px; margin: 0 auto; background: var(--white);
+    border-radius: 20px; box-shadow: 0 8px 24px var(--shadow); padding: 28px 24px;
+  }
+  h1 { font-size: 19px; font-weight: 700; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
+  .subtitle { text-align: center; font-size: 12.5px; color: #a98a92; margin-bottom: 20px; }
+
+  /* ---- 세션 선택 화면 ---- */
+  .session-choice { display: flex; flex-direction: column; gap: 14px; }
+  .choice-btn {
+    padding: 16px; border-radius: 14px; border: none; font-family: inherit;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .choice-btn.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white; box-shadow: 0 4px 12px var(--shadow);
+  }
+  .choice-btn.secondary { background: #FDF3F6; color: var(--accent-dark); border: 1.5px solid var(--accent); }
+  .join-row { display: flex; gap: 8px; }
+  .join-row input {
+    flex: 1; padding: 12px; border-radius: 12px; border: 1.5px solid var(--lavender);
+    font-family: inherit; font-size: 18px; text-align: center; letter-spacing: 4px;
+  }
+
+  .code-display {
+    text-align: center; padding: 22px; background: #FDF3F6; border-radius: 16px; margin-bottom: 18px;
+  }
+  .code-display .code { font-size: 40px; font-weight: 700; letter-spacing: 8px; color: var(--accent-dark); }
+  .code-display .label { font-size: 12px; color: #a98a92; margin-top: 4px; }
+
+  /* ---- 상태 표시 ---- */
+  .conn-status {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 12px; color: #a98a92; margin-bottom: 14px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+  .dot.on { background: #6FA875; }
+  .dot.off { background: #D97070; }
+
+  label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; color: var(--text); }
+  input[type="text"], input[type="tel"] {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--lavender); border-radius: 12px;
+    font-family: inherit; font-size: 14px; background: #FDFBFF; outline: none; transition: border-color 0.2s;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .agree-row {
+    margin-top: 16px; padding: 10px 12px; background: #FFF8FA; border-radius: 10px;
+    font-size: 12.5px; color: var(--text);
+  }
+
+  .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .radio-pill {
+    display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 20px;
+    border: 1.5px solid var(--lavender); font-size: 12.5px; font-weight: 500; color: var(--text);
+    cursor: pointer; background: #FDFBFF; transition: all 0.15s;
+  }
+  .radio-pill:has(input:checked) { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
+  .radio-pill input { accent-color: var(--accent-dark); }
+
+  .hidden-field {
+    overflow: hidden; max-height: 0; opacity: 0;
+    transition: max-height 0.25s ease, opacity 0.25s ease;
+  }
+  .hidden-field.show { max-height: 100px; opacity: 1; }
+
+  .signature-section { margin-top: 22px; }
+  .pad-wrap {
+    position: relative; border: 2px dashed var(--accent); border-radius: 14px;
+    background: #FFFDFE; overflow: hidden;
+  }
+  #signature-pad { display: block; width: 100%; height: 180px; touch-action: none; cursor: crosshair; }
+  .pad-placeholder {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #d8b8c0; font-size: 13px; pointer-events: none; text-align: center;
+  }
+  .remote-sig-badge {
+    display: none; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px;
+    background: #F0FAF2; border-radius: 10px; font-size: 12.5px; color: #4a7d52;
+  }
+  .remote-sig-badge img { height: 32px; border-radius: 4px; }
+
+  .pad-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  .btn-clear { background: none; border: none; color: var(--accent-dark); font-size: 12px; font-weight: 500; cursor: pointer; padding: 4px 8px; }
+  .btn-clear:hover { text-decoration: underline; }
+
+  .submit-btn {
+    width: 100%; margin-top: 22px; padding: 13px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+    font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 12px var(--shadow); transition: transform 0.15s;
+  }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .status { text-align: center; font-size: 13px; margin-top: 12px; min-height: 18px; }
+  .status.ok { color: #6FA875; }
+  .status.err { color: #D97070; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🌸 참석 확인서 (실시간)</h1>
+  <p class="subtitle" id="subtitleText">컴퓨터와 태블릿을 같은 세션에 연결하세요</p>
+
+  <!-- 세션 선택 화면 -->
+  <div id="sessionChoice" class="session-choice">
+    <button class="choice-btn primary" onclick="startNewSession()">새 세션 시작하기</button>
+    <div class="join-row">
+      <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="numeric">
+      <button class="choice-btn secondary" onclick="joinExistingSession()">참가하기</button>
+    </div>
+  </div>
+
+  <!-- 폼 화면 -->
+  <div id="formArea" class="hidden">
+    <div class="code-display">
+      <div class="code" id="codeText">----</div>
+      <div class="label">다른 기기에서 이 코드로 참가하세요</div>
+    </div>
+    <div class="conn-status"><span class="dot" id="connDot"></span><span id="connText">연결 중...</span></div>
+
+    <label for="name">성명</label>
+    <input type="text" id="name" placeholder="이름을 입력하세요">
+
+    <label for="phone">연락처</label>
+    <input type="tel" id="phone" placeholder="010-0000-0000">
+
+    <label for="org">소속</label>
+    <input type="text" id="org" placeholder="소속 기관/부서">
+
+    <label>재직자 여부</label>
+    <div class="radio-group">
+      <label class="radio-pill"><input type="radio" name="status" value="재직자"> 재직자</label>
+      <label class="radio-pill"><input type="radio" name="status" value="미래인재"> 미래인재(직업계·대학)</label>
+      <label class="radio-pill"><input type="radio" name="status" value="일반시민"> 일반 시민</label>
+    </div>
+    <div id="companyField" class="hidden-field">
+      <label for="company">회사명</label>
+      <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요">
+    </div>
+
+    <div class="agree-row">
+      <input type="checkbox" id="agree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
+      <label for="agree" style="display:inline;margin:0;font-weight:400;">개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+    </div>
+
+    <div class="signature-section">
+      <label>서명 (아무 기기에서나 가능)</label>
+      <div class="pad-wrap">
+        <canvas id="signature-pad"></canvas>
+        <span class="pad-placeholder" id="pad-placeholder">여기에 서명해주세요 ✍️</span>
+      </div>
+      <div class="remote-sig-badge" id="remoteSigBadge">
+        <img id="remoteSigImg" src="" alt="서명">
+        <span>다른 기기에서 서명 완료됨</span>
+      </div>
+      <div class="pad-actions">
+        <button class="btn-clear" onclick="clearSignature()">다시 서명하기</button>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="submitForm()">제출하기</button>
+    <div class="status" id="status"></div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ 배포된 Worker 주소로 교체하세요 (http/https 그대로)
+  const WORKER_HTTP_URL = 'https://signature-sheet-worker.YOUR-SUBDOMAIN.workers.dev';
+  const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
+
+  // 세미나/과정별 고유 ID
+  const PROGRAM_ID = '2025-khitec-summer';
+
+  let ws = null;
+  let sessionCode = null;
+  let hasLocalStroke = false; // 이 기기에서 직접 서명을 그렸는지 여부
+  let suppressEcho = false;   // 원격 상태 반영 중 input 이벤트 재전송 방지
+
+  const canvas = document.getElementById('signature-pad');
+  const placeholder = document.getElementById('pad-placeholder');
+  const remoteBadge = document.getElementById('remoteSigBadge');
+  const remoteImg = document.getElementById('remoteSigImg');
+  let signaturePad;
+
+  function resizeCanvas() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width = canvas.offsetWidth * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    canvas.getContext('2d').scale(ratio, ratio);
+    if (signaturePad) signaturePad.clear();
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  function initSignaturePad() {
+    resizeCanvas();
+    signaturePad = new SignaturePad(canvas, {
+      backgroundColor: 'rgba(255,255,255,0)',
+      penColor: '#5A4A50', minWidth: 1, maxWidth: 3
+    });
+    signaturePad.addEventListener('beginStroke', () => {
+      placeholder.style.display = 'none';
+      hasLocalStroke = true;
+    });
+    signaturePad.addEventListener('endStroke', () => {
+      const dataUrl = signaturePad.toDataURL('image/png');
+      send({ type: 'signature', dataUrl });
+    });
+  }
+
+  function clearSignature() {
+    signaturePad.clear();
+    placeholder.style.display = 'block';
+    hasLocalStroke = false;
+    remoteBadge.style.display = 'none';
+    send({ type: 'clearSignature' });
+  }
+
+  // ---------- 세션 시작/참가 ----------
+  function randomCode() {
+    return String(Math.floor(1000 + Math.random() * 9000));
+  }
+
+  function startNewSession() {
+    connectSession(randomCode());
+  }
+
+  function joinExistingSession() {
+    const code = document.getElementById('joinCodeInput').value.trim();
+    if (!/^\d{4}$/.test(code)) {
+      alert('4자리 숫자 코드를 입력해주세요.');
+      return;
+    }
+    connectSession(code);
+  }
+
+  function connectSession(code) {
+    sessionCode = code;
+    document.getElementById('sessionChoice').classList.add('hidden');
+    document.getElementById('formArea').classList.remove('hidden');
+    document.getElementById('codeText').textContent = code;
+    document.getElementById('subtitleText').textContent = '세션에 연결되었습니다';
+    initSignaturePad();
+    openWebSocket();
+  }
+
+  function openWebSocket() {
+    setConnStatus(false, '연결 중...');
+    ws = new WebSocket(`${WS_URL_BASE}/ws?session=${sessionCode}`);
+
+    ws.onopen = () => setConnStatus(true, '실시간 연결됨');
+    ws.onclose = () => {
+      setConnStatus(false, '연결 끊김 - 재연결 중...');
+      setTimeout(openWebSocket, 2000);
+    };
+    ws.onerror = () => setConnStatus(false, '연결 오류');
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'state') applyRemoteState(msg.data);
+      else if (msg.type === 'submitted') onSubmitted(msg.result);
+      else if (msg.type === 'error') showStatus(msg.message, 'err');
+    };
+  }
+
+  function setConnStatus(on, text) {
+    document.getElementById('connDot').className = 'dot ' + (on ? 'on' : 'off');
+    document.getElementById('connText').textContent = text;
+  }
+
+  function send(payload) {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+  }
+
+  // ---------- 원격 상태 반영 ----------
+  function applyRemoteState(data) {
+    suppressEcho = true;
+
+    const nameEl = document.getElementById('name');
+    const phoneEl = document.getElementById('phone');
+    const orgEl = document.getElementById('org');
+    const agreeEl = document.getElementById('agree');
+    const companyEl = document.getElementById('company');
+    const companyField = document.getElementById('companyField');
+
+    // 지금 포커스 중인 입력창은 덮어쓰지 않음 (타이핑 방해 방지)
+    if (document.activeElement !== nameEl) nameEl.value = data.성명 || '';
+    if (document.activeElement !== phoneEl) phoneEl.value = data.연락처 || '';
+    if (document.activeElement !== orgEl) orgEl.value = data.소속 || '';
+    if (document.activeElement !== companyEl) companyEl.value = data.회사명 || '';
+    agreeEl.checked = !!data.동의;
+
+    document.querySelectorAll('input[name="status"]').forEach(r => {
+      r.checked = (r.value === data.재직자여부);
+    });
+    companyField.classList.toggle('show', data.재직자여부 === '재직자');
+
+    // 서명: 이 기기에서 직접 그린 게 아니면 썸네일로만 표시
+    if (data.signature && !hasLocalStroke) {
+      remoteImg.src = data.signature;
+      remoteBadge.style.display = 'flex';
+      placeholder.style.display = 'none';
+    } else if (!data.signature) {
+      remoteBadge.style.display = 'none';
+      if (!hasLocalStroke) placeholder.style.display = 'block';
+    }
+
+    suppressEcho = false;
+  }
+
+  // ---------- 입력 변경 → 서버로 전송 ----------
+  function bindField(id, field) {
+    const el = document.getElementById(id);
+    let timer;
+    el.addEventListener('input', () => {
+      if (suppressEcho) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => send({ type: 'update', field, value: el.value }), 250);
+    });
+  }
+  bindField('name', '성명');
+  bindField('phone', '연락처');
+  bindField('org', '소속');
+  bindField('company', '회사명');
+  document.getElementById('agree').addEventListener('change', (e) => {
+    if (suppressEcho) return;
+    send({ type: 'update', field: '동의', value: e.target.checked });
+  });
+  document.querySelectorAll('input[name="status"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (suppressEcho) return;
+      document.getElementById('companyField').classList.toggle('show', radio.value === '재직자');
+      if (radio.value !== '재직자') {
+        document.getElementById('company').value = '';
+        send({ type: 'update', field: '회사명', value: '' });
+      }
+      send({ type: 'update', field: '재직자여부', value: radio.value });
+    });
+  });
+
+  // ---------- 제출 ----------
+  function submitForm() {
+    const name = document.getElementById('name').value.trim();
+    const agree = document.getElementById('agree').checked;
+    const statusRadio = document.querySelector('input[name="status"]:checked');
+    const 재직자여부 = statusRadio ? statusRadio.value : '';
+    const company = document.getElementById('company').value.trim();
+    const hasSignature = hasLocalStroke ? !signaturePad.isEmpty() : remoteBadge.style.display === 'flex';
+
+    if (!name) { showStatus('성명을 입력해주세요.', 'err'); return; }
+    if (!재직자여부) { showStatus('재직자 여부를 선택해주세요.', 'err'); return; }
+    if (재직자여부 === '재직자' && !company) { showStatus('회사명을 입력해주세요.', 'err'); return; }
+    if (!agree) { showStatus('개인정보 동의가 필요합니다.', 'err'); return; }
+    if (!hasSignature) { showStatus('서명을 완료해주세요.', 'err'); return; }
+
+    document.getElementById('submitBtn').disabled = true;
+    showStatus('제출 중...', '');
+    send({ type: 'submit', programId: PROGRAM_ID });
+  }
+
+  function onSubmitted(result) {
+    showStatus(`제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸`, 'ok');
+    document.getElementById('submitBtn').disabled = false;
+    // 폼 초기화 (다음 사람 차례)
+    document.getElementById('name').value = '';
+    document.getElementById('phone').value = '';
+    document.getElementById('org').value = '';
+    document.getElementById('company').value = '';
+    document.querySelectorAll('input[name="status"]').forEach(r => r.checked = false);
+    document.getElementById('companyField').classList.remove('show');
+    document.getElementById('agree').checked = false;
+    signaturePad.clear();
+    hasLocalStroke = false;
+    placeholder.style.display = 'block';
+    remoteBadge.style.display = 'none';
+  }
+
+  function showStatus(text, cls) {
+    const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = 'status' + (cls ? ' ' + cls : '');
+  }
+</script>
+
+</body>
+</html>
