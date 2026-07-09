@@ -243,19 +243,27 @@
   const liveCanvas = document.getElementById('live-preview-canvas');
   const liveIndicator = document.getElementById('liveIndicator');
   let signaturePad;
+  let lastRemoteSignature = ''; // 원격 기기에서 확정된 서명 이미지
 
-  function drawLiveStrokes(strokes) {
+  function prepareLiveCanvas() {
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    liveCanvas.width = liveCanvas.offsetWidth * ratio;
-    liveCanvas.height = liveCanvas.offsetHeight * ratio;
+    const w = liveCanvas.offsetWidth || canvas.offsetWidth || 1;
+    const h = liveCanvas.offsetHeight || canvas.offsetHeight || 1;
+    liveCanvas.width = w * ratio;
+    liveCanvas.height = h * ratio;
     const ctx = liveCanvas.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h };
+  }
+
+  function drawLiveStrokes(strokes) {
+    const { ctx, w, h } = prepareLiveCanvas();
     ctx.strokeStyle = '#5A4A50';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    const w = liveCanvas.offsetWidth;
-    const h = liveCanvas.offsetHeight;
+
     (strokes || []).forEach(stroke => {
       if (!stroke || stroke.length < 2) return;
       ctx.beginPath();
@@ -265,9 +273,18 @@
     });
   }
 
+  function drawSignatureImageOnLiveCanvas(dataUrl) {
+    if (!dataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const { ctx, w, h } = prepareLiveCanvas();
+      ctx.drawImage(img, 0, 0, w, h);
+    };
+    img.src = dataUrl;
+  }
+
   function clearLiveCanvas() {
-    liveCanvas.width = liveCanvas.offsetWidth;
-    liveCanvas.height = liveCanvas.offsetHeight;
+    prepareLiveCanvas();
   }
 
   function resizeCanvas() {
@@ -276,6 +293,9 @@
     canvas.height = canvas.offsetHeight * ratio;
     canvas.getContext('2d').scale(ratio, ratio);
     if (signaturePad) signaturePad.clear();
+    if (lastRemoteSignature && !hasLocalStroke) {
+      drawSignatureImageOnLiveCanvas(lastRemoteSignature);
+    }
   }
   window.addEventListener('resize', resizeCanvas);
 
@@ -297,6 +317,8 @@
 
   function clearSignature() {
     signaturePad.clear();
+    clearLiveCanvas();
+    lastRemoteSignature = '';
     placeholder.style.display = 'block';
     hasLocalStroke = false;
     remoteBadge.style.display = 'none';
@@ -372,9 +394,9 @@
       remoteBadge.style.display = 'none';
       placeholder.style.display = 'block';
     } else if (msg.phase === 'done') {
-      clearLiveCanvas();
+      // 펜을 뗐다고 바로 지우지 않음.
+      // 마지막 live snapshot을 그대로 유지하고, 뒤이어 오는 state.signature로 확정 이미지를 다시 그림.
       liveIndicator.style.display = 'none';
-      // 최종 이미지는 뒤이어 오는 'state' 브로드캐스트로 remoteBadge에 표시됨
     } else {
       placeholder.style.display = 'none';
       remoteBadge.style.display = 'none';
@@ -410,13 +432,17 @@
 
     // 서명: 이 기기에서 직접 그린 게 아니면 썸네일로만 표시
     if (data.signature && !hasLocalStroke) {
+      lastRemoteSignature = data.signature;
       remoteImg.src = data.signature;
       remoteBadge.style.display = 'flex';
       placeholder.style.display = 'none';
-      clearLiveCanvas();
       liveIndicator.style.display = 'none';
+      // 완료된 원격 서명도 캔버스 위에 계속 표시해서 '사라지는' 느낌을 없앰
+      drawSignatureImageOnLiveCanvas(data.signature);
     } else if (!data.signature) {
+      lastRemoteSignature = '';
       remoteBadge.style.display = 'none';
+      clearLiveCanvas();
       if (!hasLocalStroke) placeholder.style.display = 'block';
     }
 
@@ -494,6 +520,8 @@
     document.getElementById('agree').checked = false;
     signaturePad.clear();
     hasLocalStroke = false;
+    lastRemoteSignature = '';
+    clearLiveCanvas();
     placeholder.style.display = 'block';
     remoteBadge.style.display = 'none';
   }
