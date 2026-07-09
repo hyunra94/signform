@@ -100,6 +100,19 @@
     background: #FFFDFE; overflow: hidden;
   }
   #signature-pad { display: block; width: 100%; height: 180px; touch-action: none; cursor: crosshair; }
+  #live-preview-canvas {
+    position: absolute; top: 0; left: 0; width: 100%; height: 180px;
+    pointer-events: none;
+  }
+  .live-indicator {
+    display: none; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px;
+    background: #FFF8E8; border-radius: 10px; font-size: 12px; color: #b8860b;
+  }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #e8a020;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
   .pad-placeholder {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     color: #d8b8c0; font-size: 13px; pointer-events: none; text-align: center;
@@ -183,11 +196,15 @@
       <label>서명 (아무 기기에서나 가능)</label>
       <div class="pad-wrap">
         <canvas id="signature-pad"></canvas>
+        <canvas id="live-preview-canvas"></canvas>
         <span class="pad-placeholder" id="pad-placeholder">여기에 서명해주세요 ✍️</span>
+      </div>
+      <div class="live-indicator" id="liveIndicator">
+        <span class="live-dot"></span><span>다른 기기에서 실시간으로 서명 중...</span>
       </div>
       <div class="remote-sig-badge" id="remoteSigBadge">
         <img id="remoteSigImg" src="" alt="서명">
-        <span>다른 기기에서 서명 완료됨</span>
+        <span id="remoteSigText">다른 기기에서 서명 완료됨</span>
       </div>
       <div class="pad-actions">
         <button class="btn-clear" onclick="clearSignature()">다시 서명하기</button>
@@ -223,7 +240,35 @@
   const placeholder = document.getElementById('pad-placeholder');
   const remoteBadge = document.getElementById('remoteSigBadge');
   const remoteImg = document.getElementById('remoteSigImg');
+  const liveCanvas = document.getElementById('live-preview-canvas');
+  const liveIndicator = document.getElementById('liveIndicator');
   let signaturePad;
+
+  function drawLiveStrokes(strokes) {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    liveCanvas.width = liveCanvas.offsetWidth * ratio;
+    liveCanvas.height = liveCanvas.offsetHeight * ratio;
+    const ctx = liveCanvas.getContext('2d');
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.strokeStyle = '#5A4A50';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const w = liveCanvas.offsetWidth;
+    const h = liveCanvas.offsetHeight;
+    (strokes || []).forEach(stroke => {
+      if (!stroke || stroke.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0][0] * w, stroke[0][1] * h);
+      for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i][0] * w, stroke[i][1] * h);
+      ctx.stroke();
+    });
+  }
+
+  function clearLiveCanvas() {
+    liveCanvas.width = liveCanvas.offsetWidth;
+    liveCanvas.height = liveCanvas.offsetHeight;
+  }
 
   function resizeCanvas() {
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -305,6 +350,7 @@
       if (msg.type === 'state') applyRemoteState(msg.data);
       else if (msg.type === 'submitted') onSubmitted(msg.result);
       else if (msg.type === 'error') showStatus(msg.message, 'err');
+      else if (msg.type === 'strokeLive') handleLiveStroke(msg);
     };
   }
 
@@ -315,6 +361,26 @@
 
   function send(payload) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+  }
+
+  function handleLiveStroke(msg) {
+    if (hasLocalStroke) return; // 이 기기에서 이미 직접 서명 중이면 무시
+
+    if (msg.phase === 'clear') {
+      clearLiveCanvas();
+      liveIndicator.style.display = 'none';
+      remoteBadge.style.display = 'none';
+      placeholder.style.display = 'block';
+    } else if (msg.phase === 'done') {
+      clearLiveCanvas();
+      liveIndicator.style.display = 'none';
+      // 최종 이미지는 뒤이어 오는 'state' 브로드캐스트로 remoteBadge에 표시됨
+    } else {
+      placeholder.style.display = 'none';
+      remoteBadge.style.display = 'none';
+      liveIndicator.style.display = 'flex';
+      drawLiveStrokes(msg.points || []);
+    }
   }
 
   // ---------- 원격 상태 반영 ----------
@@ -347,6 +413,8 @@
       remoteImg.src = data.signature;
       remoteBadge.style.display = 'flex';
       placeholder.style.display = 'none';
+      clearLiveCanvas();
+      liveIndicator.style.display = 'none';
     } else if (!data.signature) {
       remoteBadge.style.display = 'none';
       if (!hasLocalStroke) placeholder.style.display = 'block';

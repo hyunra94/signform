@@ -154,6 +154,30 @@
   }
   window.addEventListener('resize', resizeCanvas);
 
+  let liveStreamTimer = null;
+  let lastLiveSnapshot = '';
+
+  function startLiveStream() {
+    stopLiveStream();
+    liveStreamTimer = setInterval(sendLiveSnapshot, 80);
+  }
+  function stopLiveStream() {
+    if (liveStreamTimer) { clearInterval(liveStreamTimer); liveStreamTimer = null; }
+  }
+  function sendLiveSnapshot() {
+    const data = signaturePad.toData();
+    if (!data || !data.length) return;
+    const w = canvas.offsetWidth || 1;
+    const h = canvas.offsetHeight || 1;
+    const strokes = data.map(group => group.points.map(p => [
+      +(p.x / w).toFixed(4), +(p.y / h).toFixed(4)
+    ]));
+    const snapshot = JSON.stringify(strokes);
+    if (snapshot === lastLiveSnapshot) return; // 변화 없으면 전송 생략
+    lastLiveSnapshot = snapshot;
+    send({ type: 'strokeLive', points: strokes, phase: 'drawing' });
+  }
+
   function initSignaturePad() {
     resizeCanvas();
     signaturePad = new SignaturePad(canvas, {
@@ -163,12 +187,16 @@
     signaturePad.addEventListener('beginStroke', () => {
       placeholder.style.display = 'none';
       savedBadge.style.display = 'none';
+      startLiveStream();
     });
     signaturePad.addEventListener('endStroke', () => {
+      sendLiveSnapshot(); // 마지막 궤적까지 한 번 더 전송
+      stopLiveStream();
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => {
         const dataUrl = signaturePad.toDataURL('image/png');
         send({ type: 'signature', dataUrl });
+        send({ type: 'strokeLive', points: [], phase: 'done' }); // PC에 최종본으로 전환 신호
         savedBadge.style.display = 'flex';
       }, 300);
     });
@@ -178,7 +206,10 @@
     signaturePad.clear();
     placeholder.style.display = 'block';
     savedBadge.style.display = 'none';
+    stopLiveStream();
+    lastLiveSnapshot = '';
     send({ type: 'clearSignature' });
+    send({ type: 'strokeLive', points: [], phase: 'clear' });
   }
 
   function joinSession() {
