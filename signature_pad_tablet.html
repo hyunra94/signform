@@ -31,8 +31,9 @@
   .session-screen h1 { font-size: 22px; color: var(--accent-dark); margin: 0 0 8px; }
   .join-row { display: flex; gap: 10px; width: 100%; max-width: 320px; }
   .join-row input {
-    flex: 1; padding: 18px; border-radius: 14px; border: 2px solid var(--lavender);
-    font-family: inherit; font-size: 26px; text-align: center; letter-spacing: 8px;
+    flex: 1; min-width: 0; padding: clamp(12px, 4vw, 18px); border-radius: 14px; border: 2px solid var(--lavender);
+    font-family: inherit; font-size: clamp(20px, 8vw, 26px); text-align: center;
+    letter-spacing: clamp(3px, 3vw, 8px);
   }
   .join-btn {
     padding: 18px 22px; border: none; border-radius: 14px;
@@ -128,7 +129,7 @@
   // ⚠️ 배포된 Worker 주소로 교체하세요
   const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
   const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
-  const PROGRAM_ID = '2025-khitec-summer';
+  // programId는 PC 쪽에서 세션 시작 시 자동으로 세팅되어 동기화됨
 
   let ws = null;
   let sessionCode = null;
@@ -237,7 +238,7 @@
 
     document.getElementById('submitBtn').disabled = true;
     showStatus('제출 중...', '');
-    send({ type: 'submit', programId: PROGRAM_ID });
+    send({ type: 'submit' });
   }
 
   function onSubmitted(result) {
