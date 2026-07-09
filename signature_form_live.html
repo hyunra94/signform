@@ -153,9 +153,6 @@
     <label for="phone">연락처</label>
     <input type="tel" id="phone" placeholder="010-0000-0000">
 
-    <label for="org">소속</label>
-    <input type="text" id="org" placeholder="소속 기관/부서">
-
     <label>재직자 여부</label>
     <div class="radio-group">
       <label class="radio-pill"><input type="radio" name="status" value="재직자"> 재직자</label>
@@ -165,6 +162,10 @@
     <div id="companyField" class="hidden-field">
       <label for="company">회사명</label>
       <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요">
+    </div>
+    <div id="schoolField" class="hidden-field">
+      <label for="school">학교명</label>
+      <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요">
     </div>
 
     <div class="agree-row">
@@ -306,22 +307,24 @@
 
     const nameEl = document.getElementById('name');
     const phoneEl = document.getElementById('phone');
-    const orgEl = document.getElementById('org');
     const agreeEl = document.getElementById('agree');
     const companyEl = document.getElementById('company');
     const companyField = document.getElementById('companyField');
+    const schoolEl = document.getElementById('school');
+    const schoolField = document.getElementById('schoolField');
 
     // 지금 포커스 중인 입력창은 덮어쓰지 않음 (타이핑 방해 방지)
     if (document.activeElement !== nameEl) nameEl.value = data.성명 || '';
     if (document.activeElement !== phoneEl) phoneEl.value = data.연락처 || '';
-    if (document.activeElement !== orgEl) orgEl.value = data.소속 || '';
     if (document.activeElement !== companyEl) companyEl.value = data.회사명 || '';
+    if (document.activeElement !== schoolEl) schoolEl.value = data.학교명 || '';
     agreeEl.checked = !!data.동의;
 
     document.querySelectorAll('input[name="status"]').forEach(r => {
       r.checked = (r.value === data.재직자여부);
     });
     companyField.classList.toggle('show', data.재직자여부 === '재직자');
+    schoolField.classList.toggle('show', data.재직자여부 === '미래인재');
 
     // 서명: 이 기기에서 직접 그린 게 아니면 썸네일로만 표시
     if (data.signature && !hasLocalStroke) {
@@ -348,8 +351,8 @@
   }
   bindField('name', '성명');
   bindField('phone', '연락처');
-  bindField('org', '소속');
   bindField('company', '회사명');
+  bindField('school', '학교명');
   document.getElementById('agree').addEventListener('change', (e) => {
     if (suppressEcho) return;
     send({ type: 'update', field: '동의', value: e.target.checked });
@@ -358,9 +361,14 @@
     radio.addEventListener('change', () => {
       if (suppressEcho) return;
       document.getElementById('companyField').classList.toggle('show', radio.value === '재직자');
+      document.getElementById('schoolField').classList.toggle('show', radio.value === '미래인재');
       if (radio.value !== '재직자') {
         document.getElementById('company').value = '';
         send({ type: 'update', field: '회사명', value: '' });
+      }
+      if (radio.value !== '미래인재') {
+        document.getElementById('school').value = '';
+        send({ type: 'update', field: '학교명', value: '' });
       }
       send({ type: 'update', field: '재직자여부', value: radio.value });
     });
@@ -373,11 +381,13 @@
     const statusRadio = document.querySelector('input[name="status"]:checked');
     const 재직자여부 = statusRadio ? statusRadio.value : '';
     const company = document.getElementById('company').value.trim();
+    const school = document.getElementById('school').value.trim();
     const hasSignature = hasLocalStroke ? !signaturePad.isEmpty() : remoteBadge.style.display === 'flex';
 
     if (!name) { showStatus('성명을 입력해주세요.', 'err'); return; }
     if (!재직자여부) { showStatus('재직자 여부를 선택해주세요.', 'err'); return; }
     if (재직자여부 === '재직자' && !company) { showStatus('회사명을 입력해주세요.', 'err'); return; }
+    if (재직자여부 === '미래인재' && !school) { showStatus('학교명을 입력해주세요.', 'err'); return; }
     if (!agree) { showStatus('개인정보 동의가 필요합니다.', 'err'); return; }
     if (!hasSignature) { showStatus('서명을 완료해주세요.', 'err'); return; }
 
@@ -392,10 +402,11 @@
     // 폼 초기화 (다음 사람 차례)
     document.getElementById('name').value = '';
     document.getElementById('phone').value = '';
-    document.getElementById('org').value = '';
     document.getElementById('company').value = '';
+    document.getElementById('school').value = '';
     document.querySelectorAll('input[name="status"]').forEach(r => r.checked = false);
     document.getElementById('companyField').classList.remove('show');
+    document.getElementById('schoolField').classList.remove('show');
     document.getElementById('agree').checked = false;
     signaturePad.clear();
     hasLocalStroke = false;

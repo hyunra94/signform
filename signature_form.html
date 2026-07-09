@@ -224,9 +224,6 @@
   <label for="phone">연락처</label>
   <input type="tel" id="phone" placeholder="010-0000-0000">
 
-  <label for="org">소속</label>
-  <input type="text" id="org" placeholder="소속 기관/부서">
-
   <label>재직자 여부</label>
   <div class="radio-group" id="statusGroup">
     <label class="radio-pill"><input type="radio" name="status" value="재직자"> 재직자</label>
@@ -314,7 +311,6 @@
   async function submitForm() {
     const name = document.getElementById('name').value.trim();
     const phone = document.getElementById('phone').value.trim();
-    const org = document.getElementById('org').value.trim();
     const statusEl = document.getElementById('status');
     const btn = document.getElementById('submitBtn');
 
@@ -359,7 +355,6 @@
 
     const payload = {
       programId: PROGRAM_ID,
-      소속: org,
       연락처: phone,
       성명: name,
       재직자여부,
