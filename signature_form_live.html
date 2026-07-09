@@ -42,15 +42,21 @@
   .choice-btn.secondary { background: #FDF3F6; color: var(--accent-dark); border: 1.5px solid var(--accent); }
   .join-row { display: flex; gap: 8px; }
   .join-row input {
-    flex: 1; padding: 12px; border-radius: 12px; border: 1.5px solid var(--lavender);
-    font-family: inherit; font-size: 18px; text-align: center; letter-spacing: 4px;
+    flex: 1; min-width: 0; padding: 12px; border-radius: 12px; border: 1.5px solid var(--lavender);
+    font-family: inherit; font-size: clamp(16px, 5vw, 20px); text-align: center;
+    letter-spacing: clamp(2px, 1.5vw, 5px);
   }
 
   .code-display {
-    text-align: center; padding: 22px; background: #FDF3F6; border-radius: 16px; margin-bottom: 18px;
+    text-align: center; padding: clamp(14px, 5vw, 22px); background: #FDF3F6;
+    border-radius: 16px; margin-bottom: 18px; overflow: hidden;
   }
-  .code-display .code { font-size: 40px; font-weight: 700; letter-spacing: 8px; color: var(--accent-dark); }
-  .code-display .label { font-size: 12px; color: #a98a92; margin-top: 4px; }
+  .code-display .code {
+    font-size: clamp(28px, 12vw, 44px); font-weight: 700;
+    letter-spacing: clamp(3px, 3vw, 8px); color: var(--accent-dark);
+    white-space: nowrap;
+  }
+  .code-display .label { font-size: clamp(10px, 3vw, 12px); color: #a98a92; margin-top: 4px; }
 
   /* ---- 상태 표시 ---- */
   .conn-status {
@@ -199,7 +205,14 @@
   const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
 
   // 세미나/과정별 고유 ID
-  const PROGRAM_ID = '2025-khitec-summer';
+  // 행사명 대신 오늘 날짜로 자동 구분 (같은 날 같은 행사는 없다는 전제)
+  function todayProgramId() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
 
   let ws = null;
   let sessionCode = null;
@@ -277,7 +290,10 @@
     setConnStatus(false, '연결 중...');
     ws = new WebSocket(`${WS_URL_BASE}/ws?session=${sessionCode}`);
 
-    ws.onopen = () => setConnStatus(true, '실시간 연결됨');
+    ws.onopen = () => {
+      setConnStatus(true, '실시간 연결됨');
+      send({ type: 'update', field: 'programId', value: todayProgramId() });
+    };
     ws.onclose = () => {
       setConnStatus(false, '연결 끊김 - 재연결 중...');
       setTimeout(openWebSocket, 2000);
@@ -393,7 +409,7 @@
 
     document.getElementById('submitBtn').disabled = true;
     showStatus('제출 중...', '');
-    send({ type: 'submit', programId: PROGRAM_ID });
+    send({ type: 'submit' });
   }
 
   function onSubmitted(result) {
