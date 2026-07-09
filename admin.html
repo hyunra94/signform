@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 - 견학 방명록</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
+<meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
+    --accent: #F7B8C4; --accent-dark: #E88FA2;
+    --lavender: #E6E0F8; --text: #5A4A50; --white: #FFFFFF;
+    --shadow: rgba(232, 143, 162, 0.25);
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    margin: 0; padding: 24px 16px; color: var(--text); min-height: 100vh;
+  }
+  .card {
+    max-width: 640px; margin: 0 auto; background: var(--white);
+    border-radius: 20px; box-shadow: 0 8px 24px var(--shadow); padding: 28px 24px;
+  }
+  h1 { font-size: 19px; font-weight: 700; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
+  .subtitle { text-align: center; font-size: 12.5px; color: #a98a92; margin-bottom: 22px; }
+
+  .key-row { display: flex; gap: 8px; }
+  .key-row input {
+    flex: 1; min-width: 0; padding: 12px 14px; border: 1.5px solid var(--lavender); border-radius: 12px;
+    font-family: inherit; font-size: 14px; background: #FDFBFF; outline: none;
+  }
+  .key-row input:focus { border-color: var(--accent); }
+  .key-row button {
+    padding: 12px 18px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
+  .status { text-align: center; font-size: 13px; margin-top: 10px; min-height: 18px; }
+  .status.err { color: #D97070; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+  th, td { padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--lavender); }
+  th { color: var(--accent-dark); font-weight: 700; background: #FDF3F6; }
+  td.date { font-weight: 700; }
+  td a {
+    display: inline-block; margin: 0 3px; padding: 5px 10px; border-radius: 8px;
+    background: #FDF3F6; color: var(--accent-dark); text-decoration: none; font-size: 12px; font-weight: 500;
+  }
+  td a:hover { background: var(--accent); color: white; }
+
+  .empty { text-align: center; color: #c9a8b0; font-size: 13px; padding: 30px 0; }
+  .hidden { display: none !important; }
+  .remember-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: #a98a92; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🔐 관리자 - 견학 방명록</h1>
+  <p class="subtitle">날짜별 제출 현황을 확인하고 PDF/CSV를 받을 수 있어요</p>
+
+  <div id="loginArea">
+    <div class="key-row">
+      <input type="password" id="adminKey" placeholder="관리자 키 입력">
+      <button onclick="loadList()">확인</button>
+    </div>
+    <div class="remember-row">
+      <input type="checkbox" id="rememberKey" style="width:14px;height:14px;">
+      <label for="rememberKey">이 브라우저에 기억하기</label>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="listArea" class="hidden">
+    <table id="listTable">
+      <thead>
+        <tr><th>날짜</th><th>제출 인원</th><th>동의 인원</th><th>최근 제출</th><th>다운로드</th></tr>
+      </thead>
+      <tbody id="listBody"></tbody>
+    </table>
+    <div class="empty hidden" id="emptyMsg">아직 제출된 기록이 없어요.</div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ 배포된 Worker 주소로 교체하세요
+  const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('admin_key');
+    if (saved) {
+      document.getElementById('adminKey').value = saved;
+      document.getElementById('rememberKey').checked = true;
+      loadList();
+    }
+  });
+
+  async function loadList() {
+    const key = document.getElementById('adminKey').value.trim();
+    const statusEl = document.getElementById('status');
+    if (!key) {
+      statusEl.textContent = '관리자 키를 입력해주세요.';
+      statusEl.className = 'status err';
+      return;
+    }
+
+    statusEl.textContent = '불러오는 중...';
+    statusEl.className = 'status';
+
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/list?key=${encodeURIComponent(key)}`);
+      if (res.status === 401) {
+        statusEl.textContent = '관리자 키가 올바르지 않습니다.';
+        statusEl.className = 'status err';
+        return;
+      }
+      if (!res.ok) throw new Error('불러오기 실패');
+
+      const data = await res.json();
+      renderList(data.items, key);
+
+      if (document.getElementById('rememberKey').checked) {
+        localStorage.setItem('admin_key', key);
+      } else {
+        localStorage.removeItem('admin_key');
+      }
+
+      document.getElementById('loginArea').classList.add('hidden');
+      document.getElementById('listArea').classList.remove('hidden');
+    } catch (err) {
+      statusEl.textContent = '오류가 발생했습니다: ' + err.message;
+      statusEl.className = 'status err';
+    }
+  }
+
+  function renderList(items, key) {
+    const tbody = document.getElementById('listBody');
+    const emptyMsg = document.getElementById('emptyMsg');
+    const table = document.getElementById('listTable');
+    tbody.innerHTML = '';
+
+    if (!items || items.length === 0) {
+      table.classList.add('hidden');
+      emptyMsg.classList.remove('hidden');
+      return;
+    }
+    table.classList.remove('hidden');
+    emptyMsg.classList.add('hidden');
+
+    items.forEach(item => {
+      const tr = document.createElement('tr');
+      const lastTime = item.lastSubmittedAt
+        ? new Date(item.lastSubmittedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '-';
+      const pdfUrl = `${WORKER_HTTP_URL}/download?programId=${encodeURIComponent(item.programId)}&key=${encodeURIComponent(key)}`;
+      const csvUrl = `${WORKER_HTTP_URL}/export?programId=${encodeURIComponent(item.programId)}&key=${encodeURIComponent(key)}`;
+
+      tr.innerHTML = `
+        <td class="date">${item.programId}</td>
+        <td>${item.totalCount}명</td>
+        <td>${item.agreedCount}명</td>
+        <td>${lastTime}</td>
+        <td>
+          <a href="${pdfUrl}" target="_blank">PDF</a>
+          <a href="${csvUrl}" target="_blank">CSV</a>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+</script>
+
+</body>
+</html>
