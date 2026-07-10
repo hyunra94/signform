@@ -29,6 +29,38 @@
   h1 { font-size: 20px; font-weight: 700; text-align: center; margin: 0 0 6px; color: var(--accent-dark); }
   .subtitle { text-align: center; font-size: 13px; color: #a98a92; margin-bottom: 28px; }
 
+  .settings-toggle {
+    display: block; margin: 0 auto 18px; background: none; border: none;
+    color: #c9a8b0; font-size: 12px; cursor: pointer; text-align: center;
+  }
+  .settings-toggle:hover { color: var(--accent-dark); }
+
+  .settings-panel {
+    max-height: 0; overflow: hidden; opacity: 0;
+    transition: max-height 0.25s ease, opacity 0.25s ease, margin 0.25s ease;
+  }
+  .settings-panel.open { max-height: 220px; opacity: 1; margin-bottom: 18px; }
+  .settings-panel .inner {
+    background: #FDF3F6; border-radius: 14px; padding: 16px;
+  }
+  .settings-panel label {
+    display: block; font-size: 12px; font-weight: 500; margin: 10px 0 5px; color: var(--text);
+  }
+  .settings-panel label:first-child { margin-top: 0; }
+  .settings-panel input {
+    width: 100%; padding: 9px 12px; border: 1.5px solid var(--lavender); border-radius: 10px;
+    font-family: inherit; font-size: 13px; background: var(--white); outline: none;
+  }
+  .settings-panel input:focus { border-color: var(--accent); }
+  .settings-save {
+    margin-top: 12px; width: 100%; padding: 10px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .settings-saved-msg {
+    text-align: center; font-size: 11.5px; color: #6FA875; margin-top: 8px; min-height: 14px;
+  }
+
   .option-list { display: flex; flex-direction: column; gap: 12px; }
   .option {
     display: flex; align-items: center; gap: 14px; padding: 16px 18px;
@@ -56,6 +88,20 @@
 <div class="card">
   <h1>🌸 참석 확인서</h1>
   <p class="subtitle">상황에 맞는 방식을 선택해주세요</p>
+
+  <button class="settings-toggle" onclick="toggleSettings()">⚙️ 오늘 행사 날짜/장소 설정 <span id="settingsCurrent"></span></button>
+  <div class="settings-panel" id="settingsPanel">
+    <div class="inner">
+      <label for="settingDate">날짜</label>
+      <input type="date" id="settingDate">
+
+      <label for="settingPlace">장소</label>
+      <input type="text" id="settingPlace" placeholder="예: 전주MBC">
+
+      <button class="settings-save" onclick="saveSettings()">저장</button>
+      <div class="settings-saved-msg" id="settingsSavedMsg"></div>
+    </div>
+  </div>
 
   <div class="option-list">
     <a class="option" href="./signature_form.html">
@@ -94,5 +140,53 @@
   </p>
 </div>
 
+<script>
+  // 모든 폼(signature_form.html / _live.html / _tablet.html)이 공통으로 읽는 설정값
+  // key: 'signform_settings' = { date: 'YYYY-MM-DD', place: '전주MBC' }
+  const SETTINGS_KEY = 'signform_settings';
+
+  function todayStr() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { date: todayStr(), place: '전주MBC' };
+  }
+
+  function toggleSettings() {
+    const panel = document.getElementById('settingsPanel');
+    const isOpen = panel.classList.toggle('open');
+    if (isOpen) {
+      const s = loadSettings();
+      document.getElementById('settingDate').value = s.date || todayStr();
+      document.getElementById('settingPlace').value = s.place || '전주MBC';
+    }
+  }
+
+  function saveSettings() {
+    const date = document.getElementById('settingDate').value || todayStr();
+    const place = document.getElementById('settingPlace').value.trim() || '전주MBC';
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ date, place }));
+    updateSettingsLabel();
+    const msg = document.getElementById('settingsSavedMsg');
+    msg.textContent = '저장됐어요 ✓';
+    setTimeout(() => { msg.textContent = ''; }, 2000);
+  }
+
+  function updateSettingsLabel() {
+    const s = loadSettings();
+    document.getElementById('settingsCurrent').textContent = `(${s.date} · ${s.place})`;
+  }
+
+  updateSettingsLabel();
+</script>
 </body>
 </html>

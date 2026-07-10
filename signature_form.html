@@ -289,8 +289,22 @@
     });
   });
 
-  // 세미나/과정별 고유 ID — 행사마다 다른 값으로 바꿔서 사용하세요 (예: '2025-khitec-summer')
-  const PROGRAM_ID = '2025-khitec-summer';
+  // index.html에서 저장한 날짜/장소 설정을 읽어옴 (없으면 오늘 날짜 + 전주MBC로 기본값)
+  const SETTINGS_KEY = 'signform_settings';
+  function todayStr() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  function loadFormSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { date: todayStr(), place: '전주MBC' };
+  }
 
   signaturePad = new SignaturePad(canvas, {
     backgroundColor: 'rgba(255,255,255,0)',
@@ -309,6 +323,8 @@
   }
 
   async function submitForm() {
+    const settings = loadFormSettings();
+    const programId = settings.date || todayStr();
     const name = document.getElementById('name').value.trim();
     const phone = document.getElementById('phone').value.trim();
     const statusEl = document.getElementById('status');
@@ -354,7 +370,8 @@
     const signatureDataUrl = signaturePad.toDataURL('image/png');
 
     const payload = {
-      programId: PROGRAM_ID,
+      programId,
+      장소: settings.place || '전주MBC',
       연락처: phone,
       성명: name,
       재직자여부,
