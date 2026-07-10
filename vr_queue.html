@@ -129,7 +129,7 @@
         </div>
         <div class="settings-row">
           <div><label for="intervalMinutes">회차 간격(분)</label><input type="number" id="intervalMinutes" value="20" min="5" step="5"></div>
-          <div><label for="capacity">회차당 정원</label><input type="number" id="capacity" value="8" min="1"></div>
+          <div><label for="capacity">회차당 정원</label><input type="number" id="capacity" value="10" min="1"></div>
         </div>
         <button class="settings-save" onclick="applySettings()">시간대 생성 / 다시 만들기</button>
         <div class="settings-hint">⚠️ 다시 만들면 지금까지 등록된 명단이 전부 초기화돼요.</div>
@@ -186,7 +186,7 @@
     const startTime = document.getElementById('startTime').value || '09:00';
     const endTime = document.getElementById('endTime').value || '17:00';
     const intervalMinutes = Number(document.getElementById('intervalMinutes').value) || 20;
-    const capacity = Number(document.getElementById('capacity').value) || 8;
+    const capacity = Number(document.getElementById('capacity').value) || 10;
     if (currentData.slots.length > 0 && !confirm('시간대를 다시 만들면 지금까지 등록된 명단이 모두 초기화돼요. 계속할까요?')) return;
     send({ type: 'configure', startTime, endTime, intervalMinutes, capacity });
     document.getElementById('settingsPanel').classList.remove('open');

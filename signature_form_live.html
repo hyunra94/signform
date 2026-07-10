@@ -40,6 +40,16 @@
 
   /* ---- 세션 선택 화면 ---- */
   .session-choice { display: flex; flex-direction: column; gap: 14px; }
+  .mode-select { display: flex; gap: 8px; margin-bottom: 4px; }
+  .mode-btn {
+    flex: 1; padding: 12px; border-radius: 12px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; color: var(--text); font-family: inherit; font-size: 14px;
+    font-weight: 700; cursor: pointer; transition: all 0.15s;
+  }
+  .mode-btn.active {
+    border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark);
+    box-shadow: 0 0 0 1px var(--accent-dark);
+  }
   .choice-btn {
     padding: 16px; border-radius: 14px; border: none; font-family: inherit;
     font-size: 15px; font-weight: 700; cursor: pointer;
@@ -121,6 +131,21 @@
   .consent-box ul { margin: 0; padding-left: 16px; color: var(--text); line-height: 1.6; }
   .consent-box li { margin: 0; }
 
+  .vr-slot-section { margin-bottom: 4px; }
+  .vr-slot-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .vr-slot-btn {
+    flex: 1; min-width: 78px; padding: 10px 6px; border-radius: 12px;
+    border: 1.5px solid var(--lavender); background: #FDFBFF; cursor: pointer;
+    font-family: inherit; text-align: center; transition: all 0.15s;
+  }
+  .vr-slot-btn .t { font-size: 14px; font-weight: 700; color: var(--text); }
+  .vr-slot-btn .a { font-size: 10.5px; color: #a98a92; margin-top: 2px; }
+  .vr-slot-btn.now { border-color: var(--accent-dark); }
+  .vr-slot-btn.selected { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); }
+  .vr-slot-btn.selected .t, .vr-slot-btn.selected .a { color: white; }
+  .vr-slot-btn.full { opacity: 0.5; cursor: not-allowed; }
+  .vr-slot-empty { font-size: 12px; color: #c9a8b0; margin-top: 8px; }
+
   .signature-section { margin-top: 22px; }
   .pad-wrap {
     position: relative; border: 2px dashed var(--accent); border-radius: 14px;
@@ -181,6 +206,10 @@
 
   <!-- 세션 선택 화면 -->
   <div id="sessionChoice" class="session-choice">
+    <div class="mode-select">
+      <button class="mode-btn active" id="modeBtnSign" onclick="selectMode('signature')">📝 서명록</button>
+      <button class="mode-btn" id="modeBtnVr" onclick="selectMode('vr')">🚌 VR체험버스</button>
+    </div>
     <button class="choice-btn primary" onclick="startNewSession()">새 세션 시작하기</button>
     <div class="join-row">
       <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="numeric">
@@ -250,6 +279,13 @@
       </div>
 
       <div class="form-col-right">
+        <div class="vr-slot-section hidden" id="vrSlotSection">
+          <label>🚌 VR체험버스 시간대 선택</label>
+          <p class="field-hint">지금 시각 근처 시간대만 보여요. 여유 있는 시간대를 골라주세요.</p>
+          <div class="vr-slot-row" id="vrSlotRow"></div>
+          <div class="vr-slot-empty hidden" id="vrSlotEmpty">지금 참여 가능한 시간대가 없어요.</div>
+        </div>
+
         <div class="signature-section">
           <label>서명 (아무 기기에서나 가능)</label>
           <div class="pad-wrap">
@@ -301,6 +337,10 @@
   let ws = null;
   let intentionalDisconnect = false; // '코드 변경'으로 일부러 끊었을 때 자동재연결 방지
   let sessionCode = null;
+  let currentMode = 'signature'; // 'signature' | 'vr'
+  let queueWs = null;
+  let queueData = { slots: [] };
+  let selectedSlotIndex = null;
   let hasLocalStroke = false; // 이 기기에서 직접 서명을 그렸는지 여부
   let suppressEcho = false;   // 원격 상태 반영 중 input 이벤트 재전송 방지
 
@@ -411,6 +451,12 @@
     connectSession(code);
   }
 
+  function selectMode(mode) {
+    currentMode = mode;
+    document.getElementById('modeBtnSign').classList.toggle('active', mode === 'signature');
+    document.getElementById('modeBtnVr').classList.toggle('active', mode === 'vr');
+  }
+
   function connectSession(code) {
     sessionCode = code;
     document.getElementById('sessionChoice').classList.add('hidden');
@@ -419,17 +465,94 @@
     document.getElementById('subtitleText').textContent = '세션에 연결되었습니다';
     initSignaturePad();
     openWebSocket();
+
+    if (currentMode === 'vr') {
+      document.getElementById('vrSlotSection').classList.remove('hidden');
+      openQueueWebSocket();
+    } else {
+      document.getElementById('vrSlotSection').classList.add('hidden');
+    }
   }
 
   function changeSession() {
     if (!confirm('다른 세션 코드로 바꿀까요? 지금 입력 중인 내용은 사라져요.')) return;
     intentionalDisconnect = true;
     if (ws) ws.close();
+    if (queueWs) queueWs.close();
     document.getElementById('formArea').classList.add('hidden');
     document.getElementById('sessionChoice').classList.remove('hidden');
     document.getElementById('subtitleText').textContent = '컴퓨터와 태블릿을 같은 세션에 연결하세요';
     document.getElementById('joinCodeInput').value = '';
     sessionCode = null;
+    selectedSlotIndex = null;
+  }
+
+  // ---------- VR체험버스 시간대 ----------
+  function todayStrForQueue() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function openQueueWebSocket() {
+    queueWs = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${todayStrForQueue()}`);
+    queueWs.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'state') { queueData = msg.data; renderVrSlots(); }
+    };
+    queueWs.onclose = () => {
+      if (currentMode === 'vr' && !intentionalDisconnect) setTimeout(openQueueWebSocket, 2000);
+    };
+  }
+  setInterval(() => { if (currentMode === 'vr') renderVrSlots(); }, 15000);
+
+  function minutesNow() {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+
+  function renderVrSlots() {
+    const row = document.getElementById('vrSlotRow');
+    const emptyEl = document.getElementById('vrSlotEmpty');
+    const slots = queueData.slots || [];
+    const nowMin = minutesNow();
+
+    const visible = slots
+      .map((s, i) => ({ ...s, index: i }))
+      .filter(s => {
+        const [h, m] = s.time.split(':').map(Number);
+        return Math.abs((h * 60 + m) - nowMin) <= 20;
+      });
+
+    if (visible.length === 0) {
+      row.innerHTML = '';
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+
+    let nowIdx = -1;
+    slots.forEach((s, i) => {
+      const [h, m] = s.time.split(':').map(Number);
+      if (h * 60 + m <= nowMin) nowIdx = i;
+    });
+
+    row.innerHTML = visible.map(s => {
+      const isFull = s.entries.length >= s.capacity;
+      const isCurrent = s.index === nowIdx;
+      const isSelected = s.index === selectedSlotIndex;
+      return `
+        <button type="button" class="vr-slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isSelected ? 'selected' : ''}"
+                ${isFull ? 'disabled' : ''} onclick="selectSlot(${s.index})">
+          <div class="t">${s.time}</div>
+          <div class="a">${isFull ? '마감' : `${s.capacity - s.entries.length}자리 남음`}</div>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function selectSlot(index) {
+    selectedSlotIndex = index;
+    renderVrSlots();
   }
 
   function openWebSocket() {
@@ -585,6 +708,7 @@
     if (재직자여부 === '미래인재' && !school) { showStatus('학교명을 입력해주세요.', 'err'); return; }
     if (!agree) { showStatus('개인정보 동의가 필요합니다.', 'err'); return; }
     if (!hasSignature) { showStatus('서명을 완료해주세요.', 'err'); return; }
+    if (currentMode === 'vr' && selectedSlotIndex === null) { showStatus('VR체험버스 시간대를 선택해주세요.', 'err'); return; }
 
     document.getElementById('submitBtn').disabled = true;
     showStatus('제출 중...', '');
@@ -592,6 +716,15 @@
   }
 
   function onSubmitted(result) {
+    // VR체험버스 모드면 서명 제출과 함께 시간대에도 등록
+    if (currentMode === 'vr' && selectedSlotIndex !== null) {
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      if (queueWs && queueWs.readyState === WebSocket.OPEN) {
+        queueWs.send(JSON.stringify({ type: 'checkin', slotIndex: selectedSlotIndex, 성명: name, 연락처: phone }));
+      }
+    }
+
     showStatus(`제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸`, 'ok');
     document.getElementById('submitBtn').disabled = false;
     // 폼 초기화 (다음 사람 차례)
@@ -609,6 +742,8 @@
     clearLiveCanvas();
     placeholder.style.display = 'block';
     remoteBadge.style.display = 'none';
+    selectedSlotIndex = null;
+    renderVrSlots();
   }
 
   function showStatus(text, cls) {
