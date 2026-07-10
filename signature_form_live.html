@@ -132,7 +132,14 @@
   .consent-box li { margin: 0; }
 
   .vr-slot-section { margin-bottom: 4px; }
-  .vr-slot-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .vr-slot-nav { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .vr-slot-row { display: flex; flex-wrap: nowrap; gap: 8px; flex: 1; }
+  .vr-nav-arrow {
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--lavender); background: #FDFBFF;
+    color: var(--accent-dark); font-size: 16px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .vr-nav-arrow:disabled { opacity: 0.35; cursor: not-allowed; }
   .vr-slot-btn {
     flex: 1; min-width: 78px; padding: 10px 6px; border-radius: 12px;
     border: 1.5px solid var(--lavender); background: #FDFBFF; cursor: pointer;
@@ -281,8 +288,12 @@
       <div class="form-col-right">
         <div class="vr-slot-section hidden" id="vrSlotSection">
           <label>🚌 VR체험버스 시간대 선택</label>
-          <p class="field-hint">지금 시각 근처 시간대만 보여요. 여유 있는 시간대를 골라주세요.</p>
-          <div class="vr-slot-row" id="vrSlotRow"></div>
+          <p class="field-hint">여유 있는 시간대를 골라주세요.</p>
+          <div class="vr-slot-nav">
+            <button type="button" class="vr-nav-arrow" id="vrPrevArrow" onclick="vrPageMove(-1)">‹</button>
+            <div class="vr-slot-row" id="vrSlotRow"></div>
+            <button type="button" class="vr-nav-arrow" id="vrNextArrow" onclick="vrPageMove(1)">›</button>
+          </div>
           <div class="vr-slot-empty hidden" id="vrSlotEmpty">지금 참여 가능한 시간대가 없어요.</div>
         </div>
 
@@ -488,6 +499,9 @@
   }
 
   // ---------- VR체험버스 시간대 ----------
+  const VR_PAGE_SIZE = 2;
+  let vrPageStart = 0;
+
   function todayStrForQueue() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -497,7 +511,7 @@
     queueWs = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${todayStrForQueue()}`);
     queueWs.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      if (msg.type === 'state') { queueData = msg.data; renderVrSlots(); }
+      if (msg.type === 'state') { queueData = msg.data; vrPageStart = 0; renderVrSlots(); }
     };
     queueWs.onclose = () => {
       if (currentMode === 'vr' && !intentionalDisconnect) setTimeout(openQueueWebSocket, 2000);
@@ -510,32 +524,49 @@
     return now.getHours() * 60 + now.getMinutes();
   }
 
+  function vrCurrentSlotIndex(slots) {
+    const nowMin = minutesNow();
+    let best = -1;
+    slots.forEach((s, i) => {
+      const [h, m] = s.time.split(':').map(Number);
+      if (h * 60 + m <= nowMin) best = i;
+    });
+    return best;
+  }
+
+  function vrGetUpcoming() {
+    const slots = queueData.slots || [];
+    const nowIdx = vrCurrentSlotIndex(slots);
+    const startFrom = Math.max(nowIdx, 0);
+    return slots.map((s, i) => ({ ...s, index: i })).slice(startFrom);
+  }
+
+  function vrPageMove(delta) {
+    vrPageStart = Math.max(0, vrPageStart + delta * VR_PAGE_SIZE);
+    renderVrSlots();
+  }
+
   function renderVrSlots() {
     const row = document.getElementById('vrSlotRow');
     const emptyEl = document.getElementById('vrSlotEmpty');
-    const slots = queueData.slots || [];
-    const nowMin = minutesNow();
+    const upcoming = vrGetUpcoming();
 
-    const visible = slots
-      .map((s, i) => ({ ...s, index: i }))
-      .filter(s => {
-        const [h, m] = s.time.split(':').map(Number);
-        return Math.abs((h * 60 + m) - nowMin) <= 20;
-      });
-
-    if (visible.length === 0) {
+    if (upcoming.length === 0) {
       row.innerHTML = '';
       emptyEl.classList.remove('hidden');
+      document.getElementById('vrPrevArrow').disabled = true;
+      document.getElementById('vrNextArrow').disabled = true;
       return;
     }
     emptyEl.classList.add('hidden');
 
-    let nowIdx = -1;
-    slots.forEach((s, i) => {
-      const [h, m] = s.time.split(':').map(Number);
-      if (h * 60 + m <= nowMin) nowIdx = i;
-    });
+    if (vrPageStart >= upcoming.length) vrPageStart = Math.max(0, upcoming.length - VR_PAGE_SIZE);
+    const visible = upcoming.slice(vrPageStart, vrPageStart + VR_PAGE_SIZE);
 
+    document.getElementById('vrPrevArrow').disabled = vrPageStart <= 0;
+    document.getElementById('vrNextArrow').disabled = vrPageStart + VR_PAGE_SIZE >= upcoming.length;
+
+    const nowIdx = vrCurrentSlotIndex(queueData.slots || []);
     row.innerHTML = visible.map(s => {
       const isFull = s.entries.length >= s.capacity;
       const isCurrent = s.index === nowIdx;
@@ -743,6 +774,7 @@
     placeholder.style.display = 'block';
     remoteBadge.style.display = 'none';
     selectedSlotIndex = null;
+    vrPageStart = 0;
     renderVrSlots();
   }
 

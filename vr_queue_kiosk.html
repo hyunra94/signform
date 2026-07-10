@@ -27,9 +27,16 @@
   .clock { font-size: clamp(32px, 6vw, 56px); font-weight: 700; color: var(--accent-dark); margin-bottom: 4px; }
   .headline { font-size: clamp(16px, 2.4vw, 22px); font-weight: 700; margin-bottom: 28px; text-align: center; }
 
+  .slots-nav { display: flex; align-items: center; gap: 18px; }
   .slots-row {
-    display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; max-width: 1100px;
+    display: flex; gap: 22px; flex-wrap: nowrap; justify-content: center;
   }
+  .nav-arrow {
+    width: 56px; height: 56px; border-radius: 50%; border: none; background: var(--white);
+    box-shadow: 0 6px 18px var(--shadow); font-size: 28px; color: var(--accent-dark);
+    cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  }
+  .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
   .slot-btn {
     width: clamp(200px, 22vw, 300px); border: none; border-radius: 24px;
     background: var(--white); box-shadow: 0 10px 30px var(--shadow);
@@ -96,7 +103,11 @@
 <div class="screen">
   <div class="clock" id="clock">--:--</div>
   <div class="headline">지금 참여 가능한 시간대를 선택해주세요</div>
-  <div class="slots-row" id="slotsRow"></div>
+  <div class="slots-nav">
+    <button class="nav-arrow" id="prevArrow" onclick="pageMove(-1)">‹</button>
+    <div class="slots-row" id="slotsRow"></div>
+    <button class="nav-arrow" id="nextArrow" onclick="pageMove(1)">›</button>
+  </div>
   <div class="empty-state hidden" id="emptyState">지금 참여 가능한 시간대가 없어요. 스태프에게 문의해주세요.</div>
 </div>
 
@@ -127,7 +138,7 @@
 <script>
   const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
   const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
-  const WINDOW_MINUTES = 20; // 지금 시각 기준 ±20분 안에 있는 시간대만 표시
+  const PAGE_SIZE = 2; // 기본으로 몇 개씩 보여줄지
 
   function todayStr() {
     const d = new Date();
@@ -137,6 +148,7 @@
   let ws = null;
   let currentData = { slots: [] };
   let pendingSlotIndex = null;
+  let pageStart = 0;
 
   function openWebSocket() {
     ws = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${queueDate}`);
@@ -145,7 +157,7 @@
     ws.onerror = () => document.getElementById('connDot').classList.remove('on');
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      if (msg.type === 'state') { currentData = msg.data; renderSlots(); }
+      if (msg.type === 'state') { currentData = msg.data; pageStart = 0; renderSlots(); }
     };
   }
   openWebSocket();
@@ -175,28 +187,41 @@
     return best;
   }
 
+  function getUpcoming() {
+    const slots = currentData.slots || [];
+    const nowIdx = currentSlotIndex(slots);
+    // 이미 끝난(현재보다 이전) 시간대는 빼고, 지금 진행 중인 시간대부터 이후만
+    const startFrom = Math.max(nowIdx, 0);
+    return slots.map((s, i) => ({ ...s, index: i })).slice(startFrom);
+  }
+
+  function pageMove(delta) {
+    pageStart = Math.max(0, pageStart + delta * PAGE_SIZE);
+    renderSlots();
+  }
+
   function renderSlots() {
     const row = document.getElementById('slotsRow');
     const emptyState = document.getElementById('emptyState');
-    const slots = currentData.slots || [];
-    const nowMin = minutesNow();
+    const upcoming = getUpcoming();
 
-    const visible = slots
-      .map((s, i) => ({ ...s, index: i }))
-      .filter(s => {
-        const [h, m] = s.time.split(':').map(Number);
-        const slotMin = h * 60 + m;
-        return Math.abs(slotMin - nowMin) <= WINDOW_MINUTES;
-      });
-
-    if (visible.length === 0) {
+    if (upcoming.length === 0) {
       row.innerHTML = '';
       emptyState.classList.remove('hidden');
+      document.getElementById('prevArrow').disabled = true;
+      document.getElementById('nextArrow').disabled = true;
       return;
     }
     emptyState.classList.add('hidden');
 
-    const nowIdx = currentSlotIndex(slots);
+    // pageStart가 범위를 벗어나면 보정
+    if (pageStart >= upcoming.length) pageStart = Math.max(0, upcoming.length - PAGE_SIZE);
+    const visible = upcoming.slice(pageStart, pageStart + PAGE_SIZE);
+
+    document.getElementById('prevArrow').disabled = pageStart <= 0;
+    document.getElementById('nextArrow').disabled = pageStart + PAGE_SIZE >= upcoming.length;
+
+    const nowIdx = currentSlotIndex(currentData.slots || []);
     row.innerHTML = visible.map(s => {
       const isFull = s.entries.length >= s.capacity;
       const isCurrent = s.index === nowIdx;

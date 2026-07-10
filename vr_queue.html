@@ -71,9 +71,15 @@
   }
   .slot-row.current { border-color: var(--accent-dark); background: #FDF3F6; }
   .slot-row.full { border-color: var(--full); }
+  .slot-head-row { display: flex; align-items: center; gap: 8px; }
   .slot-head {
-    display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+    flex: 1; display: flex; align-items: center; justify-content: space-between; cursor: pointer;
   }
+  .slot-del {
+    background: none; border: 1px solid #F0A0A8; color: #D97070; border-radius: 8px;
+    padding: 5px 9px; font-size: 11px; cursor: pointer; white-space: nowrap; font-family: inherit;
+  }
+  .slot-del:hover { background: #FDEDED; }
   .slot-time { font-size: 15px; font-weight: 700; }
   .slot-now-badge {
     display: inline-block; font-size: 9.5px; background: var(--accent-dark); color: white;
@@ -131,8 +137,12 @@
           <div><label for="intervalMinutes">회차 간격(분)</label><input type="number" id="intervalMinutes" value="20" min="5" step="5"></div>
           <div><label for="capacity">회차당 정원</label><input type="number" id="capacity" value="10" min="1"></div>
         </div>
+        <div class="settings-row">
+          <div><label for="lunchStart">점심시간 시작 (선택)</label><input type="time" id="lunchStart"></div>
+          <div><label for="lunchEnd">점심시간 종료 (선택)</label><input type="time" id="lunchEnd"></div>
+        </div>
         <button class="settings-save" onclick="applySettings()">시간대 생성 / 다시 만들기</button>
-        <div class="settings-hint">⚠️ 다시 만들면 지금까지 등록된 명단이 전부 초기화돼요.</div>
+        <div class="settings-hint">⚠️ 다시 만들면 지금까지 등록된 명단이 전부 초기화돼요. 점심시간은 비워두면 종일 시간대로 생성돼요.</div>
       </div>
     </div>
   </div>
@@ -187,8 +197,10 @@
     const endTime = document.getElementById('endTime').value || '17:00';
     const intervalMinutes = Number(document.getElementById('intervalMinutes').value) || 20;
     const capacity = Number(document.getElementById('capacity').value) || 10;
+    const lunchStart = document.getElementById('lunchStart').value || null;
+    const lunchEnd = document.getElementById('lunchEnd').value || null;
     if (currentData.slots.length > 0 && !confirm('시간대를 다시 만들면 지금까지 등록된 명단이 모두 초기화돼요. 계속할까요?')) return;
-    send({ type: 'configure', startTime, endTime, intervalMinutes, capacity });
+    send({ type: 'configure', startTime, endTime, intervalMinutes, capacity, lunchStart, lunchEnd });
     document.getElementById('settingsPanel').classList.remove('open');
   }
 
@@ -235,9 +247,12 @@
 
       return `
         <div class="slot-row ${isCurrent ? 'current' : ''} ${isFull ? 'full' : ''}">
-          <div class="slot-head" onclick="toggleEntries(${i})">
-            <div class="slot-time">${s.time}${isCurrent ? '<span class="slot-now-badge">지금</span>' : ''}</div>
-            <div class="slot-count ${isFull ? 'full-text' : ''}"><b>${s.entries.length}</b> / ${s.capacity}명 <span class="slot-toggle">${isOpen ? '▲ 접기' : '▼ 명단보기'}</span></div>
+          <div class="slot-head-row">
+            <div class="slot-head" onclick="toggleEntries(${i})">
+              <div class="slot-time">${s.time}${isCurrent ? '<span class="slot-now-badge">지금</span>' : ''}</div>
+              <div class="slot-count ${isFull ? 'full-text' : ''}"><b>${s.entries.length}</b> / ${s.capacity}명 <span class="slot-toggle">${isOpen ? '▲ 접기' : '▼ 명단보기'}</span></div>
+            </div>
+            <button class="slot-del" onclick="removeSlot(${i}, '${s.time}')" title="이 시간대 자체를 삭제">시간대 삭제</button>
           </div>
           <div class="entry-list ${isOpen ? 'open' : ''}" id="entries-${i}">
             ${entriesHtml}
@@ -262,6 +277,14 @@
     const phone = document.getElementById(`qphone-${i}`).value.trim();
     if (!name) { alert('이름을 입력해주세요.'); return; }
     send({ type: 'checkin', slotIndex: i, 성명: name, 연락처: phone });
+  }
+
+  function removeSlot(index, time) {
+    const slot = currentData.slots[index];
+    const count = slot ? slot.entries.length : 0;
+    const warn = count > 0 ? `\n(등록된 ${count}명도 같이 삭제돼요)` : '';
+    if (!confirm(`${time} 시간대를 통째로 삭제할까요?${warn}`)) return;
+    send({ type: 'removeSlot', slotIndex: index });
   }
 
   function removeEntry(slotIndex, entryIndex) {
