@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VR체험버스 - 시간대 선택</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
+<meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
+    --accent: #F7B8C4; --accent-dark: #E88FA2;
+    --lavender: #E6E0F8; --text: #5A4A50; --white: #FFFFFF;
+    --shadow: rgba(232, 143, 162, 0.25);
+    --full: #F0A0A8; --ok: #6FA875;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; margin: 0; font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    color: var(--text); overflow: hidden;
+  }
+  .screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 24px; }
+
+  .clock { font-size: clamp(32px, 6vw, 56px); font-weight: 700; color: var(--accent-dark); margin-bottom: 4px; }
+  .headline { font-size: clamp(16px, 2.4vw, 22px); font-weight: 700; margin-bottom: 28px; text-align: center; }
+
+  .slots-row {
+    display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; max-width: 1100px;
+  }
+  .slot-btn {
+    width: clamp(200px, 22vw, 300px); border: none; border-radius: 24px;
+    background: var(--white); box-shadow: 0 10px 30px var(--shadow);
+    padding: 28px 20px; cursor: pointer; font-family: inherit; text-align: center;
+    transition: transform 0.15s;
+  }
+  .slot-btn:active { transform: scale(0.97); }
+  .slot-btn.now { box-shadow: 0 0 0 4px var(--accent-dark), 0 10px 30px var(--shadow); }
+  .slot-btn.full { opacity: 0.55; cursor: not-allowed; }
+  .slot-btn .time { font-size: clamp(26px, 3.6vw, 38px); font-weight: 700; color: var(--text); }
+  .slot-btn .now-badge {
+    display: inline-block; font-size: 12px; background: var(--accent-dark); color: white;
+    border-radius: 10px; padding: 2px 10px; margin-top: 6px;
+  }
+  .slot-btn .avail {
+    margin-top: 14px; font-size: clamp(15px, 1.8vw, 18px); color: #a98a92;
+  }
+  .slot-btn .avail b { color: var(--ok); font-size: clamp(20px, 2.6vw, 26px); }
+  .slot-btn.full .avail b { color: var(--full); }
+  .slot-btn .avail-label { font-size: 13px; }
+
+  .empty-state { text-align: center; color: #b89aa2; font-size: 16px; }
+
+  /* ---- 등록 모달 ---- */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.45);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-card {
+    background: var(--white); border-radius: 24px; padding: 32px 28px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  }
+  .modal-card h2 { text-align: center; font-size: 20px; margin: 0 0 6px; color: var(--accent-dark); }
+  .modal-card .modal-time { text-align: center; font-size: 15px; color: #a98a92; margin-bottom: 22px; }
+  .modal-card label { display: block; font-size: 14px; font-weight: 500; margin: 14px 0 6px; }
+  .modal-card input {
+    width: 100%; padding: 14px; border: 1.5px solid var(--lavender); border-radius: 12px;
+    font-family: inherit; font-size: 17px; outline: none;
+  }
+  .modal-card input:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 10px; margin-top: 24px; }
+  .modal-btns button {
+    flex: 1; padding: 15px; border: none; border-radius: 14px; font-family: inherit;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .btn-cancel { background: #FDF3F6; color: var(--accent-dark); }
+  .btn-confirm { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; }
+  .modal-status { text-align: center; font-size: 13px; margin-top: 12px; min-height: 16px; color: #D97070; }
+  .success-check {
+    display: none; text-align: center; padding: 20px 0;
+  }
+  .success-check.show { display: block; }
+  .success-check .big { font-size: 44px; }
+  .success-check .msg { font-size: 17px; font-weight: 700; margin-top: 10px; }
+
+  .conn-dot {
+    position: fixed; bottom: 12px; right: 14px; width: 8px; height: 8px; border-radius: 50%; background: #ccc;
+  }
+  .conn-dot.on { background: var(--ok); }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="clock" id="clock">--:--</div>
+  <div class="headline">지금 참여 가능한 시간대를 선택해주세요</div>
+  <div class="slots-row" id="slotsRow"></div>
+  <div class="empty-state hidden" id="emptyState">지금 참여 가능한 시간대가 없어요. 스태프에게 문의해주세요.</div>
+</div>
+
+<div class="conn-dot" id="connDot"></div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal-card">
+    <div id="formPart">
+      <h2>✍️ 참여 등록</h2>
+      <div class="modal-time" id="modalTime">-</div>
+      <label for="mName">이름</label>
+      <input type="text" id="mName" placeholder="이름을 입력하세요" autocomplete="off">
+      <label for="mPhone">연락처</label>
+      <input type="tel" id="mPhone" placeholder="010-0000-0000" autocomplete="off">
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal()">취소</button>
+        <button class="btn-confirm" onclick="confirmCheckin()">등록하기</button>
+      </div>
+      <div class="modal-status" id="modalStatus"></div>
+    </div>
+    <div class="success-check" id="successPart">
+      <div class="big">✅</div>
+      <div class="msg" id="successMsg">등록 완료!</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
+  const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
+  const WINDOW_MINUTES = 20; // 지금 시각 기준 ±20분 안에 있는 시간대만 표시
+
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  const queueDate = todayStr();
+  let ws = null;
+  let currentData = { slots: [] };
+  let pendingSlotIndex = null;
+
+  function openWebSocket() {
+    ws = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${queueDate}`);
+    ws.onopen = () => document.getElementById('connDot').classList.add('on');
+    ws.onclose = () => { document.getElementById('connDot').classList.remove('on'); setTimeout(openWebSocket, 2000); };
+    ws.onerror = () => document.getElementById('connDot').classList.remove('on');
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'state') { currentData = msg.data; renderSlots(); }
+    };
+  }
+  openWebSocket();
+
+  function send(payload) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload)); }
+
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  }
+  updateClock();
+  setInterval(() => { updateClock(); renderSlots(); }, 15000);
+
+  function minutesNow() {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+
+  function currentSlotIndex(slots) {
+    const nowMin = minutesNow();
+    let best = -1;
+    slots.forEach((s, i) => {
+      const [h, m] = s.time.split(':').map(Number);
+      if (h * 60 + m <= nowMin) best = i;
+    });
+    return best;
+  }
+
+  function renderSlots() {
+    const row = document.getElementById('slotsRow');
+    const emptyState = document.getElementById('emptyState');
+    const slots = currentData.slots || [];
+    const nowMin = minutesNow();
+
+    const visible = slots
+      .map((s, i) => ({ ...s, index: i }))
+      .filter(s => {
+        const [h, m] = s.time.split(':').map(Number);
+        const slotMin = h * 60 + m;
+        return Math.abs(slotMin - nowMin) <= WINDOW_MINUTES;
+      });
+
+    if (visible.length === 0) {
+      row.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      return;
+    }
+    emptyState.classList.add('hidden');
+
+    const nowIdx = currentSlotIndex(slots);
+    row.innerHTML = visible.map(s => {
+      const isFull = s.entries.length >= s.capacity;
+      const isCurrent = s.index === nowIdx;
+      const remain = Math.max(s.capacity - s.entries.length, 0);
+      return `
+        <button class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''}"
+                ${isFull ? 'disabled' : ''} onclick="openModal(${s.index})">
+          <div class="time">${s.time}${isCurrent ? '<div class="now-badge">지금 시간대</div>' : ''}</div>
+          <div class="avail">
+            ${isFull
+              ? '마감'
+              : `<b>${remain}</b><span class="avail-label">자리 남음 (${s.entries.length}/${s.capacity})</span>`}
+          </div>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function openModal(index) {
+    pendingSlotIndex = index;
+    const slot = currentData.slots[index];
+    document.getElementById('modalTime').textContent = `${slot.time} 시간대`;
+    document.getElementById('mName').value = '';
+    document.getElementById('mPhone').value = '';
+    document.getElementById('modalStatus').textContent = '';
+    document.getElementById('formPart').style.display = 'block';
+    document.getElementById('successPart').classList.remove('show');
+    document.getElementById('modalBackdrop').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modalBackdrop').classList.remove('open');
+    pendingSlotIndex = null;
+  }
+
+  function confirmCheckin() {
+    const name = document.getElementById('mName').value.trim();
+    const phone = document.getElementById('mPhone').value.trim();
+    const statusEl = document.getElementById('modalStatus');
+    if (!name) { statusEl.textContent = '이름을 입력해주세요.'; return; }
+    if (pendingSlotIndex === null) return;
+
+    send({ type: 'checkin', slotIndex: pendingSlotIndex, 성명: name, 연락처: phone });
+
+    document.getElementById('formPart').style.display = 'none';
+    document.getElementById('successMsg').textContent = `${name}님, 등록 완료!`;
+    document.getElementById('successPart').classList.add('show');
+    setTimeout(closeModal, 1800);
+  }
+</script>
+</body>
+</html>
