@@ -56,6 +56,22 @@
   .empty { text-align: center; color: #c9a8b0; font-size: 13px; padding: 30px 0; }
   .hidden { display: none !important; }
   .remember-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: #a98a92; }
+
+  .btn-danger {
+    background: #FDEDED !important; color: #D97070 !important;
+  }
+  .btn-danger:hover { background: #D97070 !important; color: white !important; }
+  .btn-plain {
+    background: none; border: none; color: var(--accent-dark); font-size: 12px;
+    cursor: pointer; text-decoration: underline; padding: 0;
+  }
+
+  .detail-row td { padding: 0; }
+  .detail-panel { padding: 12px 14px; background: #FFFBFC; text-align: left; }
+  .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .detail-table th, .detail-table td { padding: 6px 6px; text-align: center; border-bottom: 1px solid #FDF3F6; }
+  .detail-table th { color: #a98a92; font-weight: 500; }
+  .detail-loading { text-align: center; font-size: 12px; color: #c9a8b0; padding: 10px 0; }
 </style>
 </head>
 <body>
@@ -79,7 +95,7 @@
   <div id="listArea" class="hidden">
     <table id="listTable">
       <thead>
-        <tr><th>날짜</th><th>제출 인원</th><th>동의 인원</th><th>최근 제출</th><th>다운로드</th></tr>
+        <tr><th>날짜</th><th>제출 인원</th><th>동의 인원</th><th>최근 제출</th><th>다운로드</th><th>관리</th></tr>
       </thead>
       <tbody id="listBody"></tbody>
     </table>
@@ -138,7 +154,10 @@
     }
   }
 
+  let currentAdminKey = '';
+
   function renderList(items, key) {
+    currentAdminKey = key;
     const tbody = document.getElementById('listBody');
     const emptyMsg = document.getElementById('emptyMsg');
     const table = document.getElementById('listTable');
@@ -159,6 +178,7 @@
         : '-';
       const pdfUrl = `${WORKER_HTTP_URL}/download?programId=${encodeURIComponent(item.programId)}&key=${encodeURIComponent(key)}`;
       const csvUrl = `${WORKER_HTTP_URL}/export?programId=${encodeURIComponent(item.programId)}&key=${encodeURIComponent(key)}`;
+      const safeId = item.programId.replace(/[^a-zA-Z0-9]/g, '_');
 
       tr.innerHTML = `
         <td class="date">${item.programId}</td>
@@ -169,9 +189,90 @@
           <a href="${pdfUrl}" target="_blank">PDF</a>
           <a href="${csvUrl}" target="_blank">CSV</a>
         </td>
+        <td>
+          <button class="btn-plain" onclick="toggleDetail('${item.programId}', '${safeId}')">상세보기</button><br>
+          <button class="btn-plain" style="color:#D97070;margin-top:4px;" onclick="deleteDay('${item.programId}')">전체삭제</button>
+        </td>
       `;
       tbody.appendChild(tr);
+
+      const detailTr = document.createElement('tr');
+      detailTr.className = 'detail-row hidden';
+      detailTr.id = `detail-${safeId}`;
+      detailTr.innerHTML = `<td colspan="6"><div class="detail-panel" id="detail-panel-${safeId}"></div></td>`;
+      tbody.appendChild(detailTr);
     });
+  }
+
+  async function toggleDetail(programId, safeId) {
+    const row = document.getElementById(`detail-${safeId}`);
+    const isHidden = row.classList.contains('hidden');
+    if (!isHidden) {
+      row.classList.add('hidden');
+      return;
+    }
+    row.classList.remove('hidden');
+    await loadDetail(programId, safeId);
+  }
+
+  async function loadDetail(programId, safeId) {
+    const panel = document.getElementById(`detail-panel-${safeId}`);
+    panel.innerHTML = '<div class="detail-loading">불러오는 중...</div>';
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rows?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`);
+      if (!res.ok) throw new Error('불러오기 실패');
+      const data = await res.json();
+      renderDetail(panel, programId, safeId, data.items);
+    } catch (err) {
+      panel.innerHTML = `<div class="detail-loading">오류: ${err.message}</div>`;
+    }
+  }
+
+  function renderDetail(panel, programId, safeId, items) {
+    if (!items || items.length === 0) {
+      panel.innerHTML = '<div class="detail-loading">참석자가 없어요.</div>';
+      return;
+    }
+    const rowsHtml = items.map(it => `
+      <tr>
+        <td>${it.index + 1}</td>
+        <td>${it.성명 || ''}</td>
+        <td>${it.연락처 || ''}</td>
+        <td>${it.재직자여부 || ''}</td>
+        <td>${it.동의 ? 'O' : 'X'}</td>
+        <td>${it.hasSignature ? '✓' : '-'}</td>
+        <td><button class="btn-plain" style="color:#D97070;" onclick="deleteRow('${programId}', ${it.index}, '${safeId}')">삭제</button></td>
+      </tr>
+    `).join('');
+    panel.innerHTML = `
+      <table class="detail-table">
+        <thead><tr><th>#</th><th>성명</th><th>연락처</th><th>구분</th><th>동의</th><th>서명</th><th></th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
+  }
+
+  async function deleteRow(programId, index, safeId) {
+    if (!confirm(`${index + 1}번째 참석자를 삭제할까요? 되돌릴 수 없어요.`)) return;
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/delete-row?programId=${encodeURIComponent(programId)}&index=${index}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('삭제 실패');
+      await loadDetail(programId, safeId);
+      await loadList(); // 목록의 인원수도 갱신
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
+  }
+
+  async function deleteDay(programId) {
+    if (!confirm(`${programId} 방명록 전체를 삭제할까요?\n참석자 전원의 서명/데이터가 모두 사라지고 되돌릴 수 없어요.`)) return;
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/delete-day?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('삭제 실패');
+      await loadList();
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
   }
 </script>
 

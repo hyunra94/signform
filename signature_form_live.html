@@ -25,6 +25,15 @@
   .card {
     max-width: 480px; margin: 0 auto; background: var(--white);
     border-radius: 20px; box-shadow: 0 8px 24px var(--shadow); padding: 28px 24px;
+    transition: max-width 0.2s ease;
+  }
+  /* ---- PC(넓은 화면)에서는 카드가 넓어지고 2단 레이아웃으로 바뀜 ---- */
+  @media (min-width: 860px) {
+    .card { max-width: 880px; padding: 36px 40px; }
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;
+    }
+    .form-col-right { position: sticky; top: 20px; }
   }
   h1 { font-size: 19px; font-weight: 700; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
   .subtitle { text-align: center; font-size: 12.5px; color: #a98a92; margin-bottom: 20px; }
@@ -64,6 +73,10 @@
     font-size: 12px; color: #a98a92; margin-bottom: 14px;
   }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+  .btn-plain {
+    background: none; border: none; color: var(--accent-dark); font-size: 11.5px;
+    text-decoration: underline; cursor: pointer; padding: 0; margin-left: 4px;
+  }
   .dot.on { background: #6FA875; }
   .dot.off { background: #D97070; }
 
@@ -94,6 +107,20 @@
   }
   .hidden-field.show { max-height: 100px; opacity: 1; }
 
+  .field-hint {
+    font-size: 11.5px; color: #b89aa2; margin: -3px 0 8px; line-height: 1.5;
+  }
+
+  .consent-box {
+    margin-top: 16px; border: 1px solid var(--lavender); border-radius: 12px;
+    overflow: hidden; font-size: 11.5px;
+  }
+  .consent-section { padding: 10px 12px; }
+  .consent-section + .consent-section { border-top: 1px solid var(--lavender); }
+  .consent-title { font-weight: 700; color: var(--accent-dark); margin-bottom: 5px; }
+  .consent-box ul { margin: 0; padding-left: 16px; color: var(--text); line-height: 1.6; }
+  .consent-box li { margin: 0; }
+
   .signature-section { margin-top: 22px; }
   .pad-wrap {
     position: relative; border: 2px dashed var(--accent); border-radius: 14px;
@@ -103,6 +130,9 @@
   #live-preview-canvas {
     position: absolute; top: 0; left: 0; width: 100%; height: 180px;
     pointer-events: none;
+  }
+  @media (min-width: 860px) {
+    #signature-pad, #live-preview-canvas { height: 280px; }
   }
   .live-indicator {
     display: none; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px;
@@ -164,55 +194,85 @@
       <div class="code" id="codeText">----</div>
       <div class="label">다른 기기에서 이 코드로 참가하세요</div>
     </div>
-    <div class="conn-status"><span class="dot" id="connDot"></span><span id="connText">연결 중...</span></div>
-
-    <label for="name">성명</label>
-    <input type="text" id="name" placeholder="이름을 입력하세요">
-
-    <label for="phone">연락처</label>
-    <input type="tel" id="phone" placeholder="010-0000-0000">
-
-    <label>재직자 여부</label>
-    <div class="radio-group">
-      <label class="radio-pill"><input type="radio" name="status" value="재직자"> 재직자</label>
-      <label class="radio-pill"><input type="radio" name="status" value="미래인재"> 미래인재(직업계·대학)</label>
-      <label class="radio-pill"><input type="radio" name="status" value="일반시민"> 일반 시민</label>
-    </div>
-    <div id="companyField" class="hidden-field">
-      <label for="company">회사명</label>
-      <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요">
-    </div>
-    <div id="schoolField" class="hidden-field">
-      <label for="school">학교명</label>
-      <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요">
+    <div class="conn-status">
+      <span class="dot" id="connDot"></span><span id="connText">연결 중...</span>
+      <button class="btn-plain" onclick="changeSession()">코드 변경</button>
     </div>
 
-    <div class="agree-row">
-      <input type="checkbox" id="agree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
-      <label for="agree" style="display:inline;margin:0;font-weight:400;">개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
-    </div>
+    <div class="form-grid">
+      <div class="form-col-left">
+        <label for="name">성명</label>
+        <input type="text" id="name" placeholder="이름을 입력하세요">
 
-    <div class="signature-section">
-      <label>서명 (아무 기기에서나 가능)</label>
-      <div class="pad-wrap">
-        <canvas id="signature-pad"></canvas>
-        <canvas id="live-preview-canvas"></canvas>
-        <span class="pad-placeholder" id="pad-placeholder">여기에 서명해주세요 ✍️</span>
+        <label for="phone">연락처</label>
+        <input type="tel" id="phone" placeholder="010-0000-0000">
+
+        <label>재직자 여부</label>
+        <p class="field-hint">재직 또는 재학 여부를 체크해주세요. 해당이 없을 경우 일반 시민 항목을 선택해주세요.</p>
+        <div class="radio-group">
+          <label class="radio-pill"><input type="radio" name="status" value="재직자"> 재직자</label>
+          <label class="radio-pill"><input type="radio" name="status" value="미래인재"> 미래인재(직업계·대학)</label>
+          <label class="radio-pill"><input type="radio" name="status" value="일반시민"> 일반 시민</label>
+        </div>
+        <div id="companyField" class="hidden-field">
+          <label for="company">회사명</label>
+          <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요">
+        </div>
+        <div id="schoolField" class="hidden-field">
+          <label for="school">학교명</label>
+          <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요">
+        </div>
+
+        <div class="consent-box">
+          <div class="consent-section">
+            <div class="consent-title">개인정보 수집·이용 동의</div>
+            <ul>
+              <li>수집·이용 목적: 사업 운영 안내 및</li>
+              <li>수집·이용하는 개인정보 항목: 소속, 성명, 연락처</li>
+              <li>개인정보 보유 및 이용기간: 3년</li>
+            </ul>
+          </div>
+          <div class="consent-section">
+            <div class="consent-title">개인정보 제 3자 제공 동의</div>
+            <ul>
+              <li>개인정보를 제공받는 자: 산업인력공단, 고용노동부</li>
+              <li>개인정보를 제공받는 자의 이용 목적: 만족도 조사 요청</li>
+              <li>제공하는 개인정보 항목: 소속, 성명, 연락처</li>
+              <li>개인정보 보유 및 이용기간: 3년</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="agree-row">
+          <input type="checkbox" id="agree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
+          <label for="agree" style="display:inline;margin:0;font-weight:400;">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+        </div>
       </div>
-      <div class="live-indicator" id="liveIndicator">
-        <span class="live-dot"></span><span>다른 기기에서 실시간으로 서명 중...</span>
-      </div>
-      <div class="remote-sig-badge" id="remoteSigBadge">
-        <img id="remoteSigImg" src="" alt="서명">
-        <span id="remoteSigText">다른 기기에서 서명 완료됨</span>
-      </div>
-      <div class="pad-actions">
-        <button class="btn-clear" onclick="clearSignature()">다시 서명하기</button>
+
+      <div class="form-col-right">
+        <div class="signature-section">
+          <label>서명 (아무 기기에서나 가능)</label>
+          <div class="pad-wrap">
+            <canvas id="signature-pad"></canvas>
+            <canvas id="live-preview-canvas"></canvas>
+            <span class="pad-placeholder" id="pad-placeholder">여기에 서명해주세요 ✍️</span>
+          </div>
+          <div class="live-indicator" id="liveIndicator">
+            <span class="live-dot"></span><span>다른 기기에서 실시간으로 서명 중...</span>
+          </div>
+          <div class="remote-sig-badge" id="remoteSigBadge">
+            <img id="remoteSigImg" src="" alt="서명">
+            <span id="remoteSigText">다른 기기에서 서명 완료됨</span>
+          </div>
+          <div class="pad-actions">
+            <button class="btn-clear" onclick="clearSignature()">다시 서명하기</button>
+          </div>
+        </div>
+
+        <button class="submit-btn" id="submitBtn" onclick="submitForm()">제출하기</button>
+        <div class="status" id="status"></div>
       </div>
     </div>
-
-    <button class="submit-btn" id="submitBtn" onclick="submitForm()">제출하기</button>
-    <div class="status" id="status"></div>
   </div>
 </div>
 
@@ -239,6 +299,7 @@
   }
 
   let ws = null;
+  let intentionalDisconnect = false; // '코드 변경'으로 일부러 끊었을 때 자동재연결 방지
   let sessionCode = null;
   let hasLocalStroke = false; // 이 기기에서 직접 서명을 그렸는지 여부
   let suppressEcho = false;   // 원격 상태 반영 중 input 이벤트 재전송 방지
@@ -360,6 +421,17 @@
     openWebSocket();
   }
 
+  function changeSession() {
+    if (!confirm('다른 세션 코드로 바꿀까요? 지금 입력 중인 내용은 사라져요.')) return;
+    intentionalDisconnect = true;
+    if (ws) ws.close();
+    document.getElementById('formArea').classList.add('hidden');
+    document.getElementById('sessionChoice').classList.remove('hidden');
+    document.getElementById('subtitleText').textContent = '컴퓨터와 태블릿을 같은 세션에 연결하세요';
+    document.getElementById('joinCodeInput').value = '';
+    sessionCode = null;
+  }
+
   function openWebSocket() {
     setConnStatus(false, '연결 중...');
     ws = new WebSocket(`${WS_URL_BASE}/ws?session=${sessionCode}`);
@@ -371,6 +443,10 @@
       send({ type: 'update', field: '장소', value: settings.place || '전주MBC' });
     };
     ws.onclose = () => {
+      if (intentionalDisconnect) {
+        intentionalDisconnect = false;
+        return;
+      }
       setConnStatus(false, '연결 끊김 - 재연결 중...');
       setTimeout(openWebSocket, 2000);
     };
