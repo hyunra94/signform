@@ -582,6 +582,7 @@
     if (currentMode === 'vr') {
       openQueueWebSocket();
     }
+    setTimeout(() => document.getElementById('name').focus(), 100);
   }
 
   function toggleCodeDisplay() {
@@ -813,6 +814,48 @@
   bindField('phone', '연락처');
   bindField('company', '회사명');
   bindField('school', '학교명');
+
+  // ---------- Enter로 다음 칸 이동 ----------
+  document.getElementById('name').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const phoneField = document.getElementById('phoneField');
+    if (!phoneField.classList.contains('hidden')) {
+      document.getElementById('phone').focus();
+    } else {
+      // VR모드처럼 연락처 칸이 없으면 재직자 여부 라디오로
+      const firstRadio = document.querySelector('input[name="status"]');
+      if (firstRadio) firstRadio.focus();
+    }
+  });
+  document.getElementById('phone').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const firstRadio = document.querySelector('input[name="status"]');
+    if (firstRadio) firstRadio.focus();
+  });
+
+  // ---------- 포커스 없이 숫자만 치면 자동으로 연락처 칸으로 (넘버패드 등) ----------
+  // 브라우저는 어떤 물리적 장치(키보드/넘버패드)에서 왔는지 구분 못 하지만,
+  // "아무 입력칸에도 포커스가 없는 상태에서 숫자가 눌렸다"는 감지 가능해서 이걸로 대신함.
+  // 한글/영문은 IME 조합 방식이라 이 방식이 안 통해서 숫자에만 적용.
+  document.addEventListener('keydown', (e) => {
+    if (document.getElementById('formArea').classList.contains('hidden')) return; // 세션 연결 전엔 무시
+    const active = document.activeElement;
+    const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    if (isTyping) return;
+    if (!/^[0-9]$/.test(e.key)) return;
+
+    const phoneField = document.getElementById('phoneField');
+    if (phoneField.classList.contains('hidden')) return; // VR모드 등 연락처 칸이 없으면 무시
+
+    e.preventDefault();
+    const phoneInput = document.getElementById('phone');
+    phoneInput.focus();
+    phoneInput.value += e.key;
+    phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
   document.getElementById('agree').addEventListener('change', (e) => {
     if (suppressEcho) return;
     send({ type: 'update', field: '동의', value: e.target.checked });
@@ -831,6 +874,13 @@
         send({ type: 'update', field: '학교명', value: '' });
       }
       send({ type: 'update', field: '재직자여부', value: radio.value });
+
+      // 재직자/미래인재 고르면 펼쳐지는 회사명/학교명 칸으로 자동 포커스
+      if (radio.value === '재직자') {
+        setTimeout(() => document.getElementById('company').focus(), 120);
+      } else if (radio.value === '미래인재') {
+        setTimeout(() => document.getElementById('school').focus(), 120);
+      }
     });
   });
 
