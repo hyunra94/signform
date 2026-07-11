@@ -66,14 +66,29 @@
     cursor: pointer; text-decoration: underline; padding: 0;
   }
 
-  .detail-row td { padding: 0; }
-  .detail-panel { padding: 12px 14px; background: #FFFBFC; text-align: left; }
-  .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .detail-table th, .detail-table td { padding: 6px 6px; text-align: center; border-bottom: 1px solid #FDF3F6; }
-  .detail-table th { color: #a98a92; font-weight: 500; }
   .detail-loading { text-align: center; font-size: 12px; color: #c9a8b0; padding: 10px 0; }
-  .detail-refresh-row { text-align: right; margin-bottom: 6px; }
-  .detail-refresh-row .btn-plain { font-size: 11.5px; }
+
+  /* ---- 상세보기 팝업 ---- */
+  .detail-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.5);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 30;
+  }
+  .detail-modal-backdrop.open { display: flex; }
+  .detail-modal-card {
+    background: var(--white); border-radius: 20px; padding: 22px 20px; width: 100%; max-width: 560px;
+    max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  }
+  .detail-modal-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  }
+  .detail-modal-head h3 { font-size: 15px; color: var(--accent-dark); margin: 0; }
+  .detail-modal-actions { display: flex; align-items: center; gap: 12px; }
+  .detail-modal-close {
+    background: none; border: none; font-size: 20px; color: var(--text); cursor: pointer; line-height: 1;
+  }
+  .detail-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .detail-table th, .detail-table td { padding: 7px 6px; text-align: center; border-bottom: 1px solid #FDF3F6; }
+  .detail-table th { color: #a98a92; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -102,6 +117,20 @@
       <tbody id="listBody"></tbody>
     </table>
     <div class="empty hidden" id="emptyMsg">아직 제출된 기록이 없어요.</div>
+  </div>
+</div>
+
+<!-- 상세보기 팝업 -->
+<div class="detail-modal-backdrop" id="detailModalBackdrop">
+  <div class="detail-modal-card">
+    <div class="detail-modal-head">
+      <h3 id="detailModalTitle">참석자 명단</h3>
+      <div class="detail-modal-actions">
+        <button class="btn-plain" id="detailRefreshBtn" onclick="refreshOpenDetail()">🔄 새로고침</button>
+        <button class="detail-modal-close" onclick="closeDetailModal()">✕</button>
+      </div>
+    </div>
+    <div id="detailModalBody"><div class="detail-loading">불러오는 중...</div></div>
   </div>
 </div>
 
@@ -198,53 +227,52 @@
           <a href="${csvUrl}" target="_blank">CSV</a>
         </td>
         <td>
-          <button class="btn-plain" onclick="toggleDetail('${item.programId}', '${safeId}')">상세보기</button><br>
+          <button class="btn-plain" onclick="openDetailModal('${item.programId}', '${safeId}')">상세보기</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdf('${item.programId}')">PDF 다시그리기</button><br>
           <button class="btn-plain" style="color:#D97070;margin-top:4px;" onclick="deleteDay('${item.programId}')">전체삭제</button>
         </td>
       `;
       tbody.appendChild(tr);
-
-      const detailTr = document.createElement('tr');
-      detailTr.className = 'detail-row hidden';
-      detailTr.id = `detail-${safeId}`;
-      detailTr.innerHTML = `<td colspan="6"><div class="detail-panel" id="detail-panel-${safeId}"></div></td>`;
-      tbody.appendChild(detailTr);
     });
   }
 
-  async function toggleDetail(programId, safeId) {
-    const row = document.getElementById(`detail-${safeId}`);
-    const isHidden = row.classList.contains('hidden');
-    if (!isHidden) {
-      row.classList.add('hidden');
-      return;
-    }
-    row.classList.remove('hidden');
-    await loadDetail(programId, safeId);
+  let openDetailProgramId = null;
+  let openDetailSafeId = null;
+
+  function openDetailModal(programId, safeId) {
+    openDetailProgramId = programId;
+    openDetailSafeId = safeId;
+    document.getElementById('detailModalTitle').textContent = `참석자 명단 · ${programId}`;
+    document.getElementById('detailModalBackdrop').classList.add('open');
+    loadDetail(programId, safeId);
+  }
+
+  function closeDetailModal() {
+    document.getElementById('detailModalBackdrop').classList.remove('open');
+    openDetailProgramId = null;
+    openDetailSafeId = null;
+  }
+
+  function refreshOpenDetail() {
+    if (openDetailProgramId) loadDetail(openDetailProgramId, openDetailSafeId);
   }
 
   async function loadDetail(programId, safeId) {
-    const panel = document.getElementById(`detail-panel-${safeId}`);
-    panel.innerHTML = '<div class="detail-loading">불러오는 중...</div>';
+    const body = document.getElementById('detailModalBody');
+    body.innerHTML = '<div class="detail-loading">불러오는 중...</div>';
     try {
       const res = await fetch(`${WORKER_HTTP_URL}/admin/rows?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`);
       if (!res.ok) throw new Error('불러오기 실패');
       const data = await res.json();
-      renderDetail(panel, programId, safeId, data.items);
+      renderDetail(body, programId, safeId, data.items);
     } catch (err) {
-      panel.innerHTML = `<div class="detail-loading">오류: ${err.message}</div>`;
+      body.innerHTML = `<div class="detail-loading">오류: ${err.message}</div>`;
     }
   }
 
-  function renderDetail(panel, programId, safeId, items) {
-    const refreshRow = `
-      <div class="detail-refresh-row">
-        <button class="btn-plain" onclick="loadDetail('${programId}', '${safeId}')">🔄 새로고침</button>
-      </div>
-    `;
+  function renderDetail(body, programId, safeId, items) {
     if (!items || items.length === 0) {
-      panel.innerHTML = refreshRow + '<div class="detail-loading">참석자가 없어요.</div>';
+      body.innerHTML = '<div class="detail-loading">참석자가 없어요.</div>';
       return;
     }
     const rowsHtml = items.map(it => `
@@ -258,7 +286,7 @@
         <td><button class="btn-plain" style="color:#D97070;" onclick="deleteRow('${programId}', ${it.index}, '${safeId}')">삭제</button></td>
       </tr>
     `).join('');
-    panel.innerHTML = refreshRow + `
+    body.innerHTML = `
       <table class="detail-table">
         <thead><tr><th>#</th><th>성명</th><th>연락처</th><th>구분</th><th>동의</th><th>서명</th><th></th></tr></thead>
         <tbody>${rowsHtml}</tbody>

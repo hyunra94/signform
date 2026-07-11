@@ -389,22 +389,32 @@
       // ⚠️ 아래 URL을 본인 Cloudflare Worker 배포 주소로 교체하세요
       const WORKER_URL = 'https://signform.hyunra94.workers.dev/submit';
 
-      const res = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      let res;
+      try {
+        res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (networkErr) {
+        // 진짜로 서버에 연결이 안 될 때만 로컬 다운로드로 대체
+        console.warn('Worker 전송 실패, 로컬 다운로드로 대체:', networkErr);
+        downloadLocally(payload);
+        statusEl.textContent = '서버 연결 전이라 로컬에 저장되었습니다.';
+        statusEl.className = 'status ok';
+        return;
+      }
 
-      if (!res.ok) throw new Error('서버 응답 오류');
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // 서버가 응답은 했지만 거부한 경우(중복 제출 등) — 로컬 저장으로 대체하지 않고 그대로 알림
+        statusEl.textContent = result.error || '제출이 거부되었습니다.';
+        statusEl.className = 'status err';
+        return;
+      }
 
       statusEl.textContent = `제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 감사합니다 🌸`;
-      statusEl.className = 'status ok';
-    } catch (err) {
-      // Worker가 아직 연결 안 된 경우를 위한 로컬 다운로드 폴백
-      console.warn('Worker 전송 실패, 로컬 다운로드로 대체:', err);
-      downloadLocally(payload);
-      statusEl.textContent = '서버 연결 전이라 로컬에 저장되었습니다.';
       statusEl.className = 'status ok';
     } finally {
       btn.disabled = false;
