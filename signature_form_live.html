@@ -17,11 +17,15 @@
     --shadow: rgba(232, 143, 162, 0.25);
   }
   * { box-sizing: border-box; }
+  html { height: 100%; }
   body {
     font-family: 'Noto Sans KR', sans-serif;
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
-    margin: 0; padding: 24px 16px; color: var(--text); min-height: 100vh;
+    margin: 0; padding: 24px 16px; color: var(--text);
+    height: 100%; overflow: hidden; /* 스크롤 대신 카드 자체를 화면에 맞춰 축소함 */
+    display: flex; align-items: center; justify-content: center;
   }
+  #fitWrap { width: 100%; display: flex; justify-content: center; }
   .card {
     max-width: 480px; margin: 0 auto; background: var(--white);
     border-radius: 20px; box-shadow: 0 8px 24px var(--shadow); padding: 28px 24px;
@@ -82,7 +86,7 @@
   }
 
   .code-display {
-    text-align: center; padding: clamp(14px, 5vw, 22px); background: #FDF3F6;
+    position: relative; text-align: center; padding: clamp(14px, 5vw, 22px); background: #FDF3F6;
     border-radius: 16px; margin-bottom: 18px; overflow: hidden;
   }
   .code-display .code {
@@ -91,6 +95,17 @@
     white-space: nowrap;
   }
   .code-display .label { font-size: clamp(10px, 3vw, 12px); color: #a98a92; margin-top: 4px; }
+  .code-toggle-btn {
+    position: absolute; top: 6px; right: 8px; width: 24px; height: 24px; border-radius: 50%;
+    border: none; background: rgba(255,255,255,0.7); color: var(--accent-dark); font-size: 11px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;
+  }
+  .code-display-inner {
+    max-height: 200px; overflow: hidden; transition: max-height 0.25s ease, opacity 0.25s ease, margin 0.25s ease;
+  }
+  .code-display.collapsed { padding-top: 8px; padding-bottom: 8px; }
+  .code-display.collapsed .code-display-inner { max-height: 0; opacity: 0; }
+  .code-display.collapsed .code-toggle-btn { transform: rotate(180deg); }
 
   /* ---- 상태 표시 ---- */
   .conn-status {
@@ -238,6 +253,7 @@
   </div>
 </div>
 
+<div id="fitWrap">
 <div class="card">
   <h1>🌸 참석 확인서 (실시간)</h1>
   <p class="subtitle" id="subtitleText">컴퓨터와 태블릿을 같은 세션에 연결하세요</p>
@@ -257,10 +273,12 @@
 
   <!-- 폼 화면 -->
   <div id="formArea" class="hidden">
-    <div class="code-display">
-      <div class="code" id="codeText">----</div>
-
-      <div class="label">다른 기기에서 이 코드로 참가하세요</div>
+    <div class="code-display" id="codeDisplay">
+      <button class="code-toggle-btn" onclick="toggleCodeDisplay()" title="코드 숨기기/보이기">▲</button>
+      <div class="code-display-inner" id="codeDisplayInner">
+        <div class="code" id="codeText">----</div>
+        <div class="label">다른 기기에서 이 코드로 참가하세요</div>
+      </div>
     </div>
     <div class="conn-status">
       <span class="dot" id="connDot"></span><span id="connText">연결 중...</span>
@@ -358,6 +376,7 @@
     </div>
   </div>
 </div>
+</div>
 
 <script>
   // ⚠️ 배포된 Worker 주소로 교체하세요 (http/https 그대로)
@@ -380,6 +399,38 @@
     } catch (e) {}
     return { date: todayStr(), place: '전주MBC' };
   }
+
+  // ---------- 스크롤 없이 화면에 딱 맞게 카드 축소 ----------
+  let fitScheduled = false;
+  function fitCardToScreen() {
+    const wrap = document.getElementById('fitWrap');
+    const card = wrap ? wrap.querySelector('.card') : null;
+    if (!card) return;
+    card.style.transform = 'scale(1)';
+    const rect = card.getBoundingClientRect();
+    const availW = window.innerWidth - 24;
+    const availH = window.innerHeight - 24;
+    const scale = Math.min(availW / rect.width, availH / rect.height, 1); // 확대는 안 함, 축소만
+    card.style.transformOrigin = 'center center';
+    card.style.transform = `scale(${scale})`;
+  }
+  function scheduleFit() {
+    if (fitScheduled) return;
+    fitScheduled = true;
+    requestAnimationFrame(() => { fitScheduled = false; fitCardToScreen(); });
+  }
+  window.addEventListener('resize', scheduleFit);
+  window.addEventListener('load', scheduleFit);
+  document.addEventListener('DOMContentLoaded', () => {
+    scheduleFit();
+    // 폼 내용이 바뀌는(모드 전환, 필드 표시/숨김, 시간대 목록 등) 모든 경우를 잡기 위해 관찰
+    const wrap = document.getElementById('fitWrap');
+    if (wrap) {
+      new MutationObserver(scheduleFit).observe(wrap, {
+        childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'],
+      });
+    }
+  });
 
   let ws = null;
   let intentionalDisconnect = false; // '코드 변경'으로 일부러 끊었을 때 자동재연결 방지
@@ -531,6 +582,10 @@
     if (currentMode === 'vr') {
       openQueueWebSocket();
     }
+  }
+
+  function toggleCodeDisplay() {
+    document.getElementById('codeDisplay').classList.toggle('collapsed');
   }
 
   function changeSession() {
@@ -793,6 +848,15 @@
     if (currentMode !== 'vr' && !agree) { showStatus('개인정보 동의가 필요합니다.', 'err'); return; }
     if (!hasSignature) { showStatus('서명을 완료해주세요.', 'err'); return; }
     if (currentMode === 'vr' && selectedSlotIndex === null) { showStatus('VR체험버스 시간대를 선택해주세요.', 'err'); return; }
+    if (currentMode === 'vr') {
+      const slot = (queueData.slots || [])[selectedSlotIndex];
+      if (slot && slot.entries.length >= slot.capacity) {
+        showStatus('선택한 시간대가 방금 마감됐어요. 다른 시간대를 골라주세요.', 'err');
+        selectedSlotIndex = null;
+        renderVrSlots();
+        return;
+      }
+    }
 
     document.getElementById('submitBtn').disabled = true;
     showStatus('제출 중...', '');
@@ -809,7 +873,8 @@
       }
     }
 
-    showStatus(`제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸`, 'ok');
+    const extraNote = currentMode === 'vr' ? ' 같은 시간대로 다음 분 이름만 입력하면 돼요.' : '';
+    showStatus(`제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸${extraNote}`, 'ok');
     document.getElementById('submitBtn').disabled = false;
     // 폼 초기화 (다음 사람 차례)
     document.getElementById('name').value = '';
@@ -826,12 +891,14 @@
     clearLiveCanvas();
     placeholder.style.display = 'block';
     remoteBadge.style.display = 'none';
-    selectedSlotIndex = null;
-    vrPageStart = 0;
-    renderVrSlots();
 
     if (currentMode === 'vr') {
+      // 같은 그룹이 연달아 등록할 수 있게 시간대 선택은 유지 (마감되면 renderVrSlots에서 자동으로 막힘)
+      vrPageStart = 0;
+      renderVrSlots();
       send({ type: 'update', field: '동의', value: true }); // 다음 사람 제출을 위해 다시 세팅
+    } else {
+      selectedSlotIndex = null;
     }
   }
 
