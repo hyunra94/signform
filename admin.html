@@ -180,8 +180,14 @@
       const csvUrl = `${WORKER_HTTP_URL}/export?programId=${encodeURIComponent(item.programId)}&key=${encodeURIComponent(key)}`;
       const safeId = item.programId.replace(/[^a-zA-Z0-9]/g, '_');
 
+      const isVr = item.programId.endsWith('-vr');
+      const dateLabel = isVr ? item.programId.slice(0, -3) : item.programId;
+      const typeBadge = isVr
+        ? '<span style="display:inline-block;margin-left:6px;font-size:10px;background:#E88FA2;color:white;border-radius:8px;padding:1px 6px;">VR버스</span>'
+        : '<span style="display:inline-block;margin-left:6px;font-size:10px;background:#FDF3F6;color:#E88FA2;border-radius:8px;padding:1px 6px;">서명록</span>';
+
       tr.innerHTML = `
-        <td class="date">${item.programId}</td>
+        <td class="date">${dateLabel}${typeBadge}</td>
         <td>${item.totalCount}명</td>
         <td>${item.agreedCount}명</td>
         <td>${lastTime}</td>

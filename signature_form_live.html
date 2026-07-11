@@ -40,15 +40,30 @@
 
   /* ---- 세션 선택 화면 ---- */
   .session-choice { display: flex; flex-direction: column; gap: 14px; }
-  .mode-select { display: flex; gap: 8px; margin-bottom: 4px; }
-  .mode-btn {
-    flex: 1; padding: 12px; border-radius: 12px; border: 1.5px solid var(--lavender);
-    background: #FDFBFF; color: var(--text); font-family: inherit; font-size: 14px;
-    font-weight: 700; cursor: pointer; transition: all 0.15s;
+  .mode-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.5);
+    display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 20;
   }
-  .mode-btn.active {
-    border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark);
-    box-shadow: 0 0 0 1px var(--accent-dark);
+  .mode-modal-backdrop.hidden { display: none; }
+  .mode-modal-card {
+    background: var(--white); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 380px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  }
+  .mode-modal-card h2 { font-size: 17px; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
+  .mode-modal-sub { text-align: center; font-size: 12px; color: #a98a92; margin: 0 0 18px; }
+  .mode-modal-btn {
+    width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px;
+    border: 1.5px solid var(--lavender); border-radius: 14px; background: #FDFBFF;
+    cursor: pointer; text-align: left; margin-bottom: 10px; font-family: inherit;
+  }
+  .mode-modal-btn:hover { border-color: var(--accent); background: #FDF3F6; }
+  .mode-modal-btn .mmi { font-size: 26px; }
+  .mode-modal-btn .mmt { font-size: 14px; color: var(--text); }
+  .mode-modal-btn .mms { font-size: 11.5px; color: #a98a92; font-weight: 400; }
+
+  .mode-current-row {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 12.5px; color: var(--text); margin-bottom: 4px; font-weight: 700;
   }
   .choice-btn {
     padding: 16px; border-radius: 14px; border: none; font-family: inherit;
@@ -207,15 +222,31 @@
 </head>
 <body>
 
+<!-- 모드 선택 팝업 -->
+<div class="mode-modal-backdrop" id="modeModalBackdrop">
+  <div class="mode-modal-card">
+    <h2>어떤 용도로 쓰실 건가요?</h2>
+    <p class="mode-modal-sub">선택에 따라 받는 항목이 달라져요</p>
+    <button class="mode-modal-btn" onclick="chooseModeAndContinue('signature')">
+      <span class="mmi">📝</span>
+      <span class="mmt"><b>서명록</b><br><span class="mms">이름·연락처·서명 (세미나/견학용)</span></span>
+    </button>
+    <button class="mode-modal-btn" onclick="chooseModeAndContinue('vr')">
+      <span class="mmi">🚌</span>
+      <span class="mmt"><b>VR체험버스</b><br><span class="mms">이름·서명 + 시간대 선택 (연락처 없음)</span></span>
+    </button>
+  </div>
+</div>
+
 <div class="card">
   <h1>🌸 참석 확인서 (실시간)</h1>
   <p class="subtitle" id="subtitleText">컴퓨터와 태블릿을 같은 세션에 연결하세요</p>
 
   <!-- 세션 선택 화면 -->
   <div id="sessionChoice" class="session-choice">
-    <div class="mode-select">
-      <button class="mode-btn active" id="modeBtnSign" onclick="selectMode('signature')">📝 서명록</button>
-      <button class="mode-btn" id="modeBtnVr" onclick="selectMode('vr')">🚌 VR체험버스</button>
+    <div class="mode-current-row">
+      <span id="modeCurrentLabel">📝 서명록 모드</span>
+      <button class="btn-plain" onclick="openModeModal()">변경</button>
     </div>
     <button class="choice-btn primary" onclick="startNewSession()">새 세션 시작하기</button>
     <div class="join-row">
@@ -228,6 +259,7 @@
   <div id="formArea" class="hidden">
     <div class="code-display">
       <div class="code" id="codeText">----</div>
+
       <div class="label">다른 기기에서 이 코드로 참가하세요</div>
     </div>
     <div class="conn-status">
@@ -240,8 +272,10 @@
         <label for="name">성명</label>
         <input type="text" id="name" placeholder="이름을 입력하세요">
 
-        <label for="phone">연락처</label>
-        <input type="tel" id="phone" placeholder="010-0000-0000">
+        <div id="phoneField">
+          <label for="phone">연락처</label>
+          <input type="tel" id="phone" placeholder="010-0000-0000">
+        </div>
 
         <label>재직자 여부</label>
         <p class="field-hint">재직 또는 재학 여부를 체크해주세요. 해당이 없을 경우 일반 시민 항목을 선택해주세요.</p>
@@ -259,29 +293,31 @@
           <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요">
         </div>
 
-        <div class="consent-box">
-          <div class="consent-section">
-            <div class="consent-title">개인정보 수집·이용 동의</div>
-            <ul>
-              <li>수집·이용 목적: 사업 운영 안내 및</li>
-              <li>수집·이용하는 개인정보 항목: 소속, 성명, 연락처</li>
-              <li>개인정보 보유 및 이용기간: 3년</li>
-            </ul>
+        <div id="consentArea">
+          <div class="consent-box">
+            <div class="consent-section">
+              <div class="consent-title">개인정보 수집·이용 동의</div>
+              <ul>
+                <li>수집·이용 목적: 사업 운영 안내 및</li>
+                <li>수집·이용하는 개인정보 항목: 소속, 성명, 연락처</li>
+                <li>개인정보 보유 및 이용기간: 3년</li>
+              </ul>
+            </div>
+            <div class="consent-section">
+              <div class="consent-title">개인정보 제 3자 제공 동의</div>
+              <ul>
+                <li>개인정보를 제공받는 자: 산업인력공단, 고용노동부</li>
+                <li>개인정보를 제공받는 자의 이용 목적: 만족도 조사 요청</li>
+                <li>제공하는 개인정보 항목: 소속, 성명, 연락처</li>
+                <li>개인정보 보유 및 이용기간: 3년</li>
+              </ul>
+            </div>
           </div>
-          <div class="consent-section">
-            <div class="consent-title">개인정보 제 3자 제공 동의</div>
-            <ul>
-              <li>개인정보를 제공받는 자: 산업인력공단, 고용노동부</li>
-              <li>개인정보를 제공받는 자의 이용 목적: 만족도 조사 요청</li>
-              <li>제공하는 개인정보 항목: 소속, 성명, 연락처</li>
-              <li>개인정보 보유 및 이용기간: 3년</li>
-            </ul>
-          </div>
-        </div>
 
-        <div class="agree-row">
-          <input type="checkbox" id="agree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
-          <label for="agree" style="display:inline;margin:0;font-weight:400;">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+          <div class="agree-row">
+            <input type="checkbox" id="agree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
+            <label for="agree" style="display:inline;margin:0;font-weight:400;">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+          </div>
         </div>
       </div>
 
@@ -462,10 +498,24 @@
     connectSession(code);
   }
 
-  function selectMode(mode) {
+  function openModeModal() {
+    document.getElementById('modeModalBackdrop').classList.remove('hidden');
+  }
+
+  function chooseModeAndContinue(mode) {
     currentMode = mode;
-    document.getElementById('modeBtnSign').classList.toggle('active', mode === 'signature');
-    document.getElementById('modeBtnVr').classList.toggle('active', mode === 'vr');
+    document.getElementById('modeModalBackdrop').classList.add('hidden');
+    document.getElementById('modeCurrentLabel').textContent =
+      mode === 'vr' ? '🚌 VR체험버스 모드' : '📝 서명록 모드';
+    applyModeToFields();
+  }
+
+  // VR체험버스는 연락처/개인정보 동의 문구가 없는 서식이라 해당 UI를 숨김
+  function applyModeToFields() {
+    const isVr = currentMode === 'vr';
+    document.getElementById('phoneField').classList.toggle('hidden', isVr);
+    document.getElementById('consentArea').classList.toggle('hidden', isVr);
+    document.getElementById('vrSlotSection').classList.toggle('hidden', !isVr);
   }
 
   function connectSession(code) {
@@ -477,11 +527,9 @@
     initSignaturePad();
     openWebSocket();
 
+    applyModeToFields();
     if (currentMode === 'vr') {
-      document.getElementById('vrSlotSection').classList.remove('hidden');
       openQueueWebSocket();
-    } else {
-      document.getElementById('vrSlotSection').classList.add('hidden');
     }
   }
 
@@ -593,8 +641,13 @@
     ws.onopen = () => {
       setConnStatus(true, '실시간 연결됨');
       const settings = loadFormSettings();
-      send({ type: 'update', field: 'programId', value: settings.date || todayStr() });
+      const baseDate = settings.date || todayStr();
+      const programId = currentMode === 'vr' ? `${baseDate}-vr` : baseDate;
+      send({ type: 'update', field: 'programId', value: programId });
       send({ type: 'update', field: '장소', value: settings.place || '전주MBC' });
+      if (currentMode === 'vr') {
+        send({ type: 'update', field: '동의', value: true }); // VR버스 서식엔 별도 동의 문구가 없어 자동 처리
+      }
     };
     ws.onclose = () => {
       if (intentionalDisconnect) {
@@ -737,7 +790,7 @@
     if (!재직자여부) { showStatus('재직자 여부를 선택해주세요.', 'err'); return; }
     if (재직자여부 === '재직자' && !company) { showStatus('회사명을 입력해주세요.', 'err'); return; }
     if (재직자여부 === '미래인재' && !school) { showStatus('학교명을 입력해주세요.', 'err'); return; }
-    if (!agree) { showStatus('개인정보 동의가 필요합니다.', 'err'); return; }
+    if (currentMode !== 'vr' && !agree) { showStatus('개인정보 동의가 필요합니다.', 'err'); return; }
     if (!hasSignature) { showStatus('서명을 완료해주세요.', 'err'); return; }
     if (currentMode === 'vr' && selectedSlotIndex === null) { showStatus('VR체험버스 시간대를 선택해주세요.', 'err'); return; }
 
@@ -776,6 +829,10 @@
     selectedSlotIndex = null;
     vrPageStart = 0;
     renderVrSlots();
+
+    if (currentMode === 'vr') {
+      send({ type: 'update', field: '동의', value: true }); // 다음 사람 제출을 위해 다시 세팅
+    }
   }
 
   function showStatus(text, cls) {
