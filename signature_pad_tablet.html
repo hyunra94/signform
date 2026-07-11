@@ -40,6 +40,14 @@
     background: linear-gradient(135deg, var(--accent), var(--accent-dark));
     color: white; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
   }
+  .kb-toggle-btn {
+    padding: 18px 16px; border: 1.5px solid var(--lavender); border-radius: 14px;
+    background: #FDFBFF; font-size: 18px; cursor: pointer;
+  }
+  .kb-hint {
+    font-size: 11.5px; color: #a98a92; text-align: center; margin-top: 10px;
+    max-width: 320px; line-height: 1.5;
+  }
 
   /* ---- 서명 화면 (풀스크린) ---- */
   .sign-screen { display: none; flex-direction: column; height: 100%; padding: 16px; }
@@ -98,9 +106,11 @@
 <div class="session-screen" id="sessionScreen">
   <h1>🌸 서명 코드 입력</h1>
   <div class="join-row">
-    <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="numeric">
+    <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="none">
+    <button class="kb-toggle-btn" onclick="showKeyboard()" title="화면 키보드 띄우기">⌨️</button>
     <button class="join-btn" onclick="joinSession()">참가</button>
   </div>
+  <p class="kb-hint">블루투스 키보드로 바로 입력하거나, ⌨️ 버튼을 누르면 화면 키보드가 떠요.</p>
 </div>
 
 <!-- 서명 전용 화면 -->
@@ -210,6 +220,14 @@
     lastLiveSnapshot = '';
     send({ type: 'clearSignature' });
     send({ type: 'strokeLive', points: [], phase: 'clear' });
+  }
+
+  // 기본은 화면 키보드가 안 뜨게(inputmode=none) 해두고, 버튼 눌렀을 때만 켜줌
+  // (블루투스 키보드로 바로 타이핑은 이 설정과 상관없이 항상 됨)
+  function showKeyboard() {
+    const input = document.getElementById('joinCodeInput');
+    input.setAttribute('inputmode', 'numeric');
+    input.focus();
   }
 
   function joinSession() {
