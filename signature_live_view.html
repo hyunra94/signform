@@ -55,6 +55,14 @@
   }
   .summary-row b { color: var(--accent-dark); font-size: 20px; }
 
+  .filter-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
+  .filter-tab {
+    padding: 6px 12px; border-radius: 16px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; color: var(--text); font-family: inherit; font-size: 11.5px;
+    font-weight: 700; cursor: pointer;
+  }
+  .filter-tab.active { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
+
   .conn-row { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: #a98a92; margin-bottom: 10px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
   .dot.on { background: var(--ok); }
@@ -71,6 +79,7 @@
     font-size: 10px; background: #FDF3F6; color: var(--accent-dark); border-radius: 8px; padding: 1px 6px; margin-left: 6px;
   }
   .live-row .time { font-size: 11px; color: #b89aa2; }
+  .live-row .phone { font-size: 11px; color: #a98a92; margin-left: 8px; }
   @keyframes fadein { from { opacity: 0; transform: translateY(-6px);} to { opacity: 1; transform: translateY(0);} }
 
   .empty-msg { text-align: center; color: #c9a8b0; font-size: 13px; padding: 30px 0; }
@@ -102,6 +111,12 @@
       </div>
       <div class="conn-row"><span class="dot" id="connDot"></span><span id="connText">불러오는 중...</span></div>
       <div class="summary-row" id="summaryRow"></div>
+      <div class="filter-row" id="filterRow">
+        <button class="filter-tab active" data-cat="" onclick="setFilter('')">전체</button>
+        <button class="filter-tab" data-cat="재직자" onclick="setFilter('재직자')">재직자</button>
+        <button class="filter-tab" data-cat="미래인재" onclick="setFilter('미래인재')">미래인재</button>
+        <button class="filter-tab" data-cat="일반시민" onclick="setFilter('일반시민')">일반시민</button>
+      </div>
       <div class="live-list" id="liveList"></div>
       <div class="empty-msg hidden" id="emptyMsg">아직 접수된 사람이 없어요.</div>
     </div>
@@ -154,6 +169,8 @@
     document.getElementById('tabSignature').classList.toggle('active', type === 'signature');
     document.getElementById('tabVr').classList.toggle('active', type === 'vr');
     lastKnownCount = 0;
+    filterCat = '';
+    document.querySelectorAll('.filter-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.cat === ''));
     document.getElementById('liveList').innerHTML = '';
     fetchAndRender(true);
   }
@@ -186,7 +203,25 @@
     document.getElementById('connText').textContent = text;
   }
 
+  function formatTime5(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  let filterCat = '';
+  function setFilter(cat) {
+    filterCat = cat;
+    document.querySelectorAll('.filter-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.cat === cat);
+    });
+    renderList(lastItems, false);
+  }
+
+  let lastItems = [];
+
   function renderList(items, isFirstLoad) {
+    lastItems = items;
     const list = document.getElementById('liveList');
     const emptyMsg = document.getElementById('emptyMsg');
     const agreedCount = items.filter(it => it.동의).length;
@@ -194,25 +229,27 @@
     document.getElementById('summaryRow').innerHTML =
       `<span>총 <b>${items.length}</b>명</span><span>동의 <b>${agreedCount}</b>명</span>`;
 
-    if (items.length === 0) {
+    const filtered = filterCat ? items.filter(it => it.재직자여부 === filterCat) : items;
+
+    if (filtered.length === 0) {
       list.innerHTML = '';
       emptyMsg.classList.remove('hidden');
-      lastKnownCount = 0;
+      emptyMsg.textContent = filterCat ? `'${filterCat}' 항목이 없어요.` : '아직 접수된 사람이 없어요.';
+      lastKnownCount = items.length;
       return;
     }
     emptyMsg.classList.add('hidden');
 
     const isNewBatch = !isFirstLoad && items.length > lastKnownCount;
-    list.innerHTML = items.map((it, i) => {
-      const time = it.submittedAt
-        ? new Date(it.submittedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-        : '';
-      const isNew = isNewBatch && i >= lastKnownCount;
+    list.innerHTML = filtered.map((it) => {
+      const time = formatTime5(it.submittedAt);
+      const isNew = isNewBatch && it.index >= lastKnownCount;
       const badge = it.재직자여부 ? `<span class="badge">${it.재직자여부}</span>` : '';
+      const phone = it.연락처 ? `<span class="phone">${escapeHtml(it.연락처)}</span>` : '';
       return `
         <div class="live-row ${isNew ? 'new' : ''}">
-          <div><span class="name">${it.index + 1}. ${escapeHtml(it.성명 || '')}</span>${badge}</div>
-          <div class="time">${time}${it.hasSignature ? ' · ✓서명' : ''}</div>
+          <div><span class="name">${it.index + 1}. ${escapeHtml(it.성명 || '')}</span>${badge}${phone}</div>
+          <div class="time">${time}</div>
         </div>
       `;
     }).join('');

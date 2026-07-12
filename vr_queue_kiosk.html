@@ -8,6 +8,7 @@
 <meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
 <meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
 <style>
   :root {
     --bg-1: #FFF0F5; --bg-2: #FFE4E1;
@@ -18,47 +19,39 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
-    height: 100%; margin: 0; font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100%; margin: 0; font-family: 'Noto Sans KR', sans-serif;
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
-    color: var(--text); overflow: hidden;
+    color: var(--text);
   }
-  .screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 24px; }
+  .screen { display: flex; flex-direction: column; align-items: center; padding: 28px 20px 60px; }
 
-  .clock { font-size: clamp(32px, 6vw, 56px); font-weight: 700; color: var(--accent-dark); margin-bottom: 4px; }
-  .headline { font-size: clamp(16px, 2.4vw, 22px); font-weight: 700; margin-bottom: 28px; text-align: center; }
+  .clock { font-size: clamp(28px, 5vw, 44px); font-weight: 700; color: var(--accent-dark); margin-bottom: 4px; }
+  .headline { font-size: clamp(15px, 2vw, 19px); font-weight: 700; margin-bottom: 22px; text-align: center; }
 
-  .slots-nav { display: flex; align-items: center; gap: 18px; }
-  .slots-row {
-    display: flex; gap: 22px; flex-wrap: nowrap; justify-content: center;
+  .slots-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px; width: 100%; max-width: 1200px;
   }
-  .nav-arrow {
-    width: 56px; height: 56px; border-radius: 50%; border: none; background: var(--white);
-    box-shadow: 0 6px 18px var(--shadow); font-size: 28px; color: var(--accent-dark);
-    cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  }
-  .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
   .slot-btn {
-    width: clamp(200px, 22vw, 300px); border: none; border-radius: 24px;
-    background: var(--white); box-shadow: 0 10px 30px var(--shadow);
-    padding: 28px 20px; cursor: pointer; font-family: inherit; text-align: center;
-    transition: transform 0.15s;
+    border: none; border-radius: 20px; background: var(--white); box-shadow: 0 8px 22px var(--shadow);
+    padding: 20px 14px; cursor: pointer; font-family: inherit; text-align: center; transition: transform 0.15s;
   }
   .slot-btn:active { transform: scale(0.97); }
-  .slot-btn.now { box-shadow: 0 0 0 4px var(--accent-dark), 0 10px 30px var(--shadow); }
+  .slot-btn.now { box-shadow: 0 0 0 4px var(--accent-dark), 0 8px 22px var(--shadow); }
   .slot-btn.full { opacity: 0.55; cursor: not-allowed; }
-  .slot-btn .time { font-size: clamp(26px, 3.6vw, 38px); font-weight: 700; color: var(--text); }
+  .slot-btn.past { opacity: 0.35; cursor: not-allowed; }
+  .slot-btn .time { font-size: clamp(20px, 2.6vw, 28px); font-weight: 700; color: var(--text); }
   .slot-btn .now-badge {
-    display: inline-block; font-size: 12px; background: var(--accent-dark); color: white;
-    border-radius: 10px; padding: 2px 10px; margin-top: 6px;
+    display: inline-block; font-size: 11px; background: var(--accent-dark); color: white;
+    border-radius: 10px; padding: 2px 9px; margin-top: 6px;
   }
-  .slot-btn .avail {
-    margin-top: 14px; font-size: clamp(15px, 1.8vw, 18px); color: #a98a92;
-  }
-  .slot-btn .avail b { color: var(--ok); font-size: clamp(20px, 2.6vw, 26px); }
+  .slot-btn .avail { margin-top: 10px; font-size: clamp(12px, 1.4vw, 14px); color: #a98a92; }
+  .slot-btn .avail b { color: var(--ok); font-size: clamp(16px, 2vw, 20px); }
   .slot-btn.full .avail b { color: var(--full); }
-  .slot-btn .avail-label { font-size: 13px; }
+  .slot-btn.past .avail b { color: #b89aa2; }
+  .slot-btn .avail-label { font-size: 11px; }
 
-  .empty-state { text-align: center; color: #b89aa2; font-size: 16px; }
+  .empty-state { text-align: center; color: #b89aa2; font-size: 16px; margin-top: 40px; }
 
   /* ---- 등록 모달 ---- */
   .modal-backdrop {
@@ -68,16 +61,43 @@
   .modal-backdrop.open { display: flex; }
   .modal-card {
     background: var(--white); border-radius: 24px; padding: 32px 28px; width: 100%; max-width: 420px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
   }
   .modal-card h2 { text-align: center; font-size: 20px; margin: 0 0 6px; color: var(--accent-dark); }
-  .modal-card .modal-time { text-align: center; font-size: 15px; color: #a98a92; margin-bottom: 22px; }
+  .modal-card .modal-time { text-align: center; font-size: 15px; color: #a98a92; margin-bottom: 20px; }
+  .group-count {
+    text-align: center; font-size: 12.5px; color: var(--ok); font-weight: 700;
+    margin: -12px 0 16px; background: #F0FAF2; border-radius: 10px; padding: 6px;
+  }
   .modal-card label { display: block; font-size: 14px; font-weight: 500; margin: 14px 0 6px; }
   .modal-card input {
     width: 100%; padding: 14px; border: 1.5px solid var(--lavender); border-radius: 12px;
     font-family: inherit; font-size: 17px; outline: none;
   }
   .modal-card input:focus { border-color: var(--accent); }
+  .modal-hint { font-size: 11.5px; color: #b89aa2; margin: -3px 0 8px; line-height: 1.5; }
+  .pad-wrap {
+    position: relative; margin-top: 6px; border: 2px dashed var(--accent); border-radius: 14px;
+    background: #FFFDFE; overflow: hidden;
+  }
+  #signature-pad { display: block; width: 100%; height: 140px; touch-action: none; cursor: crosshair; }
+  .pad-placeholder {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #d8b8c0; font-size: 13px; pointer-events: none;
+  }
+  .pad-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+  .btn-clear-sig {
+    background: none; border: none; color: var(--accent-dark); font-size: 12px;
+    font-weight: 500; cursor: pointer; padding: 4px 8px; font-family: inherit;
+  }
+  .cat-row { display: flex; gap: 8px; }
+  .cat-btn {
+    flex: 1; padding: 12px 6px; border-radius: 12px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .cat-btn.active { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
+  .sub-field { display: none; }
+  .sub-field.show { display: block; }
   .modal-btns { display: flex; gap: 10px; margin-top: 24px; }
   .modal-btns button {
     flex: 1; padding: 15px; border: none; border-radius: 14px; font-family: inherit;
@@ -86,9 +106,7 @@
   .btn-cancel { background: #FDF3F6; color: var(--accent-dark); }
   .btn-confirm { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; }
   .modal-status { text-align: center; font-size: 13px; margin-top: 12px; min-height: 16px; color: #D97070; }
-  .success-check {
-    display: none; text-align: center; padding: 20px 0;
-  }
+  .success-check { display: none; text-align: center; padding: 20px 0; }
   .success-check.show { display: block; }
   .success-check .big { font-size: 44px; }
   .success-check .msg { font-size: 17px; font-weight: 700; margin-top: 10px; }
@@ -97,18 +115,15 @@
     position: fixed; bottom: 12px; right: 14px; width: 8px; height: 8px; border-radius: 50%; background: #ccc;
   }
   .conn-dot.on { background: var(--ok); }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
 <div class="screen">
   <div class="clock" id="clock">--:--</div>
-  <div class="headline">지금 참여 가능한 시간대를 선택해주세요</div>
-  <div class="slots-nav">
-    <button class="nav-arrow" id="prevArrow" onclick="pageMove(-1)">‹</button>
-    <div class="slots-row" id="slotsRow"></div>
-    <button class="nav-arrow" id="nextArrow" onclick="pageMove(1)">›</button>
-  </div>
-  <div class="empty-state hidden" id="emptyState">지금 참여 가능한 시간대가 없어요. 스태프에게 문의해주세요.</div>
+  <div class="headline">참여하실 시간대를 선택해주세요</div>
+  <div class="slots-grid" id="slotsGrid"></div>
+  <div class="empty-state hidden" id="emptyState">아직 시간대가 설정되지 않았어요. 스태프에게 문의해주세요.</div>
 </div>
 
 <div class="conn-dot" id="connDot"></div>
@@ -118,12 +133,36 @@
     <div id="formPart">
       <h2>✍️ 참여 등록</h2>
       <div class="modal-time" id="modalTime">-</div>
+      <div class="group-count hidden" id="groupCount"></div>
+
       <label for="mName">이름</label>
       <input type="text" id="mName" placeholder="이름을 입력하세요" autocomplete="off">
-      <label for="mPhone">연락처</label>
-      <input type="tel" id="mPhone" placeholder="010-0000-0000" autocomplete="off">
+
+      <label>재직자 여부</label>
+      <p class="modal-hint">재직 또는 재학 여부를 선택해주세요. 해당 없으면 일반 시민을 골라주세요.</p>
+      <div class="cat-row">
+        <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
+        <button type="button" class="cat-btn" id="catBtn-미래인재" onclick="selectCat('미래인재')">미래인재</button>
+        <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+      </div>
+      <div class="sub-field" id="companyField">
+        <label for="mCompany">회사명</label>
+        <input type="text" id="mCompany" placeholder="재직 중인 회사명" autocomplete="off">
+      </div>
+      <div class="sub-field" id="schoolField">
+        <label for="mSchool">학교명</label>
+        <input type="text" id="mSchool" placeholder="재학 중인 학교명" autocomplete="off">
+      </div>
+
+      <label>서명</label>
+      <div class="pad-wrap">
+        <canvas id="signature-pad"></canvas>
+        <span class="pad-placeholder" id="padPlaceholder">여기에 서명해주세요 ✍️</span>
+      </div>
+      <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearSignature()">다시 서명하기</button></div>
+
       <div class="modal-btns">
-        <button class="btn-cancel" onclick="closeModal()">취소</button>
+        <button class="btn-cancel" id="cancelBtn" onclick="closeModal()">취소</button>
         <button class="btn-confirm" onclick="confirmCheckin()">등록하기</button>
       </div>
       <div class="modal-status" id="modalStatus"></div>
@@ -138,7 +177,6 @@
 <script>
   const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
   const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
-  const PAGE_SIZE = 2; // 기본으로 몇 개씩 보여줄지
 
   function todayStr() {
     const d = new Date();
@@ -148,7 +186,8 @@
   let ws = null;
   let currentData = { slots: [] };
   let pendingSlotIndex = null;
-  let pageStart = 0;
+  let selectedCat = '';
+  let groupCount = 0;
 
   function openWebSocket() {
     ws = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${queueDate}`);
@@ -157,7 +196,7 @@
     ws.onerror = () => document.getElementById('connDot').classList.remove('on');
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      if (msg.type === 'state') { currentData = msg.data; pageStart = 0; renderSlots(); }
+      if (msg.type === 'state') { currentData = msg.data; renderSlots(); }
     };
   }
   openWebSocket();
@@ -187,51 +226,32 @@
     return best;
   }
 
-  function getUpcoming() {
-    const slots = currentData.slots || [];
-    const nowIdx = currentSlotIndex(slots);
-    // 이미 끝난(현재보다 이전) 시간대는 빼고, 지금 진행 중인 시간대부터 이후만
-    const startFrom = Math.max(nowIdx, 0);
-    return slots.map((s, i) => ({ ...s, index: i })).slice(startFrom);
-  }
-
-  function pageMove(delta) {
-    pageStart = Math.max(0, pageStart + delta * PAGE_SIZE);
-    renderSlots();
-  }
-
+  // 하루 전체 시간대를 다 보여줌 (지난 시간대는 흐리게 표시만, 숨기지 않음)
   function renderSlots() {
-    const row = document.getElementById('slotsRow');
+    const grid = document.getElementById('slotsGrid');
     const emptyState = document.getElementById('emptyState');
-    const upcoming = getUpcoming();
+    const slots = currentData.slots || [];
 
-    if (upcoming.length === 0) {
-      row.innerHTML = '';
+    if (slots.length === 0) {
+      grid.innerHTML = '';
       emptyState.classList.remove('hidden');
-      document.getElementById('prevArrow').disabled = true;
-      document.getElementById('nextArrow').disabled = true;
       return;
     }
     emptyState.classList.add('hidden');
 
-    // pageStart가 범위를 벗어나면 보정
-    if (pageStart >= upcoming.length) pageStart = Math.max(0, upcoming.length - PAGE_SIZE);
-    const visible = upcoming.slice(pageStart, pageStart + PAGE_SIZE);
-
-    document.getElementById('prevArrow').disabled = pageStart <= 0;
-    document.getElementById('nextArrow').disabled = pageStart + PAGE_SIZE >= upcoming.length;
-
-    const nowIdx = currentSlotIndex(currentData.slots || []);
-    row.innerHTML = visible.map(s => {
+    const nowIdx = currentSlotIndex(slots);
+    grid.innerHTML = slots.map((s, i) => {
       const isFull = s.entries.length >= s.capacity;
-      const isCurrent = s.index === nowIdx;
+      const isCurrent = i === nowIdx;
+      const isPast = nowIdx >= 0 && i < nowIdx;
       const remain = Math.max(s.capacity - s.entries.length, 0);
+      const disabled = isFull || isPast;
       return `
-        <button class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''}"
-                ${isFull ? 'disabled' : ''} onclick="openModal(${s.index})">
+        <button class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isPast ? 'past' : ''}"
+                ${disabled ? 'disabled' : ''} onclick="openModal(${i})">
           <div class="time">${s.time}${isCurrent ? '<div class="now-badge">지금 시간대</div>' : ''}</div>
           <div class="avail">
-            ${isFull
+            ${isPast ? '종료' : isFull
               ? '마감'
               : `<b>${remain}</b><span class="avail-label">자리 남음 (${s.entries.length}/${s.capacity})</span>`}
           </div>
@@ -240,36 +260,145 @@
     }).join('');
   }
 
+  function selectCat(cat) {
+    selectedCat = cat;
+    ['재직자', '미래인재', '일반시민'].forEach(c => {
+      document.getElementById(`catBtn-${c}`).classList.toggle('active', c === cat);
+    });
+    document.getElementById('companyField').classList.toggle('show', cat === '재직자');
+    document.getElementById('schoolField').classList.toggle('show', cat === '미래인재');
+  }
+
+  let signaturePad = null;
+  const sigCanvas = document.getElementById('signature-pad');
+  const sigPlaceholder = document.getElementById('padPlaceholder');
+
+  function initOrResizeSignaturePad() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const savedData = signaturePad ? signaturePad.toData() : null;
+    sigCanvas.width = sigCanvas.offsetWidth * ratio;
+    sigCanvas.height = sigCanvas.offsetHeight * ratio;
+    sigCanvas.getContext('2d').scale(ratio, ratio);
+    if (!signaturePad) {
+      signaturePad = new SignaturePad(sigCanvas, {
+        backgroundColor: 'rgba(255,255,255,0)', penColor: '#5A4A50', minWidth: 1.2, maxWidth: 3.5,
+      });
+      signaturePad.addEventListener('beginStroke', () => { sigPlaceholder.style.display = 'none'; });
+    } else {
+      signaturePad.clear();
+      if (savedData && savedData.length) signaturePad.fromData(savedData);
+    }
+  }
+  window.addEventListener('resize', () => { if (signaturePad) initOrResizeSignaturePad(); });
+
+  function clearSignature() {
+    if (signaturePad) signaturePad.clear();
+    sigPlaceholder.style.display = 'block';
+  }
+
   function openModal(index) {
     pendingSlotIndex = index;
+    selectedCat = '';
+    groupCount = 0;
+    document.getElementById('groupCount').classList.add('hidden');
+    document.getElementById('cancelBtn').textContent = '취소';
     const slot = currentData.slots[index];
     document.getElementById('modalTime').textContent = `${slot.time} 시간대`;
     document.getElementById('mName').value = '';
-    document.getElementById('mPhone').value = '';
+    document.getElementById('mCompany').value = '';
+    document.getElementById('mSchool').value = '';
+    document.getElementById('companyField').classList.remove('show');
+    document.getElementById('schoolField').classList.remove('show');
+    ['재직자', '미래인재', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
     document.getElementById('modalStatus').textContent = '';
     document.getElementById('formPart').style.display = 'block';
     document.getElementById('successPart').classList.remove('show');
     document.getElementById('modalBackdrop').classList.add('open');
+    initOrResizeSignaturePad();
+    sigPlaceholder.style.display = 'block';
   }
 
   function closeModal() {
     document.getElementById('modalBackdrop').classList.remove('open');
     pendingSlotIndex = null;
+    groupCount = 0;
   }
 
-  function confirmCheckin() {
+  async function confirmCheckin() {
     const name = document.getElementById('mName').value.trim();
-    const phone = document.getElementById('mPhone').value.trim();
     const statusEl = document.getElementById('modalStatus');
     if (!name) { statusEl.textContent = '이름을 입력해주세요.'; return; }
+    if (!selectedCat) { statusEl.textContent = '재직자 여부를 선택해주세요.'; return; }
+    if (!signaturePad || signaturePad.isEmpty()) { statusEl.textContent = '서명을 완료해주세요.'; return; }
     if (pendingSlotIndex === null) return;
 
-    send({ type: 'checkin', slotIndex: pendingSlotIndex, 성명: name, 연락처: phone });
+    const company = selectedCat === '재직자' ? document.getElementById('mCompany').value.trim() : '';
+    const school = selectedCat === '미래인재' ? document.getElementById('mSchool').value.trim() : '';
+    const signatureDataUrl = signaturePad.toDataURL('image/png');
+
+    statusEl.textContent = '등록 중...';
+    statusEl.style.color = '#a98a92';
+
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          programId: `${queueDate}-vr`,
+          성명: name, 재직자여부: selectedCat, 회사명: company, 학교명: school,
+          signature: signatureDataUrl, 동의: true,
+        }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        statusEl.textContent = result.error || '등록에 실패했어요. 스태프에게 문의해주세요.';
+        statusEl.style.color = '#D97070';
+        return;
+      }
+    } catch (err) {
+      statusEl.textContent = '서버 연결에 실패했어요. 스태프에게 문의해주세요.';
+      statusEl.style.color = '#D97070';
+      return;
+    }
+
+    // 서명록 등록 성공 → 시간대 대기열에도 등록
+    send({ type: 'checkin', slotIndex: pendingSlotIndex, 성명: name, 재직자여부: selectedCat, 회사명: company, 학교명: school });
 
     document.getElementById('formPart').style.display = 'none';
     document.getElementById('successMsg').textContent = `${name}님, 등록 완료!`;
     document.getElementById('successPart').classList.add('show');
-    setTimeout(closeModal, 1800);
+
+    // 같은 시간대로 계속 등록할 수 있게 모달은 유지 — 폼만 비워서 다음 사람 바로 입력 가능
+    groupCount += 1;
+    setTimeout(() => {
+      const slot = currentData.slots[pendingSlotIndex];
+      const isFull = slot && slot.entries.length >= slot.capacity;
+      if (isFull) {
+        // 방금 등록으로 정원이 다 찼으면 자동으로 닫음
+        closeModal();
+        return;
+      }
+      resetModalForm();
+      document.getElementById('successPart').classList.remove('show');
+      document.getElementById('formPart').style.display = 'block';
+      const gc = document.getElementById('groupCount');
+      gc.textContent = `이번 시간대에 지금까지 ${groupCount}명 등록됐어요`;
+      gc.classList.remove('hidden');
+      document.getElementById('cancelBtn').textContent = '그만 등록할게요';
+      document.getElementById('mName').focus();
+    }, 1300);
+  }
+
+  function resetModalForm() {
+    selectedCat = '';
+    document.getElementById('mName').value = '';
+    document.getElementById('mCompany').value = '';
+    document.getElementById('mSchool').value = '';
+    document.getElementById('companyField').classList.remove('show');
+    document.getElementById('schoolField').classList.remove('show');
+    ['재직자', '미래인재', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
+    document.getElementById('modalStatus').textContent = '';
+    clearSignature();
   }
 </script>
 </body>

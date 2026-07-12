@@ -98,18 +98,27 @@
   }
   .entry-row + .entry-row { border-top: 1px solid #FDF3F6; }
   .entry-name { font-weight: 700; }
-  .entry-phone { color: #a98a92; margin-left: 6px; }
+  .entry-meta { color: #a98a92; margin-left: 6px; font-size: 11.5px; }
   .entry-del { background: none; border: none; color: #D97070; font-size: 11px; cursor: pointer; text-decoration: underline; }
-  .quick-add { display: flex; gap: 6px; margin-top: 8px; }
+  .quick-add { margin-top: 8px; }
+  .quick-add-row1 { display: flex; gap: 6px; }
   .quick-add input {
     flex: 1; min-width: 0; padding: 7px 9px; border: 1.5px solid var(--lavender); border-radius: 8px;
     font-family: inherit; font-size: 12.5px;
   }
-  .quick-add button {
-    padding: 7px 12px; border: none; border-radius: 8px; background: var(--ok); color: white;
+  .quick-add-cats { display: flex; gap: 4px; margin-top: 6px; }
+  .quick-cat-btn {
+    flex: 1; padding: 6px 4px; border-radius: 8px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; font-family: inherit; font-size: 11px; cursor: pointer;
+  }
+  .quick-cat-btn.active { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
+  .quick-add-sub { margin-top: 6px; display: none; }
+  .quick-add-sub.show { display: block; }
+  .quick-add button.add-btn {
+    width: 100%; margin-top: 6px; padding: 7px 12px; border: none; border-radius: 8px; background: var(--ok); color: white;
     font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
   }
-  .quick-add button:disabled { background: #ddd; cursor: not-allowed; }
+  .quick-add button.add-btn:disabled { background: #ddd; cursor: not-allowed; }
   .empty-entries { font-size: 12px; color: #c9a8b0; padding: 4px 0; }
 
   .empty-msg { text-align: center; color: #c9a8b0; font-size: 13px; padding: 20px 0; }
@@ -215,6 +224,12 @@
     return best;
   }
 
+  function deriveSoso(e) {
+    if (e.재직자여부 === '재직자') return e.회사명 || '';
+    if (e.재직자여부 === '미래인재') return e.학교명 || '';
+    return '';
+  }
+
   function renderSlots() {
     const list = document.getElementById('slotList');
     const emptyMsg = document.getElementById('emptyMsg');
@@ -238,11 +253,16 @@
       const isCurrent = i === nowIdx;
       const isOpen = openIndex.has(i);
       const entriesHtml = s.entries.length
-        ? s.entries.map((e, ei) => `
+        ? s.entries.map((e, ei) => {
+            const cat = e.재직자여부 || '';
+            const soso = deriveSoso(e);
+            const metaText = [cat, soso].filter(Boolean).join(' · ');
+            return `
             <div class="entry-row">
-              <div><span class="entry-name">${escapeHtml(e.성명)}</span><span class="entry-phone">${escapeHtml(e.연락처||'')}</span></div>
+              <div><span class="entry-name">${escapeHtml(e.성명)}</span>${metaText ? `<span class="entry-meta">${escapeHtml(metaText)}</span>` : ''}</div>
               <button class="entry-del" onclick="removeEntry(${i}, ${ei})">삭제</button>
-            </div>`).join('')
+            </div>`;
+          }).join('')
         : '<div class="empty-entries">아직 등록된 사람이 없어요.</div>';
 
       return `
@@ -257,14 +277,32 @@
           <div class="entry-list ${isOpen ? 'open' : ''}" id="entries-${i}">
             ${entriesHtml}
             <div class="quick-add">
-              <input type="text" id="qname-${i}" placeholder="이름">
-              <input type="tel" id="qphone-${i}" placeholder="연락처">
-              <button ${isFull ? 'disabled' : ''} onclick="quickAdd(${i})">+ 추가</button>
+              <div class="quick-add-row1">
+                <input type="text" id="qname-${i}" placeholder="이름">
+              </div>
+              <div class="quick-add-cats">
+                <button type="button" class="quick-cat-btn" id="qcat-${i}-재직자" onclick="setQuickCat(${i},'재직자')">재직자</button>
+                <button type="button" class="quick-cat-btn" id="qcat-${i}-미래인재" onclick="setQuickCat(${i},'미래인재')">미래인재</button>
+                <button type="button" class="quick-cat-btn" id="qcat-${i}-일반시민" onclick="setQuickCat(${i},'일반시민')">일반시민</button>
+              </div>
+              <div class="quick-add-sub" id="qsub-company-${i}"><input type="text" id="qcompany-${i}" placeholder="회사명"></div>
+              <div class="quick-add-sub" id="qsub-school-${i}"><input type="text" id="qschool-${i}" placeholder="학교명"></div>
+              <button class="add-btn" ${isFull ? 'disabled' : ''} onclick="quickAdd(${i})">+ 추가</button>
             </div>
           </div>
         </div>
       `;
     }).join('');
+  }
+
+  const quickCatState = {}; // { [slotIndex]: '재직자'|'미래인재'|'일반시민' }
+  function setQuickCat(i, cat) {
+    quickCatState[i] = cat;
+    ['재직자', '미래인재', '일반시민'].forEach(c => {
+      document.getElementById(`qcat-${i}-${c}`).classList.toggle('active', c === cat);
+    });
+    document.getElementById(`qsub-company-${i}`).classList.toggle('show', cat === '재직자');
+    document.getElementById(`qsub-school-${i}`).classList.toggle('show', cat === '미래인재');
   }
 
   function toggleEntries(i) {
@@ -274,9 +312,12 @@
 
   function quickAdd(i) {
     const name = document.getElementById(`qname-${i}`).value.trim();
-    const phone = document.getElementById(`qphone-${i}`).value.trim();
     if (!name) { alert('이름을 입력해주세요.'); return; }
-    send({ type: 'checkin', slotIndex: i, 성명: name, 연락처: phone });
+    const cat = quickCatState[i] || '';
+    if (!cat) { alert('재직자 여부를 선택해주세요.'); return; }
+    const company = cat === '재직자' ? document.getElementById(`qcompany-${i}`).value.trim() : '';
+    const school = cat === '미래인재' ? document.getElementById(`qschool-${i}`).value.trim() : '';
+    send({ type: 'checkin', slotIndex: i, 성명: name, 재직자여부: cat, 회사명: company, 학교명: school });
   }
 
   function removeSlot(index, time) {

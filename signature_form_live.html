@@ -22,8 +22,15 @@
     font-family: 'Noto Sans KR', sans-serif;
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
     margin: 0; padding: 24px 16px; color: var(--text);
-    height: 100%; overflow: hidden; /* 스크롤 대신 카드 자체를 화면에 맞춰 축소함 */
-    display: flex; align-items: center; justify-content: center;
+    min-height: 100%;
+  }
+  /* 폰 크기: 서명 좌표 계산이 어긋나서 화면 맞춤(scale)을 안 씀 — 그냥 스크롤 허용 */
+  @media (max-width: 639px) {
+    body { overflow-y: auto; height: auto; display: block; }
+  }
+  /* 태블릿/PC 크기에서만 스크롤 없이 화면에 맞춰 축소 */
+  @media (min-width: 640px) {
+    body { height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
   }
   #fitWrap { width: 100%; display: flex; justify-content: center; }
   .card {
@@ -41,6 +48,12 @@
   }
   h1 { font-size: 19px; font-weight: 700; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
   .subtitle { text-align: center; font-size: 12.5px; color: #a98a92; margin-bottom: 20px; }
+  .kb-global-toggle {
+    display: block; margin: -10px auto 16px; padding: 7px 14px; border-radius: 20px;
+    border: 1.5px solid var(--lavender); background: #FDFBFF; color: var(--text);
+    font-family: inherit; font-size: 11.5px; cursor: pointer;
+  }
+  .kb-global-toggle.on { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
 
   /* ---- 세션 선택 화면 ---- */
   .session-choice { display: flex; flex-direction: column; gap: 14px; }
@@ -257,6 +270,7 @@
 <div class="card">
   <h1>🌸 참석 확인서 (실시간)</h1>
   <p class="subtitle" id="subtitleText">컴퓨터와 태블릿을 같은 세션에 연결하세요</p>
+  <button class="kb-global-toggle" id="kbToggleBtn" onclick="toggleAllKeyboards()">⌨️ 화면 키보드 켜기</button>
 
   <!-- 세션 선택 화면 -->
   <div id="sessionChoice" class="session-choice">
@@ -266,7 +280,7 @@
     </div>
     <button class="choice-btn primary" onclick="startNewSession()">새 세션 시작하기</button>
     <div class="join-row">
-      <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="numeric">
+      <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="none">
       <button class="choice-btn secondary" onclick="joinExistingSession()">참가하기</button>
     </div>
   </div>
@@ -288,11 +302,11 @@
     <div class="form-grid">
       <div class="form-col-left">
         <label for="name">성명</label>
-        <input type="text" id="name" placeholder="이름을 입력하세요">
+        <input type="text" id="name" placeholder="이름을 입력하세요" inputmode="none">
 
         <div id="phoneField">
           <label for="phone">연락처</label>
-          <input type="tel" id="phone" placeholder="010-0000-0000">
+          <input type="tel" id="phone" placeholder="010-0000-0000" inputmode="none">
         </div>
 
         <label>재직자 여부</label>
@@ -304,11 +318,11 @@
         </div>
         <div id="companyField" class="hidden-field">
           <label for="company">회사명</label>
-          <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요">
+          <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요" inputmode="none">
         </div>
         <div id="schoolField" class="hidden-field">
           <label for="school">학교명</label>
-          <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요">
+          <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요" inputmode="none">
         </div>
 
         <div id="consentArea">
@@ -400,12 +414,20 @@
     return { date: todayStr(), place: '전주MBC' };
   }
 
-  // ---------- 스크롤 없이 화면에 딱 맞게 카드 축소 ----------
+  // ---------- 스크롤 없이 화면에 딱 맞게 카드 축소 (태블릿/PC 크기에서만) ----------
+  // ⚠️ 폰처럼 좁은 화면에서 transform:scale()을 걸면 서명 캔버스의 좌표 계산이 어긋나서
+  //    서명이 이상하게 그려지는 문제가 있어 640px 미만에서는 아예 적용하지 않음.
   let fitScheduled = false;
   function fitCardToScreen() {
     const wrap = document.getElementById('fitWrap');
     const card = wrap ? wrap.querySelector('.card') : null;
     if (!card) return;
+
+    if (window.innerWidth < 640) {
+      card.style.transform = 'none'; // 폰 크기: 축소 안 하고 그냥 스크롤 허용
+      return;
+    }
+
     card.style.transform = 'scale(1)';
     const rect = card.getBoundingClientRect();
     const availW = window.innerWidth - 24;
@@ -583,6 +605,27 @@
       openQueueWebSocket();
     }
     setTimeout(() => document.getElementById('name').focus(), 100);
+  }
+
+  // 기본은 모든 입력칸에서 화면 키보드가 안 뜨게(inputmode=none) 해두고,
+  // 이 버튼으로 한 번에 켜고 끌 수 있게 함. 블루투스 키보드로 타이핑하는 건 이 설정과 무관하게 항상 됨.
+  let keyboardEnabled = false;
+  const KB_FIELDS = [
+    { id: 'joinCodeInput', onMode: 'numeric' },
+    { id: 'name', onMode: 'text' },
+    { id: 'phone', onMode: 'tel' },
+    { id: 'company', onMode: 'text' },
+    { id: 'school', onMode: 'text' },
+  ];
+  function toggleAllKeyboards() {
+    keyboardEnabled = !keyboardEnabled;
+    KB_FIELDS.forEach(({ id, onMode }) => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute('inputmode', keyboardEnabled ? onMode : 'none');
+    });
+    const btn = document.getElementById('kbToggleBtn');
+    btn.textContent = keyboardEnabled ? '⌨️ 화면 키보드 끄기' : '⌨️ 화면 키보드 켜기';
+    btn.classList.toggle('on', keyboardEnabled);
   }
 
   function toggleCodeDisplay() {
@@ -920,9 +963,15 @@
     // VR체험버스 모드면 서명 제출과 함께 시간대에도 등록
     if (currentMode === 'vr' && selectedSlotIndex !== null) {
       const name = document.getElementById('name').value.trim();
-      const phone = document.getElementById('phone').value.trim();
+      const statusRadio = document.querySelector('input[name="status"]:checked');
+      const cat = statusRadio ? statusRadio.value : '';
+      const company = cat === '재직자' ? document.getElementById('company').value.trim() : '';
+      const school = cat === '미래인재' ? document.getElementById('school').value.trim() : '';
       if (queueWs && queueWs.readyState === WebSocket.OPEN) {
-        queueWs.send(JSON.stringify({ type: 'checkin', slotIndex: selectedSlotIndex, 성명: name, 연락처: phone }));
+        queueWs.send(JSON.stringify({
+          type: 'checkin', slotIndex: selectedSlotIndex,
+          성명: name, 재직자여부: cat, 회사명: company, 학교명: school,
+        }));
       }
     }
 
