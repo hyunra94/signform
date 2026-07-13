@@ -24,6 +24,12 @@
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
     margin: 0; padding: clamp(10px, 3vh, 24px) 16px; color: var(--text);
     min-height: 100%; overflow-y: auto;
+    -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+    -webkit-touch-callout: none; /* 롱프레스 시 iOS 확대경/복사 메뉴 방지 */
+  }
+  /* 입력칸 안의 글자는 정상적으로 선택/편집 가능해야 하니 예외 처리 */
+  input, textarea {
+    -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text;
   }
   #fitWrap { width: 100%; display: flex; justify-content: center; }
   .card {
@@ -473,6 +479,13 @@
   const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
   const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
 
+  // 서명 중 글자/이미지가 선택되거나 드래그되는 것 방지 (입력칸 자체는 영향 없음)
+  document.addEventListener('dragstart', (e) => e.preventDefault());
+  document.addEventListener('selectstart', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+  });
+
   // index.html에서 저장한 날짜/장소 설정을 읽어옴 (없으면 오늘 날짜 + 전주MBC로 기본값)
   const SETTINGS_KEY = 'signform_settings';
   function todayStr() {
@@ -626,6 +639,9 @@
     }
     connectSession(code);
   }
+  document.getElementById('joinCodeInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); joinExistingSession(); }
+  });
 
   function openModeModal() {
     document.getElementById('modeModalBackdrop').classList.remove('hidden');

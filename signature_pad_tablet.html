@@ -21,6 +21,11 @@
     height: 100%; margin: 0; font-family: 'Noto Sans KR', sans-serif;
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2)); color: var(--text);
     overscroll-behavior: none;
+    -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input, textarea {
+    -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text;
   }
 
   /* ---- 세션 선택 화면 ---- */
@@ -62,6 +67,10 @@
   }
   .who .placeholder-name { color: #c9a8b0; font-weight: 400; }
   .conn-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #a98a92; }
+  .btn-plain {
+    background: none; border: none; color: var(--accent-dark); font-size: 11px;
+    text-decoration: underline; cursor: pointer; padding: 0; margin-left: 2px; font-family: inherit;
+  }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
   .dot.on { background: #6FA875; }
   .dot.off { background: #D97070; }
@@ -119,7 +128,10 @@
     <div class="who">
       <span id="whoName" class="placeholder-name">이름 입력 대기중...</span>
     </div>
-    <div class="conn-status"><span class="dot" id="connDot"></span><span id="connText">연결 중</span></div>
+    <div class="conn-status">
+      <span class="dot" id="connDot"></span><span id="connText">연결 중</span>
+      <button class="btn-plain" onclick="resetTabletSession()">코드 변경</button>
+    </div>
   </div>
 
   <div class="pad-wrap">
@@ -141,8 +153,16 @@
   const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
   // programId는 PC 쪽에서 세션 시작 시 자동으로 세팅되어 동기화됨
 
+  // 서명 중 글자/이미지가 선택되거나 드래그되는 것 방지
+  document.addEventListener('dragstart', (e) => e.preventDefault());
+  document.addEventListener('selectstart', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+  });
+
   let ws = null;
   let sessionCode = null;
+  let intentionalDisconnect = false; // '코드 변경'으로 일부러 끊었을 때 자동재연결 방지
   let remoteState = { 성명: '', 연락처: '', 소속: '', signature: '', 동의: false };
 
   const canvas = document.getElementById('signature-pad');
@@ -242,13 +262,30 @@
     initSignaturePad();
     openWebSocket();
   }
+  document.getElementById('joinCodeInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); joinSession(); }
+  });
+
+  // QR코드로 스캔해서 들어오면 ?code=1234 형태로 붙어있어서 자동 참가시킴
+  (function autoJoinFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const codeFromUrl = params.get('code');
+    if (codeFromUrl && /^\d{4}$/.test(codeFromUrl)) {
+      document.getElementById('joinCodeInput').value = codeFromUrl;
+      joinSession();
+    }
+  })();
 
   function openWebSocket() {
     setConnStatus(false, '연결 중');
     ws = new WebSocket(`${WS_URL_BASE}/ws?session=${sessionCode}`);
 
     ws.onopen = () => setConnStatus(true, '연결됨');
-    ws.onclose = () => { setConnStatus(false, '재연결 중'); setTimeout(openWebSocket, 2000); };
+    ws.onclose = () => {
+      if (intentionalDisconnect) { intentionalDisconnect = false; return; }
+      setConnStatus(false, '재연결 중');
+      setTimeout(openWebSocket, 2000);
+    };
     ws.onerror = () => setConnStatus(false, '오류');
 
     ws.onmessage = (event) => {
@@ -257,6 +294,27 @@
       else if (msg.type === 'submitted') onSubmitted(msg.result);
       else if (msg.type === 'error') showStatus(msg.message, 'err');
     };
+  }
+
+  function resetTabletSession() {
+    if (!confirm('다른 세션 코드로 바꿀까요? 지금 화면의 서명 내용은 사라져요.')) return;
+    intentionalDisconnect = true;
+    if (ws) ws.close();
+    stopLiveStream();
+
+    document.getElementById('signScreen').classList.remove('active');
+    document.getElementById('sessionScreen').classList.remove('hidden');
+    document.getElementById('joinCodeInput').value = '';
+    sessionCode = null;
+    remoteState = { 성명: '', 연락처: '', 소속: '', signature: '', 동의: false };
+
+    if (signaturePad) signaturePad.clear();
+    placeholder.style.display = 'block';
+    savedBadge.style.display = 'none';
+    document.getElementById('whoName').textContent = '이름 입력 대기중...';
+    document.getElementById('whoName').classList.add('placeholder-name');
+    document.getElementById('submitBtn').disabled = false;
+    showStatus('', '');
   }
 
   function setConnStatus(on, text) {
