@@ -30,6 +30,11 @@
     padding: 24px 16px;
     color: var(--text);
     min-height: 100vh;
+    -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input, textarea {
+    -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text;
   }
 
   .card {
@@ -210,9 +215,19 @@
     text-align: center;
     margin-top: 6px;
   }
+
+  .home-fab {
+    position: fixed; top: 12px; left: 12px; z-index: 5;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: white; box-shadow: 0 4px 12px rgba(232,143,162,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; text-decoration: none; color: inherit; border: none; cursor: pointer;
+  }
+  .home-fab:active { transform: scale(0.94); }
 </style>
 </head>
 <body>
+<a href="./index.html" class="home-fab" title="메인으로">🏠</a>
 
 <div class="card">
   <h1>🌸 참석 확인서</h1>
@@ -261,6 +276,13 @@
 </div>
 
 <script>
+  // 서명 중 글자/이미지가 선택되거나 드래그되는 것 방지
+  document.addEventListener('dragstart', (e) => e.preventDefault());
+  document.addEventListener('selectstart', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+  });
+
   const canvas = document.getElementById('signature-pad');
   const placeholder = document.getElementById('pad-placeholder');
   let signaturePad;
