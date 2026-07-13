@@ -9,6 +9,7 @@
 <meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root {
     --bg-1: #FFF0F5; --bg-2: #FFE4E1;
@@ -21,21 +22,14 @@
   body {
     font-family: 'Noto Sans KR', sans-serif;
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
-    margin: 0; padding: 24px 16px; color: var(--text);
-    min-height: 100%;
-  }
-  /* 폰 크기: 서명 좌표 계산이 어긋나서 화면 맞춤(scale)을 안 씀 — 그냥 스크롤 허용 */
-  @media (max-width: 639px) {
-    body { overflow-y: auto; height: auto; display: block; }
-  }
-  /* 태블릿/PC 크기에서만 스크롤 없이 화면에 맞춰 축소 */
-  @media (min-width: 640px) {
-    body { height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    margin: 0; padding: clamp(10px, 3vh, 24px) 16px; color: var(--text);
+    min-height: 100%; overflow-y: auto;
   }
   #fitWrap { width: 100%; display: flex; justify-content: center; }
   .card {
     max-width: 480px; margin: 0 auto; background: var(--white);
-    border-radius: 20px; box-shadow: 0 8px 24px var(--shadow); padding: 28px 24px;
+    border-radius: 20px; box-shadow: 0 8px 24px var(--shadow);
+    padding: clamp(16px, 3vh, 28px) clamp(16px, 4vw, 24px);
     transition: max-width 0.2s ease;
   }
   /* ---- PC(넓은 화면)에서는 카드가 넓어지고 2단 레이아웃으로 바뀜 ---- */
@@ -108,6 +102,13 @@
     white-space: nowrap;
   }
   .code-display .label { font-size: clamp(10px, 3vw, 12px); color: #a98a92; margin-top: 4px; }
+  .code-display-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
+  .code-display-text { flex: 1; }
+  .qr-box {
+    flex-shrink: 0; background: white; padding: 6px; border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); line-height: 0;
+  }
+  .qr-box img, .qr-box canvas { display: block; width: 76px; height: 76px; }
   .code-toggle-btn {
     position: absolute; top: 6px; right: 8px; width: 24px; height: 24px; border-radius: 50%;
     border: none; background: rgba(255,255,255,0.7); color: var(--accent-dark); font-size: 11px;
@@ -164,6 +165,46 @@
     font-size: 11.5px; color: #b89aa2; margin: -3px 0 8px; line-height: 1.5;
   }
 
+  .phone-input-row { display: flex; gap: 8px; align-items: stretch; }
+  .phone-input-row input { flex: 1; min-width: 0; }
+  .numpad-open-btn {
+    flex-shrink: 0; width: 46px; border-radius: 12px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; font-size: 19px; cursor: pointer;
+  }
+  .numpad-open-btn:active { background: #FDF3F6; border-color: var(--accent); }
+
+  .numpad-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.5);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 25;
+  }
+  .numpad-modal-backdrop.open { display: flex; }
+  .numpad-modal-card {
+    background: var(--white); border-radius: 22px; padding: 20px; width: 100%; max-width: 320px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  }
+  .numpad-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 14px; font-weight: 700; color: var(--accent-dark); margin-bottom: 10px;
+  }
+  .numpad-modal-close { background: none; border: none; font-size: 18px; color: var(--text); cursor: pointer; line-height: 1; }
+  .numpad-preview {
+    text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; color: var(--text);
+    background: #FDF3F6; border-radius: 12px; padding: 12px; margin-bottom: 14px; min-height: 26px;
+  }
+  .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .numpad-key {
+    padding: 16px 0; border-radius: 12px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; color: var(--text); font-family: inherit; font-size: 19px;
+    font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none;
+  }
+  .numpad-key:active { background: #FDF3F6; border-color: var(--accent); }
+  .numpad-del { color: var(--accent-dark); }
+  .numpad-done-btn {
+    width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+    font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
   .consent-box {
     margin-top: 16px; border: 1px solid var(--lavender); border-radius: 12px;
     overflow: hidden; font-size: 11.5px;
@@ -201,13 +242,13 @@
     position: relative; border: 2px dashed var(--accent); border-radius: 14px;
     background: #FFFDFE; overflow: hidden;
   }
-  #signature-pad { display: block; width: 100%; height: 180px; touch-action: none; cursor: crosshair; }
+  #signature-pad { display: block; width: 100%; height: clamp(120px, 28vh, 180px); touch-action: none; cursor: crosshair; }
   #live-preview-canvas {
-    position: absolute; top: 0; left: 0; width: 100%; height: 180px;
+    position: absolute; top: 0; left: 0; width: 100%; height: clamp(120px, 28vh, 180px);
     pointer-events: none;
   }
   @media (min-width: 860px) {
-    #signature-pad, #live-preview-canvas { height: 280px; }
+    #signature-pad, #live-preview-canvas { height: clamp(180px, 32vh, 280px); }
   }
   .live-indicator {
     display: none; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px;
@@ -266,6 +307,32 @@
   </div>
 </div>
 
+<!-- 연락처 숫자패드 팝업 -->
+<div class="numpad-modal-backdrop" id="numpadModalBackdrop" onclick="if(event.target===this) closePhoneNumpad()">
+  <div class="numpad-modal-card">
+    <div class="numpad-modal-head">
+      <span>연락처 입력</span>
+      <button type="button" class="numpad-modal-close" onclick="closePhoneNumpad()">✕</button>
+    </div>
+    <div class="numpad-preview" id="numpadPreview">010-0000-0000</div>
+    <div class="numpad" id="phoneNumpad">
+      <button type="button" class="numpad-key" data-key="1">1</button>
+      <button type="button" class="numpad-key" data-key="2">2</button>
+      <button type="button" class="numpad-key" data-key="3">3</button>
+      <button type="button" class="numpad-key" data-key="4">4</button>
+      <button type="button" class="numpad-key" data-key="5">5</button>
+      <button type="button" class="numpad-key" data-key="6">6</button>
+      <button type="button" class="numpad-key" data-key="7">7</button>
+      <button type="button" class="numpad-key" data-key="8">8</button>
+      <button type="button" class="numpad-key" data-key="9">9</button>
+      <button type="button" class="numpad-key" data-key="-">－</button>
+      <button type="button" class="numpad-key" data-key="0">0</button>
+      <button type="button" class="numpad-key numpad-del" data-key="del">⌫</button>
+    </div>
+    <button type="button" class="numpad-done-btn" onclick="closePhoneNumpad()">완료</button>
+  </div>
+</div>
+
 <div id="fitWrap">
 <div class="card">
   <h1>🌸 참석 확인서 (실시간)</h1>
@@ -290,8 +357,13 @@
     <div class="code-display" id="codeDisplay">
       <button class="code-toggle-btn" onclick="toggleCodeDisplay()" title="코드 숨기기/보이기">▲</button>
       <div class="code-display-inner" id="codeDisplayInner">
-        <div class="code" id="codeText">----</div>
-        <div class="label">다른 기기에서 이 코드로 참가하세요</div>
+        <div class="code-display-row">
+          <div class="code-display-text">
+            <div class="code" id="codeText">----</div>
+            <div class="label">다른 기기에서 이 코드로 참가하세요</div>
+          </div>
+          <div class="qr-box" id="qrBox"></div>
+        </div>
       </div>
     </div>
     <div class="conn-status">
@@ -306,7 +378,11 @@
 
         <div id="phoneField">
           <label for="phone">연락처</label>
-          <input type="tel" id="phone" placeholder="010-0000-0000" inputmode="none">
+          <div class="phone-input-row">
+            <input type="tel" id="phone" placeholder="010-0000-0000" inputmode="none">
+            <button type="button" class="numpad-open-btn" onclick="openPhoneNumpad()" title="숫자 키패드 열기">🔢</button>
+          </div>
+          <p class="field-hint">숫자 키패드를 열고 싶으면 옆의 🔢 아이콘을 클릭하세요.</p>
         </div>
 
         <label>재직자 여부</label>
@@ -414,45 +490,12 @@
     return { date: todayStr(), place: '전주MBC' };
   }
 
-  // ---------- 스크롤 없이 화면에 딱 맞게 카드 축소 (태블릿/PC 크기에서만) ----------
-  // ⚠️ 폰처럼 좁은 화면에서 transform:scale()을 걸면 서명 캔버스의 좌표 계산이 어긋나서
-  //    서명이 이상하게 그려지는 문제가 있어 640px 미만에서는 아예 적용하지 않음.
-  let fitScheduled = false;
-  function fitCardToScreen() {
-    const wrap = document.getElementById('fitWrap');
-    const card = wrap ? wrap.querySelector('.card') : null;
-    if (!card) return;
-
-    if (window.innerWidth < 640) {
-      card.style.transform = 'none'; // 폰 크기: 축소 안 하고 그냥 스크롤 허용
-      return;
-    }
-
-    card.style.transform = 'scale(1)';
-    const rect = card.getBoundingClientRect();
-    const availW = window.innerWidth - 24;
-    const availH = window.innerHeight - 24;
-    const scale = Math.min(availW / rect.width, availH / rect.height, 1); // 확대는 안 함, 축소만
-    card.style.transformOrigin = 'center center';
-    card.style.transform = `scale(${scale})`;
-  }
-  function scheduleFit() {
-    if (fitScheduled) return;
-    fitScheduled = true;
-    requestAnimationFrame(() => { fitScheduled = false; fitCardToScreen(); });
-  }
-  window.addEventListener('resize', scheduleFit);
-  window.addEventListener('load', scheduleFit);
-  document.addEventListener('DOMContentLoaded', () => {
-    scheduleFit();
-    // 폼 내용이 바뀌는(모드 전환, 필드 표시/숨김, 시간대 목록 등) 모든 경우를 잡기 위해 관찰
-    const wrap = document.getElementById('fitWrap');
-    if (wrap) {
-      new MutationObserver(scheduleFit).observe(wrap, {
-        childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'],
-      });
-    }
-  });
+  // ---------- (transform 기반 화면맞춤 제거함) ----------
+  // ⚠️ CSS transform:scale()로 카드를 축소하는 방식은 서명 캔버스의 그리기 좌표계랑 근본적으로
+  //    호환이 안 돼서(그리는 좌표는 캔버스 자체의 레이아웃 박스 기준인데, 손가락/펜 좌표는 화면에
+  //    실제로 렌더링된 크기 기준이라 축소 배율이 걸리면 항상 어긋남) 완전히 제거했어요.
+  //    대신 CSS 자체를 화면 높이에 따라 촘촘하게 줄이는 방식(패딩/여백/폰트 크기)으로 스크롤을 최대한 줄여요.
+  //    이 방식은 서명 좌표에 전혀 영향을 안 줘서 항상 정확해요.
 
   let ws = null;
   let intentionalDisconnect = false; // '코드 변경'으로 일부러 끊었을 때 자동재연결 방지
@@ -475,8 +518,9 @@
 
   function prepareLiveCanvas() {
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const w = liveCanvas.offsetWidth || canvas.offsetWidth || 1;
-    const h = liveCanvas.offsetHeight || canvas.offsetHeight || 1;
+    const rect = liveCanvas.getBoundingClientRect(); // 실제 화면에 렌더링된 크기(화면맞춤 축소 반영) 기준
+    const w = rect.width || canvas.offsetWidth || 1;
+    const h = rect.height || canvas.offsetHeight || 1;
     liveCanvas.width = w * ratio;
     liveCanvas.height = h * ratio;
     const ctx = liveCanvas.getContext('2d');
@@ -515,12 +559,24 @@
     prepareLiveCanvas();
   }
 
+  // ⚠️ 중요: signature_pad는 터치 좌표를 canvas.getBoundingClientRect()(실제 화면에 렌더링된 크기,
+  // 화면맞춤 축소가 반영된 값) 기준으로 계산해요. 그래서 캔버스 내부 해상도도 offsetWidth(축소 반영 전
+  // 레이아웃 크기)가 아니라 반드시 같은 getBoundingClientRect() 기준으로 맞춰야 서명이 정확한 위치에
+  // 그려져요. 아이패드 등에서 화면맞춤 축소가 걸린 상태로 서명하면 살짝 밀려 그려지던 문제가 이거였어요.
   function resizeCanvas() {
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    canvas.width = canvas.offsetWidth * ratio;
-    canvas.height = canvas.offsetHeight * ratio;
-    canvas.getContext('2d').scale(ratio, ratio);
-    if (signaturePad) signaturePad.clear();
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width || canvas.offsetWidth || 1;
+    const h = rect.height || canvas.offsetHeight || 1;
+    // 화면맞춤 축소 배율이 바뀌어도 그리던 서명이 사라지지 않게 보존했다가 다시 그림
+    const savedData = signaturePad && !signaturePad.isEmpty() ? signaturePad.toData() : null;
+    canvas.width = w * ratio;
+    canvas.height = h * ratio;
+    canvas.getContext('2d').setTransform(ratio, 0, 0, ratio, 0, 0);
+    if (signaturePad) {
+      signaturePad.clear();
+      if (savedData) signaturePad.fromData(savedData);
+    }
     if (lastRemoteSignature && !hasLocalStroke) {
       drawSignatureImageOnLiveCanvas(lastRemoteSignature);
     }
@@ -599,6 +655,10 @@
     document.getElementById('subtitleText').textContent = '세션에 연결되었습니다';
     initSignaturePad();
     openWebSocket();
+    generateJoinQr(code);
+
+    // 기본적으로 접힌 상태로 시작 (필요할 때 ▲ 눌러서 코드/QR 확인)
+    document.getElementById('codeDisplay').classList.add('collapsed');
 
     applyModeToFields();
     if (currentMode === 'vr') {
@@ -609,11 +669,11 @@
 
   // 기본은 모든 입력칸에서 화면 키보드가 안 뜨게(inputmode=none) 해두고,
   // 이 버튼으로 한 번에 켜고 끌 수 있게 함. 블루투스 키보드로 타이핑하는 건 이 설정과 무관하게 항상 됨.
+  // (연락처는 전용 숫자패드가 따로 있어서 이 전역 토글 대상에서는 제외)
   let keyboardEnabled = false;
   const KB_FIELDS = [
     { id: 'joinCodeInput', onMode: 'numeric' },
     { id: 'name', onMode: 'text' },
-    { id: 'phone', onMode: 'tel' },
     { id: 'company', onMode: 'text' },
     { id: 'school', onMode: 'text' },
   ];
@@ -628,8 +688,44 @@
     btn.classList.toggle('on', keyboardEnabled);
   }
 
+  // 태블릿 페이지 주소에 ?code=세션코드 를 붙여서 QR로 만듦 (스캔하면 코드 자동입력+자동참가)
+  // 색상은 순수 검정 대신 앱 톤에 맞춰 진한 로즈 계열로 넣되, 스캔 인식률을 위해 충분히 어둡게 유지함
+  function generateJoinQr(code) {
+    const box = document.getElementById('qrBox');
+    box.innerHTML = '';
+    try {
+      const tabletUrl = new URL('signature_pad_tablet.html?code=' + encodeURIComponent(code), window.location.href).href;
+      new QRCode(box, {
+        text: tabletUrl,
+        width: 76, height: 76,
+        colorDark: '#7A3348', // 팔레트에 맞춘 진한 로즈 (순수 검정보다 부드럽지만 스캔 인식률 위해 충분히 어둡게)
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    } catch (e) {
+      console.error('QR 생성 실패:', e);
+      box.textContent = 'QR 생성 실패';
+    }
+  }
+
   function toggleCodeDisplay() {
     document.getElementById('codeDisplay').classList.toggle('collapsed');
+  }
+
+  let autoCollapsedOnce = false;
+  function handlePeers(count) {
+    // 태블릿 등 다른 기기가 이 세션에 붙으면(2명 이상) 코드 표시를 자동으로 한 번 접어줌
+    // (이후엔 사용자가 직접 토글해도 다시 강제로 접지 않음)
+    if (count >= 2 && !autoCollapsedOnce) {
+      autoCollapsedOnce = true;
+      const codeDisplay = document.getElementById('codeDisplay');
+      if (!codeDisplay.classList.contains('collapsed')) {
+        codeDisplay.classList.add('collapsed');
+      }
+      setConnStatus(true, `실시간 연결됨 · 다른 기기 ${count - 1}대 참가 중`);
+    } else if (ws && ws.readyState === WebSocket.OPEN) {
+      setConnStatus(true, count >= 2 ? `실시간 연결됨 · 다른 기기 ${count - 1}대 참가 중` : '실시간 연결됨');
+    }
   }
 
   function changeSession() {
@@ -643,6 +739,8 @@
     document.getElementById('joinCodeInput').value = '';
     sessionCode = null;
     selectedSlotIndex = null;
+    autoCollapsedOnce = false;
+    document.getElementById('codeDisplay').classList.remove('collapsed');
   }
 
   // ---------- VR체험버스 시간대 ----------
@@ -767,6 +865,7 @@
         document.getElementById('submitBtn').disabled = false;
       }
       else if (msg.type === 'strokeLive') handleLiveStroke(msg);
+      else if (msg.type === 'peers') handlePeers(msg.count);
     };
   }
 
@@ -857,6 +956,54 @@
   bindField('phone', '연락처');
   bindField('company', '회사명');
   bindField('school', '학교명');
+
+  // ---------- 연락처 전용 커스텀 숫자패드 (팝업 방식) ----------
+  // OS 화면 키보드에 기대지 않고 항상 똑같이 동작하는 숫자 버튼판. 블루투스 키보드로 직접 타이핑도 그대로 가능.
+  const phoneInput = document.getElementById('phone');
+  const phoneNumpad = document.getElementById('phoneNumpad');
+  const numpadModalBackdrop = document.getElementById('numpadModalBackdrop');
+  const numpadPreview = document.getElementById('numpadPreview');
+
+  function openPhoneNumpad() {
+    updateNumpadPreview();
+    numpadModalBackdrop.classList.add('open');
+  }
+  function closePhoneNumpad() {
+    numpadModalBackdrop.classList.remove('open');
+  }
+  function updateNumpadPreview() {
+    numpadPreview.textContent = phoneInput.value || '010-0000-0000';
+    numpadPreview.style.color = phoneInput.value ? 'var(--text)' : '#c9a8b0';
+  }
+  // 연락처 칸을 직접 탭해도(블루투스 키보드 없이) 팝업이 열리게
+  phoneInput.addEventListener('focus', openPhoneNumpad);
+
+  phoneNumpad.querySelectorAll('.numpad-key').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      const start = phoneInput.selectionStart ?? phoneInput.value.length;
+      const end = phoneInput.selectionEnd ?? phoneInput.value.length;
+      if (key === 'del') {
+        if (start === end && start > 0) {
+          phoneInput.value = phoneInput.value.slice(0, start - 1) + phoneInput.value.slice(end);
+          setCaret(start - 1);
+        } else {
+          phoneInput.value = phoneInput.value.slice(0, start) + phoneInput.value.slice(end);
+          setCaret(start);
+        }
+      } else {
+        phoneInput.value = phoneInput.value.slice(0, start) + key + phoneInput.value.slice(end);
+        setCaret(start + 1);
+      }
+      phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+      updateNumpadPreview();
+    });
+  });
+
+  function setCaret(pos) {
+    phoneInput.focus();
+    phoneInput.setSelectionRange(pos, pos);
+  }
 
   // ---------- Enter로 다음 칸 이동 ----------
   document.getElementById('name').addEventListener('keydown', (e) => {
