@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 - 견학 방명록</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
+<meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
+    --accent: #F7B8C4; --accent-dark: #E88FA2;
+    --lavender: #E6E0F8; --text: #5A4A50; --white: #FFFFFF;
+    --shadow: rgba(232, 143, 162, 0.25);
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    margin: 0; padding: 24px 16px; color: var(--text); min-height: 100vh;
+  }
+  .card {
+    max-width: 640px; margin: 0 auto; background: var(--white);
+    border-radius: 20px; box-shadow: 0 8px 24px var(--shadow); padding: 28px 24px;
+  }
+  h1 { font-size: 19px; font-weight: 700; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
+  .subtitle { text-align: center; font-size: 12.5px; color: #a98a92; margin-bottom: 22px; }
+
+  .key-row { display: flex; gap: 8px; }
+  .key-row input {
+    flex: 1; min-width: 0; padding: 12px 14px; border: 1.5px solid var(--lavender); border-radius: 12px;
+    font-family: inherit; font-size: 14px; background: #FDFBFF; outline: none;
+  }
+  .key-row input:focus { border-color: var(--accent); }
+  .key-row button {
+    padding: 12px 18px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
+  .status { text-align: center; font-size: 13px; margin-top: 10px; min-height: 18px; }
+  .status.err { color: #D97070; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+  th, td { padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--lavender); }
+  th { color: var(--accent-dark); font-weight: 700; background: #FDF3F6; }
+  td.date { font-weight: 700; }
+  td a {
+    display: inline-block; margin: 0 3px; padding: 5px 10px; border-radius: 8px;
+    background: #FDF3F6; color: var(--accent-dark); text-decoration: none; font-size: 12px; font-weight: 500;
+  }
+  td a:hover { background: var(--accent); color: white; }
+
+  .empty { text-align: center; color: #c9a8b0; font-size: 13px; padding: 30px 0; }
+  .hidden { display: none !important; }
+  .remember-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: #a98a92; }
+
+  .btn-danger {
+    background: #FDEDED !important; color: #D97070 !important;
+  }
+  .btn-danger:hover { background: #D97070 !important; color: white !important; }
+  .btn-plain {
+    background: none; border: none; color: var(--accent-dark); font-size: 12px;
+    cursor: pointer; text-decoration: underline; padding: 0;
+  }
+
+  .detail-loading { text-align: center; font-size: 12px; color: #c9a8b0; padding: 10px 0; }
+
+  /* ---- 상세보기 팝업 ---- */
+  .detail-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.5);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 30;
+  }
+  .detail-modal-backdrop.open { display: flex; }
+  .detail-modal-card {
+    background: var(--white); border-radius: 20px; padding: 22px 20px; width: 100%; max-width: 560px;
+    max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  }
+  .detail-modal-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  }
+  .detail-modal-head h3 { font-size: 15px; color: var(--accent-dark); margin: 0; }
+  .detail-modal-actions { display: flex; align-items: center; gap: 12px; }
+  .detail-modal-close {
+    background: none; border: none; font-size: 20px; color: var(--text); cursor: pointer; line-height: 1;
+  }
+  .detail-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .detail-table th, .detail-table td { padding: 7px 6px; text-align: center; border-bottom: 1px solid #FDF3F6; }
+  .detail-table th { color: #a98a92; font-weight: 500; }
+
+  .home-fab {
+    position: fixed; top: 12px; left: 12px; z-index: 5;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: white; box-shadow: 0 4px 12px rgba(232,143,162,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; text-decoration: none; color: inherit; border: none; cursor: pointer;
+  }
+  .home-fab:active { transform: scale(0.94); }
+</style>
+</head>
+<body>
+<a href="./index.html" class="home-fab" title="메인으로">🏠</a>
+
+<div class="card">
+  <h1>🔐 관리자 - 견학 방명록</h1>
+  <p class="subtitle">날짜별 제출 현황을 확인하고 PDF/CSV를 받을 수 있어요</p>
+
+  <div id="loginArea">
+    <div class="key-row">
+      <input type="password" id="adminKey" placeholder="관리자 키 입력">
+      <button onclick="loadList()">확인</button>
+    </div>
+    <div class="remember-row">
+      <input type="checkbox" id="rememberKey" style="width:14px;height:14px;">
+      <label for="rememberKey">이 브라우저에 기억하기</label>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="listArea" class="hidden">
+    <table id="listTable">
+      <thead>
+        <tr><th>날짜</th><th>제출 인원</th><th>동의 인원</th><th>최근 제출</th><th>다운로드</th><th>관리</th></tr>
+      </thead>
+      <tbody id="listBody"></tbody>
+    </table>
+    <div class="empty hidden" id="emptyMsg">아직 제출된 기록이 없어요.</div>
+  </div>
+</div>
+
+<!-- 상세보기 팝업 -->
+<div class="detail-modal-backdrop" id="detailModalBackdrop">
+  <div class="detail-modal-card">
+    <div class="detail-modal-head">
+      <h3 id="detailModalTitle">참석자 명단</h3>
+      <div class="detail-modal-actions">
+        <button class="btn-plain" id="detailRefreshBtn" onclick="refreshOpenDetail()">🔄 새로고침</button>
+        <button class="detail-modal-close" onclick="closeDetailModal()">✕</button>
+      </div>
+    </div>
+    <div id="detailModalBody"><div class="detail-loading">불러오는 중...</div></div>
+  </div>
+</div>
+
+<script>
+  // ⚠️ 배포된 Worker 주소로 교체하세요
+  const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('admin_key');
+    if (saved) {
+      document.getElementById('adminKey').value = saved;
+      document.getElementById('rememberKey').checked = true;
+      loadList();
+    }
+  });
+
+  async function loadList() {
+    const key = document.getElementById('adminKey').value.trim();
+    const statusEl = document.getElementById('status');
+    if (!key) {
+      statusEl.textContent = '관리자 키를 입력해주세요.';
+      statusEl.className = 'status err';
+      return;
+    }
+
+    statusEl.textContent = '불러오는 중...';
+    statusEl.className = 'status';
+
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/list?key=${encodeURIComponent(key)}`);
+      if (res.status === 401) {
+        statusEl.textContent = '관리자 키가 올바르지 않습니다.';
+        statusEl.className = 'status err';
+        return;
+      }
+      if (!res.ok) throw new Error('불러오기 실패');
+
+      const data = await res.json();
+      renderList(data.items, key);
+
+      if (document.getElementById('rememberKey').checked) {
+        localStorage.setItem('admin_key', key);
+      } else {
+        localStorage.removeItem('admin_key');
+      }
+
+      document.getElementById('loginArea').classList.add('hidden');
+      document.getElementById('listArea').classList.remove('hidden');
+    } catch (err) {
+      statusEl.textContent = '오류가 발생했습니다: ' + err.message;
+      statusEl.className = 'status err';
+    }
+  }
+
+  let currentAdminKey = '';
+
+  function renderList(items, key) {
+    currentAdminKey = key;
+    const tbody = document.getElementById('listBody');
+    const emptyMsg = document.getElementById('emptyMsg');
+    const table = document.getElementById('listTable');
+    tbody.innerHTML = '';
+
+    if (!items || items.length === 0) {
+      table.classList.add('hidden');
+      emptyMsg.classList.remove('hidden');
+      return;
+    }
+    table.classList.remove('hidden');
+    emptyMsg.classList.add('hidden');
+
+    items.forEach(item => {
+      const tr = document.createElement('tr');
+      const lastTime = item.lastSubmittedAt
+        ? new Date(item.lastSubmittedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '-';
+      const pdfUrl = `${WORKER_HTTP_URL}/download?programId=${encodeURIComponent(item.programId)}&key=${encodeURIComponent(key)}`;
+      const csvUrl = `${WORKER_HTTP_URL}/export?programId=${encodeURIComponent(item.programId)}&key=${encodeURIComponent(key)}`;
+      const safeId = item.programId.replace(/[^a-zA-Z0-9]/g, '_');
+
+      const isVr = item.programId.endsWith('-vr');
+      const dateLabel = isVr ? item.programId.slice(0, -3) : item.programId;
+      const typeBadge = isVr
+        ? '<span style="display:inline-block;margin-left:6px;font-size:10px;background:#E88FA2;color:white;border-radius:8px;padding:1px 6px;">VR버스</span>'
+        : '<span style="display:inline-block;margin-left:6px;font-size:10px;background:#FDF3F6;color:#E88FA2;border-radius:8px;padding:1px 6px;">서명록</span>';
+
+      tr.innerHTML = `
+        <td class="date">${dateLabel}${typeBadge}</td>
+        <td>${item.totalCount}명</td>
+        <td>${item.agreedCount}명</td>
+        <td>${lastTime}</td>
+        <td>
+          <a href="${pdfUrl}" target="_blank">PDF</a>
+          <a href="${csvUrl}" target="_blank">CSV</a>
+        </td>
+        <td>
+          <button class="btn-plain" onclick="openDetailModal('${item.programId}', '${safeId}')">상세보기</button><br>
+          <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdf('${item.programId}')">PDF 다시그리기</button><br>
+          <button class="btn-plain" style="color:#D97070;margin-top:4px;" onclick="deleteDay('${item.programId}')">전체삭제</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  let openDetailProgramId = null;
+  let openDetailSafeId = null;
+
+  function openDetailModal(programId, safeId) {
+    openDetailProgramId = programId;
+    openDetailSafeId = safeId;
+    document.getElementById('detailModalTitle').textContent = `참석자 명단 · ${programId}`;
+    document.getElementById('detailModalBackdrop').classList.add('open');
+    loadDetail(programId, safeId);
+  }
+
+  function closeDetailModal() {
+    document.getElementById('detailModalBackdrop').classList.remove('open');
+    openDetailProgramId = null;
+    openDetailSafeId = null;
+  }
+
+  function refreshOpenDetail() {
+    if (openDetailProgramId) loadDetail(openDetailProgramId, openDetailSafeId);
+  }
+
+  async function loadDetail(programId, safeId) {
+    const body = document.getElementById('detailModalBody');
+    body.innerHTML = '<div class="detail-loading">불러오는 중...</div>';
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rows?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`);
+      if (!res.ok) throw new Error('불러오기 실패');
+      const data = await res.json();
+      renderDetail(body, programId, safeId, data.items);
+    } catch (err) {
+      body.innerHTML = `<div class="detail-loading">오류: ${err.message}</div>`;
+    }
+  }
+
+  function renderDetail(body, programId, safeId, items) {
+    if (!items || items.length === 0) {
+      body.innerHTML = '<div class="detail-loading">참석자가 없어요.</div>';
+      return;
+    }
+    const rowsHtml = items.map(it => `
+      <tr>
+        <td>${it.index + 1}</td>
+        <td>${it.성명 || ''}</td>
+        <td>${it.연락처 || ''}</td>
+        <td>${it.재직자여부 || ''}</td>
+        <td>${it.동의 ? 'O' : 'X'}</td>
+        <td>${it.hasSignature ? '✓' : '-'}</td>
+        <td><button class="btn-plain" style="color:#D97070;" onclick="deleteRow('${programId}', ${it.index}, '${safeId}')">삭제</button></td>
+      </tr>
+    `).join('');
+    body.innerHTML = `
+      <table class="detail-table">
+        <thead><tr><th>#</th><th>성명</th><th>연락처</th><th>구분</th><th>동의</th><th>서명</th><th></th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
+  }
+
+  async function deleteRow(programId, index, safeId) {
+    if (!confirm(`${index + 1}번째 참석자를 삭제할까요? 되돌릴 수 없어요.`)) return;
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/delete-row?programId=${encodeURIComponent(programId)}&index=${index}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('삭제 실패');
+      await loadDetail(programId, safeId);
+      await loadList(); // 목록의 인원수도 갱신
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
+  }
+
+  async function deleteDay(programId) {
+    if (!confirm(`${programId} 방명록 전체를 삭제할까요?\n참석자 전원의 서명/데이터가 모두 사라지고 되돌릴 수 없어요.`)) return;
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/delete-day?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('삭제 실패');
+      await loadList();
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
+  }
+
+  async function rebuildPdf(programId) {
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rebuild?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '다시 그리기 실패');
+      alert(`PDF를 최신 서식으로 다시 그렸어요. (${data.totalCount}명)`);
+    } catch (err) {
+      alert('오류: ' + err.message);
+    }
+  }
+</script>
+
+</body>
+</html>

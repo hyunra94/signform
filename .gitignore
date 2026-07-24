@@ -1,0 +1,10 @@
+*
+!/.gitignore
+!/index.html
+!/admin.html
+!/signature_form.html
+!/signature_form_live.html
+!/signature_live_view.html
+!/signature_pad_tablet.html
+!/vr_queue.html
+!/vr_queue_kiosk.html

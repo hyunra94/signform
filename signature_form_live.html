@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>참석 확인서 - 실시간 서명 (PC+태블릿)</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
+<meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
+    --accent: #F7B8C4; --accent-dark: #E88FA2;
+    --lavender: #E6E0F8; --text: #5A4A50; --white: #FFFFFF;
+    --shadow: rgba(232, 143, 162, 0.25);
+  }
+  * { box-sizing: border-box; }
+  html { height: 100%; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    margin: 0; padding: clamp(10px, 3vh, 24px) 16px; color: var(--text);
+    min-height: 100%; overflow-y: auto;
+    -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+    -webkit-touch-callout: none; /* 롱프레스 시 iOS 확대경/복사 메뉴 방지 */
+  }
+  /* 입력칸 안의 글자는 정상적으로 선택/편집 가능해야 하니 예외 처리 */
+  input, textarea {
+    -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text;
+  }
+  #fitWrap { width: 100%; display: flex; justify-content: center; }
+  .card {
+    max-width: 480px; margin: 0 auto; background: var(--white);
+    border-radius: 20px; box-shadow: 0 8px 24px var(--shadow);
+    padding: clamp(16px, 3vh, 28px) clamp(16px, 4vw, 24px);
+    transition: max-width 0.2s ease;
+  }
+  /* ---- PC(넓은 화면)에서는 카드가 넓어지고 2단 레이아웃으로 바뀜 ---- */
+  @media (min-width: 860px) {
+    .card { max-width: 880px; padding: 36px 40px; }
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;
+    }
+    .form-col-right { position: sticky; top: 20px; }
+  }
+  h1 { font-size: 19px; font-weight: 700; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
+  .subtitle { text-align: center; font-size: 12.5px; color: #a98a92; margin-bottom: 20px; }
+  .kb-global-toggle {
+    display: block; margin: -10px auto 16px; padding: 7px 14px; border-radius: 20px;
+    border: 1.5px solid var(--lavender); background: #FDFBFF; color: var(--text);
+    font-family: inherit; font-size: 11.5px; cursor: pointer;
+  }
+  .kb-global-toggle.on { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
+
+  /* ---- 세션 선택 화면 ---- */
+  .session-choice { display: flex; flex-direction: column; gap: 14px; }
+  .mode-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.5);
+    display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 20;
+  }
+  .mode-modal-backdrop.hidden { display: none; }
+  .mode-modal-card {
+    background: var(--white); border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 380px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  }
+  .mode-modal-card h2 { font-size: 17px; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
+  .mode-modal-sub { text-align: center; font-size: 12px; color: #a98a92; margin: 0 0 18px; }
+  .mode-modal-btn {
+    width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px;
+    border: 1.5px solid var(--lavender); border-radius: 14px; background: #FDFBFF;
+    cursor: pointer; text-align: left; margin-bottom: 10px; font-family: inherit;
+  }
+  .mode-modal-btn:hover { border-color: var(--accent); background: #FDF3F6; }
+  .mode-modal-btn .mmi { font-size: 26px; }
+  .mode-modal-btn .mmt { font-size: 14px; color: var(--text); }
+  .mode-modal-btn .mms { font-size: 11.5px; color: #a98a92; font-weight: 400; }
+
+  .mode-current-row {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 12.5px; color: var(--text); margin-bottom: 4px; font-weight: 700;
+  }
+  .choice-btn {
+    padding: 16px; border-radius: 14px; border: none; font-family: inherit;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .choice-btn.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white; box-shadow: 0 4px 12px var(--shadow);
+  }
+  .choice-btn.secondary { background: #FDF3F6; color: var(--accent-dark); border: 1.5px solid var(--accent); }
+  .join-row { display: flex; gap: 8px; }
+  .join-row input {
+    flex: 1; min-width: 0; padding: 12px; border-radius: 12px; border: 1.5px solid var(--lavender);
+    font-family: inherit; font-size: clamp(16px, 5vw, 20px); text-align: center;
+    letter-spacing: clamp(2px, 1.5vw, 5px);
+  }
+
+  .code-display {
+    position: relative; text-align: center; padding: clamp(14px, 5vw, 22px); background: #FDF3F6;
+    border-radius: 16px; margin-bottom: 18px; overflow: hidden;
+  }
+  .code-display .code {
+    font-size: clamp(28px, 12vw, 44px); font-weight: 700;
+    letter-spacing: clamp(3px, 3vw, 8px); color: var(--accent-dark);
+    white-space: nowrap;
+  }
+  .code-display .label { font-size: clamp(10px, 3vw, 12px); color: #a98a92; margin-top: 4px; }
+  .code-display-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
+  .code-display-text { flex: 1; }
+  .qr-box {
+    flex-shrink: 0; background: white; padding: 6px; border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); line-height: 0;
+  }
+  .qr-box img, .qr-box canvas { display: block; width: 76px; height: 76px; }
+  .code-toggle-btn {
+    position: absolute; top: 6px; right: 8px; width: 24px; height: 24px; border-radius: 50%;
+    border: none; background: rgba(255,255,255,0.7); color: var(--accent-dark); font-size: 11px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;
+  }
+  .code-display-inner {
+    max-height: 200px; overflow: hidden; transition: max-height 0.25s ease, opacity 0.25s ease, margin 0.25s ease;
+  }
+  .code-display.collapsed { padding-top: 8px; padding-bottom: 8px; }
+  .code-display.collapsed .code-display-inner { max-height: 0; opacity: 0; }
+  .code-display.collapsed .code-toggle-btn { transform: rotate(180deg); }
+
+  /* ---- 상태 표시 ---- */
+  .conn-status {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 12px; color: #a98a92; margin-bottom: 14px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+  .btn-plain {
+    background: none; border: none; color: var(--accent-dark); font-size: 11.5px;
+    text-decoration: underline; cursor: pointer; padding: 0; margin-left: 4px;
+  }
+  .dot.on { background: #6FA875; }
+  .dot.off { background: #D97070; }
+
+  label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; color: var(--text); }
+  input[type="text"], input[type="tel"] {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--lavender); border-radius: 12px;
+    font-family: inherit; font-size: 14px; background: #FDFBFF; outline: none; transition: border-color 0.2s;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .agree-row {
+    margin-top: 16px; padding: 10px 12px; background: #FFF8FA; border-radius: 10px;
+    font-size: 12.5px; color: var(--text);
+  }
+
+  .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .radio-pill {
+    display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 20px;
+    border: 1.5px solid var(--lavender); font-size: 12.5px; font-weight: 500; color: var(--text);
+    cursor: pointer; background: #FDFBFF; transition: all 0.15s;
+  }
+  .radio-pill:has(input:checked) { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
+  .radio-pill input { accent-color: var(--accent-dark); }
+
+  .hidden-field {
+    overflow: hidden; max-height: 0; opacity: 0;
+    transition: max-height 0.25s ease, opacity 0.25s ease;
+  }
+  .hidden-field.show { max-height: 100px; opacity: 1; }
+
+  .field-hint {
+    font-size: 11.5px; color: #b89aa2; margin: -3px 0 8px; line-height: 1.5;
+  }
+
+  .phone-input-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 6px; }
+  .phone-input-row input { flex: 1; min-width: 0; }
+  .numpad-open-btn {
+    flex-shrink: 0; width: 46px; border-radius: 12px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; font-size: 19px; cursor: pointer;
+  }
+  .numpad-open-btn:active { background: #FDF3F6; border-color: var(--accent); }
+
+  #phoneField { margin-bottom: 14px; }
+
+  .numpad-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.5);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 25;
+  }
+  .numpad-modal-backdrop.open { display: flex; }
+  .numpad-modal-card {
+    background: var(--white); border-radius: 22px; padding: 20px; width: 100%; max-width: 320px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  }
+  .numpad-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 14px; font-weight: 700; color: var(--accent-dark); margin-bottom: 10px;
+  }
+  .numpad-modal-close { background: none; border: none; font-size: 18px; color: var(--text); cursor: pointer; line-height: 1; }
+  .numpad-preview {
+    text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; color: var(--text);
+    background: #FDF3F6; border-radius: 12px; padding: 12px; margin-bottom: 14px; min-height: 26px;
+  }
+  .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .numpad-key {
+    padding: 16px 0; border-radius: 12px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; color: var(--text); font-family: inherit; font-size: 19px;
+    font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none;
+  }
+  .numpad-key:active { background: #FDF3F6; border-color: var(--accent); }
+  .numpad-del { color: var(--accent-dark); }
+  .numpad-done-btn {
+    width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+    font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
+  .consent-box {
+    margin-top: 16px; border: 1px solid var(--lavender); border-radius: 12px;
+    overflow: hidden; font-size: 11.5px;
+  }
+  .consent-section { padding: 10px 12px; }
+  .consent-section + .consent-section { border-top: 1px solid var(--lavender); }
+  .consent-title { font-weight: 700; color: var(--accent-dark); margin-bottom: 5px; }
+  .consent-box ul { margin: 0; padding-left: 16px; color: var(--text); line-height: 1.6; }
+  .consent-box li { margin: 0; }
+
+  .vr-slot-section { margin-bottom: 4px; }
+  .vr-slot-nav { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .vr-slot-row { display: flex; flex-wrap: nowrap; gap: 8px; flex: 1; }
+  .vr-nav-arrow {
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--lavender); background: #FDFBFF;
+    color: var(--accent-dark); font-size: 16px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .vr-nav-arrow:disabled { opacity: 0.35; cursor: not-allowed; }
+  .vr-slot-btn {
+    flex: 1; min-width: 78px; padding: 10px 6px; border-radius: 12px;
+    border: 1.5px solid var(--lavender); background: #FDFBFF; cursor: pointer;
+    font-family: inherit; text-align: center; transition: all 0.15s;
+  }
+  .vr-slot-btn .t { font-size: 14px; font-weight: 700; color: var(--text); }
+  .vr-slot-btn .a { font-size: 10.5px; color: #a98a92; margin-top: 2px; }
+  .vr-slot-btn.now { border-color: var(--accent-dark); }
+  .vr-slot-btn.selected { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); }
+  .vr-slot-btn.selected .t, .vr-slot-btn.selected .a { color: white; }
+  .vr-slot-btn.full { opacity: 0.5; cursor: not-allowed; }
+  .vr-slot-empty { font-size: 12px; color: #c9a8b0; margin-top: 8px; }
+
+  .signature-section { margin-top: 22px; }
+  .pad-wrap {
+    position: relative; border: 2px dashed var(--accent); border-radius: 14px;
+    background: #FFFDFE; overflow: hidden;
+  }
+  #signature-pad { display: block; width: 100%; height: clamp(120px, 28vh, 180px); touch-action: none; cursor: crosshair; }
+  #live-preview-canvas {
+    position: absolute; top: 0; left: 0; width: 100%; height: clamp(120px, 28vh, 180px);
+    pointer-events: none;
+  }
+  @media (min-width: 860px) {
+    #signature-pad, #live-preview-canvas { height: clamp(180px, 32vh, 280px); }
+  }
+  .live-indicator {
+    display: none; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px;
+    background: #FFF8E8; border-radius: 10px; font-size: 12px; color: #b8860b;
+  }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #e8a020;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .pad-placeholder {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #d8b8c0; font-size: 13px; pointer-events: none; text-align: center;
+  }
+  .remote-sig-badge {
+    display: none; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px;
+    background: #F0FAF2; border-radius: 10px; font-size: 12.5px; color: #4a7d52;
+  }
+  .remote-sig-badge img { height: 32px; border-radius: 4px; }
+
+  .pad-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  .btn-clear { background: none; border: none; color: var(--accent-dark); font-size: 12px; font-weight: 500; cursor: pointer; padding: 4px 8px; }
+  .btn-clear:hover { text-decoration: underline; }
+
+  .submit-btn {
+    width: 100%; margin-top: 22px; padding: 13px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+    font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 12px var(--shadow); transition: transform 0.15s;
+  }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .status { text-align: center; font-size: 13px; margin-top: 12px; min-height: 18px; }
+  .status.ok { color: #6FA875; }
+  .status.err { color: #D97070; }
+
+  .hidden { display: none !important; }
+
+  .home-fab {
+    position: fixed; top: 12px; left: 12px; z-index: 5;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: white; box-shadow: 0 4px 12px rgba(232,143,162,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; text-decoration: none; color: inherit; border: none; cursor: pointer;
+  }
+  .home-fab:active { transform: scale(0.94); }
+</style>
+</head>
+<body>
+<a href="./index.html" class="home-fab" title="메인으로">🏠</a>
+
+<!-- 모드 선택 팝업 -->
+<div class="mode-modal-backdrop" id="modeModalBackdrop">
+  <div class="mode-modal-card">
+    <h2>어떤 용도로 쓰실 건가요?</h2>
+    <p class="mode-modal-sub">선택에 따라 받는 항목이 달라져요</p>
+    <button class="mode-modal-btn" onclick="chooseModeAndContinue('signature')">
+      <span class="mmi">📝</span>
+      <span class="mmt"><b>서명록</b><br><span class="mms">이름·연락처·서명 (세미나/견학용)</span></span>
+    </button>
+    <button class="mode-modal-btn" onclick="chooseModeAndContinue('vr')">
+      <span class="mmi">🚌</span>
+      <span class="mmt"><b>VR체험버스</b><br><span class="mms">이름·서명 + 시간대 선택 (연락처 없음)</span></span>
+    </button>
+  </div>
+</div>
+
+<!-- 연락처 숫자패드 팝업 -->
+<div class="numpad-modal-backdrop" id="numpadModalBackdrop" onclick="if(event.target===this) closePhoneNumpad()">
+  <div class="numpad-modal-card">
+    <div class="numpad-modal-head">
+      <span>연락처 입력</span>
+      <button type="button" class="numpad-modal-close" onclick="closePhoneNumpad()">✕</button>
+    </div>
+    <div class="numpad-preview" id="numpadPreview">010-0000-0000</div>
+    <div class="numpad" id="phoneNumpad">
+      <button type="button" class="numpad-key" data-key="1">1</button>
+      <button type="button" class="numpad-key" data-key="2">2</button>
+      <button type="button" class="numpad-key" data-key="3">3</button>
+      <button type="button" class="numpad-key" data-key="4">4</button>
+      <button type="button" class="numpad-key" data-key="5">5</button>
+      <button type="button" class="numpad-key" data-key="6">6</button>
+      <button type="button" class="numpad-key" data-key="7">7</button>
+      <button type="button" class="numpad-key" data-key="8">8</button>
+      <button type="button" class="numpad-key" data-key="9">9</button>
+      <button type="button" class="numpad-key" data-key="-">－</button>
+      <button type="button" class="numpad-key" data-key="0">0</button>
+      <button type="button" class="numpad-key numpad-del" data-key="del">⌫</button>
+    </div>
+    <button type="button" class="numpad-done-btn" onclick="closePhoneNumpad()">완료</button>
+  </div>
+</div>
+
+<div id="fitWrap">
+<div class="card">
+  <h1>🌸 참석 확인서 (실시간)</h1>
+  <p class="subtitle" id="subtitleText">컴퓨터와 태블릿을 같은 세션에 연결하세요</p>
+  <button class="kb-global-toggle" id="kbToggleBtn" onclick="toggleAllKeyboards()">⌨️ 화면 키보드 켜기</button>
+
+  <!-- 세션 선택 화면 -->
+  <div id="sessionChoice" class="session-choice">
+    <div class="mode-current-row">
+      <span id="modeCurrentLabel">📝 서명록 모드</span>
+      <button class="btn-plain" onclick="openModeModal()">변경</button>
+    </div>
+    <button class="choice-btn primary" onclick="startNewSession()">새 세션 시작하기</button>
+    <div class="join-row">
+      <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="none">
+      <button class="choice-btn secondary" onclick="joinExistingSession()">참가하기</button>
+    </div>
+  </div>
+
+  <!-- 폼 화면 -->
+  <div id="formArea" class="hidden">
+    <div class="code-display" id="codeDisplay">
+      <button class="code-toggle-btn" onclick="toggleCodeDisplay()" title="코드 숨기기/보이기">▲</button>
+      <div class="code-display-inner" id="codeDisplayInner">
+        <div class="code-display-row">
+          <div class="code-display-text">
+            <div class="code" id="codeText">----</div>
+            <div class="label">다른 기기에서 이 코드로 참가하세요</div>
+          </div>
+          <div class="qr-box" id="qrBox"></div>
+        </div>
+      </div>
+    </div>
+    <div class="conn-status">
+      <span class="dot" id="connDot"></span><span id="connText">연결 중...</span>
+      <button class="btn-plain" onclick="changeSession()">코드 변경</button>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-col-left">
+        <label for="name">성명</label>
+        <input type="text" id="name" placeholder="이름을 입력하세요" inputmode="none">
+
+        <div id="phoneField">
+          <label for="phone">연락처</label>
+          <div class="phone-input-row">
+            <input type="tel" id="phone" placeholder="010-0000-0000" inputmode="none">
+            <button type="button" class="numpad-open-btn" onclick="openPhoneNumpad()" title="숫자 키패드 열기">🔢</button>
+          </div>
+          <p class="field-hint">숫자 키패드를 열고 싶으면 옆의 🔢 아이콘을 클릭하세요.</p>
+        </div>
+
+        <label>재직자 여부</label>
+        <p class="field-hint">재직 또는 재학 여부를 체크해주세요. 해당이 없을 경우 일반 시민 항목을 선택해주세요.</p>
+        <div class="radio-group">
+          <label class="radio-pill"><input type="radio" name="status" value="재직자"> 재직자</label>
+          <label class="radio-pill"><input type="radio" name="status" value="미래인재"> 미래인재(직업계·대학)</label>
+          <label class="radio-pill"><input type="radio" name="status" value="일반시민"> 일반 시민</label>
+        </div>
+        <div id="companyField" class="hidden-field">
+          <label for="company">회사명</label>
+          <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요" inputmode="none">
+        </div>
+        <div id="schoolField" class="hidden-field">
+          <label for="school">학교명</label>
+          <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요" inputmode="none">
+        </div>
+
+        <div id="consentArea">
+          <div class="consent-box">
+            <div class="consent-section">
+              <div class="consent-title">개인정보 수집·이용 동의</div>
+              <ul>
+                <li>수집·이용 목적: 사업 운영 안내 및</li>
+                <li>수집·이용하는 개인정보 항목: 소속, 성명, 연락처</li>
+                <li>개인정보 보유 및 이용기간: 3년</li>
+              </ul>
+            </div>
+            <div class="consent-section">
+              <div class="consent-title">개인정보 제 3자 제공 동의</div>
+              <ul>
+                <li>개인정보를 제공받는 자: 산업인력공단, 고용노동부</li>
+                <li>개인정보를 제공받는 자의 이용 목적: 만족도 조사 요청</li>
+                <li>제공하는 개인정보 항목: 소속, 성명, 연락처</li>
+                <li>개인정보 보유 및 이용기간: 3년</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="agree-row">
+            <input type="checkbox" id="agree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
+            <label for="agree" style="display:inline;margin:0;font-weight:400;">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-col-right">
+        <div class="vr-slot-section hidden" id="vrSlotSection">
+          <label>🚌 VR체험버스 시간대 선택</label>
+          <p class="field-hint">여유 있는 시간대를 골라주세요.</p>
+          <div class="vr-slot-nav">
+            <button type="button" class="vr-nav-arrow" id="vrPrevArrow" onclick="vrPageMove(-1)">‹</button>
+            <div class="vr-slot-row" id="vrSlotRow"></div>
+            <button type="button" class="vr-nav-arrow" id="vrNextArrow" onclick="vrPageMove(1)">›</button>
+          </div>
+          <div class="vr-slot-empty hidden" id="vrSlotEmpty">지금 참여 가능한 시간대가 없어요.</div>
+        </div>
+
+        <div class="signature-section">
+          <label>서명 (아무 기기에서나 가능)</label>
+          <div class="pad-wrap">
+            <canvas id="signature-pad"></canvas>
+            <canvas id="live-preview-canvas"></canvas>
+            <span class="pad-placeholder" id="pad-placeholder">여기에 서명해주세요 ✍️</span>
+          </div>
+          <div class="live-indicator" id="liveIndicator">
+            <span class="live-dot"></span><span>다른 기기에서 실시간으로 서명 중...</span>
+          </div>
+          <div class="remote-sig-badge" id="remoteSigBadge">
+            <img id="remoteSigImg" src="" alt="서명">
+            <span id="remoteSigText">다른 기기에서 서명 완료됨</span>
+          </div>
+          <div class="pad-actions">
+            <button class="btn-clear" onclick="clearSignature()">다시 서명하기</button>
+          </div>
+        </div>
+
+        <button class="submit-btn" id="submitBtn" onclick="submitForm()">제출하기</button>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+  // ⚠️ 배포된 Worker 주소로 교체하세요 (http/https 그대로)
+  const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
+  const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
+
+  // 서명 중 글자/이미지가 선택되거나 드래그되는 것 방지 (입력칸 자체는 영향 없음)
+  document.addEventListener('dragstart', (e) => e.preventDefault());
+  document.addEventListener('selectstart', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+  });
+
+  // index.html에서 저장한 날짜/장소 설정을 읽어옴 (없으면 오늘 날짜 + 전주MBC로 기본값)
+  const SETTINGS_KEY = 'signform_settings';
+  function todayStr() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  function loadFormSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { date: todayStr(), place: '전주MBC' };
+  }
+
+  // ---------- (transform 기반 화면맞춤 제거함) ----------
+  // ⚠️ CSS transform:scale()로 카드를 축소하는 방식은 서명 캔버스의 그리기 좌표계랑 근본적으로
+  //    호환이 안 돼서(그리는 좌표는 캔버스 자체의 레이아웃 박스 기준인데, 손가락/펜 좌표는 화면에
+  //    실제로 렌더링된 크기 기준이라 축소 배율이 걸리면 항상 어긋남) 완전히 제거했어요.
+  //    대신 CSS 자체를 화면 높이에 따라 촘촘하게 줄이는 방식(패딩/여백/폰트 크기)으로 스크롤을 최대한 줄여요.
+  //    이 방식은 서명 좌표에 전혀 영향을 안 줘서 항상 정확해요.
+
+  let ws = null;
+  let intentionalDisconnect = false; // '코드 변경'으로 일부러 끊었을 때 자동재연결 방지
+  let sessionCode = null;
+  let currentMode = 'signature'; // 'signature' | 'vr'
+  let queueWs = null;
+  let queueData = { slots: [] };
+  let selectedSlotIndex = null;
+  let hasLocalStroke = false; // 이 기기에서 직접 서명을 그렸는지 여부
+  let suppressEcho = false;   // 원격 상태 반영 중 input 이벤트 재전송 방지
+
+  const canvas = document.getElementById('signature-pad');
+  const placeholder = document.getElementById('pad-placeholder');
+  const remoteBadge = document.getElementById('remoteSigBadge');
+  const remoteImg = document.getElementById('remoteSigImg');
+  const liveCanvas = document.getElementById('live-preview-canvas');
+  const liveIndicator = document.getElementById('liveIndicator');
+  let signaturePad;
+  let lastRemoteSignature = ''; // 원격 기기에서 확정된 서명 이미지 (리사이즈/재확정 시 다시 그리기 위해 보관)
+
+  function prepareLiveCanvas() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const rect = liveCanvas.getBoundingClientRect(); // 실제 화면에 렌더링된 크기(화면맞춤 축소 반영) 기준
+    const w = rect.width || canvas.offsetWidth || 1;
+    const h = rect.height || canvas.offsetHeight || 1;
+    liveCanvas.width = w * ratio;
+    liveCanvas.height = h * ratio;
+    const ctx = liveCanvas.getContext('2d');
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h };
+  }
+
+  function drawLiveStrokes(strokes) {
+    const { ctx, w, h } = prepareLiveCanvas();
+    ctx.strokeStyle = '#5A4A50';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    (strokes || []).forEach(stroke => {
+      if (!stroke || stroke.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0][0] * w, stroke[0][1] * h);
+      for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i][0] * w, stroke[i][1] * h);
+      ctx.stroke();
+    });
+  }
+
+  function drawSignatureImageOnLiveCanvas(dataUrl) {
+    if (!dataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const { ctx, w, h } = prepareLiveCanvas();
+      ctx.drawImage(img, 0, 0, w, h);
+    };
+    img.src = dataUrl;
+  }
+
+  function clearLiveCanvas() {
+    prepareLiveCanvas();
+  }
+
+  // ⚠️ 중요: signature_pad는 터치 좌표를 canvas.getBoundingClientRect()(실제 화면에 렌더링된 크기,
+  // 화면맞춤 축소가 반영된 값) 기준으로 계산해요. 그래서 캔버스 내부 해상도도 offsetWidth(축소 반영 전
+  // 레이아웃 크기)가 아니라 반드시 같은 getBoundingClientRect() 기준으로 맞춰야 서명이 정확한 위치에
+  // 그려져요. 아이패드 등에서 화면맞춤 축소가 걸린 상태로 서명하면 살짝 밀려 그려지던 문제가 이거였어요.
+  function resizeCanvas() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width || canvas.offsetWidth || 1;
+    const h = rect.height || canvas.offsetHeight || 1;
+    // 화면맞춤 축소 배율이 바뀌어도 그리던 서명이 사라지지 않게 보존했다가 다시 그림
+    const savedData = signaturePad && !signaturePad.isEmpty() ? signaturePad.toData() : null;
+    canvas.width = w * ratio;
+    canvas.height = h * ratio;
+    canvas.getContext('2d').setTransform(ratio, 0, 0, ratio, 0, 0);
+    if (signaturePad) {
+      signaturePad.clear();
+      if (savedData) signaturePad.fromData(savedData);
+    }
+    if (lastRemoteSignature && !hasLocalStroke) {
+      drawSignatureImageOnLiveCanvas(lastRemoteSignature);
+    }
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  function initSignaturePad() {
+    resizeCanvas();
+    signaturePad = new SignaturePad(canvas, {
+      backgroundColor: 'rgba(255,255,255,0)',
+      penColor: '#5A4A50', minWidth: 1, maxWidth: 3
+    });
+    signaturePad.addEventListener('beginStroke', () => {
+      placeholder.style.display = 'none';
+      hasLocalStroke = true;
+    });
+    signaturePad.addEventListener('endStroke', () => {
+      const dataUrl = signaturePad.toDataURL('image/png');
+      send({ type: 'signature', dataUrl });
+    });
+  }
+
+  function clearSignature() {
+    signaturePad.clear();
+    clearLiveCanvas();
+    lastRemoteSignature = '';
+    placeholder.style.display = 'block';
+    hasLocalStroke = false;
+    remoteBadge.style.display = 'none';
+    send({ type: 'clearSignature' });
+  }
+
+  // ---------- 세션 시작/참가 ----------
+  function randomCode() {
+    return String(Math.floor(1000 + Math.random() * 9000));
+  }
+
+  function startNewSession() {
+    connectSession(randomCode());
+  }
+
+  function joinExistingSession() {
+    const code = document.getElementById('joinCodeInput').value.trim();
+    if (!/^\d{4}$/.test(code)) {
+      alert('4자리 숫자 코드를 입력해주세요.');
+      return;
+    }
+    connectSession(code);
+  }
+  document.getElementById('joinCodeInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); joinExistingSession(); }
+  });
+
+  function openModeModal() {
+    document.getElementById('modeModalBackdrop').classList.remove('hidden');
+  }
+
+  function chooseModeAndContinue(mode) {
+    currentMode = mode;
+    document.getElementById('modeModalBackdrop').classList.add('hidden');
+    document.getElementById('modeCurrentLabel').textContent =
+      mode === 'vr' ? '🚌 VR체험버스 모드' : '📝 서명록 모드';
+    applyModeToFields();
+  }
+
+  // VR체험버스는 연락처/개인정보 동의 문구가 없는 서식이라 해당 UI를 숨김
+  function applyModeToFields() {
+    const isVr = currentMode === 'vr';
+    document.getElementById('phoneField').classList.toggle('hidden', isVr);
+    document.getElementById('consentArea').classList.toggle('hidden', isVr);
+    document.getElementById('vrSlotSection').classList.toggle('hidden', !isVr);
+  }
+
+  function connectSession(code) {
+    sessionCode = code;
+    document.getElementById('sessionChoice').classList.add('hidden');
+    document.getElementById('formArea').classList.remove('hidden');
+    document.getElementById('codeText').textContent = code;
+    document.getElementById('subtitleText').textContent = '세션에 연결되었습니다';
+    initSignaturePad();
+    openWebSocket();
+    generateJoinQr(code);
+
+    // 기본적으로 접힌 상태로 시작 (필요할 때 ▲ 눌러서 코드/QR 확인)
+    document.getElementById('codeDisplay').classList.add('collapsed');
+
+    applyModeToFields();
+    if (currentMode === 'vr') {
+      openQueueWebSocket();
+    }
+    setTimeout(() => document.getElementById('name').focus(), 100);
+  }
+
+  // 기본은 모든 입력칸에서 화면 키보드가 안 뜨게(inputmode=none) 해두고,
+  // 이 버튼으로 한 번에 켜고 끌 수 있게 함. 블루투스 키보드로 타이핑하는 건 이 설정과 무관하게 항상 됨.
+  // (연락처는 전용 숫자패드가 따로 있어서 이 전역 토글 대상에서는 제외)
+  let keyboardEnabled = false;
+  const KB_FIELDS = [
+    { id: 'joinCodeInput', onMode: 'numeric' },
+    { id: 'name', onMode: 'text' },
+    { id: 'company', onMode: 'text' },
+    { id: 'school', onMode: 'text' },
+  ];
+  function toggleAllKeyboards() {
+    keyboardEnabled = !keyboardEnabled;
+    KB_FIELDS.forEach(({ id, onMode }) => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute('inputmode', keyboardEnabled ? onMode : 'none');
+    });
+    const btn = document.getElementById('kbToggleBtn');
+    btn.textContent = keyboardEnabled ? '⌨️ 화면 키보드 끄기' : '⌨️ 화면 키보드 켜기';
+    btn.classList.toggle('on', keyboardEnabled);
+  }
+
+  // 태블릿 페이지 주소에 ?code=세션코드 를 붙여서 QR로 만듦 (스캔하면 코드 자동입력+자동참가)
+  // 색상은 순수 검정 대신 앱 톤에 맞춰 진한 로즈 계열로 넣되, 스캔 인식률을 위해 충분히 어둡게 유지함
+  function generateJoinQr(code) {
+    const box = document.getElementById('qrBox');
+    box.innerHTML = '';
+    try {
+      const tabletUrl = new URL('signature_pad_tablet.html?code=' + encodeURIComponent(code), window.location.href).href;
+      new QRCode(box, {
+        text: tabletUrl,
+        width: 76, height: 76,
+        colorDark: '#7A3348', // 팔레트에 맞춘 진한 로즈 (순수 검정보다 부드럽지만 스캔 인식률 위해 충분히 어둡게)
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    } catch (e) {
+      console.error('QR 생성 실패:', e);
+      box.textContent = 'QR 생성 실패';
+    }
+  }
+
+  function toggleCodeDisplay() {
+    document.getElementById('codeDisplay').classList.toggle('collapsed');
+  }
+
+  let autoCollapsedOnce = false;
+  function handlePeers(count) {
+    // 태블릿 등 다른 기기가 이 세션에 붙으면(2명 이상) 코드 표시를 자동으로 한 번 접어줌
+    // (이후엔 사용자가 직접 토글해도 다시 강제로 접지 않음)
+    if (count >= 2 && !autoCollapsedOnce) {
+      autoCollapsedOnce = true;
+      const codeDisplay = document.getElementById('codeDisplay');
+      if (!codeDisplay.classList.contains('collapsed')) {
+        codeDisplay.classList.add('collapsed');
+      }
+      setConnStatus(true, `실시간 연결됨 · 다른 기기 ${count - 1}대 참가 중`);
+    } else if (ws && ws.readyState === WebSocket.OPEN) {
+      setConnStatus(true, count >= 2 ? `실시간 연결됨 · 다른 기기 ${count - 1}대 참가 중` : '실시간 연결됨');
+    }
+  }
+
+  function changeSession() {
+    if (!confirm('다른 세션 코드로 바꿀까요? 지금 입력 중인 내용은 사라져요.')) return;
+    intentionalDisconnect = true;
+    if (ws) ws.close();
+    if (queueWs) queueWs.close();
+    document.getElementById('formArea').classList.add('hidden');
+    document.getElementById('sessionChoice').classList.remove('hidden');
+    document.getElementById('subtitleText').textContent = '컴퓨터와 태블릿을 같은 세션에 연결하세요';
+    document.getElementById('joinCodeInput').value = '';
+    sessionCode = null;
+    selectedSlotIndex = null;
+    autoCollapsedOnce = false;
+    document.getElementById('codeDisplay').classList.remove('collapsed');
+  }
+
+  // ---------- VR체험버스 시간대 ----------
+  const VR_PAGE_SIZE = 2;
+  let vrPageStart = 0;
+
+  function todayStrForQueue() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function openQueueWebSocket() {
+    queueWs = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${todayStrForQueue()}`);
+    queueWs.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'state') { queueData = msg.data; vrPageStart = 0; renderVrSlots(); }
+    };
+    queueWs.onclose = () => {
+      if (currentMode === 'vr' && !intentionalDisconnect) setTimeout(openQueueWebSocket, 2000);
+    };
+  }
+  setInterval(() => { if (currentMode === 'vr') renderVrSlots(); }, 15000);
+
+  function minutesNow() {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+
+  function vrCurrentSlotIndex(slots) {
+    const nowMin = minutesNow();
+    let best = -1;
+    slots.forEach((s, i) => {
+      const [h, m] = s.time.split(':').map(Number);
+      if (h * 60 + m <= nowMin) best = i;
+    });
+    return best;
+  }
+
+  function vrGetUpcoming() {
+    const slots = queueData.slots || [];
+    const nowIdx = vrCurrentSlotIndex(slots);
+    const startFrom = Math.max(nowIdx, 0);
+    return slots.map((s, i) => ({ ...s, index: i })).slice(startFrom);
+  }
+
+  function vrPageMove(delta) {
+    vrPageStart = Math.max(0, vrPageStart + delta * VR_PAGE_SIZE);
+    renderVrSlots();
+  }
+
+  function renderVrSlots() {
+    const row = document.getElementById('vrSlotRow');
+    const emptyEl = document.getElementById('vrSlotEmpty');
+    const upcoming = vrGetUpcoming();
+
+    if (upcoming.length === 0) {
+      row.innerHTML = '';
+      emptyEl.classList.remove('hidden');
+      document.getElementById('vrPrevArrow').disabled = true;
+      document.getElementById('vrNextArrow').disabled = true;
+      return;
+    }
+    emptyEl.classList.add('hidden');
+
+    if (vrPageStart >= upcoming.length) vrPageStart = Math.max(0, upcoming.length - VR_PAGE_SIZE);
+    const visible = upcoming.slice(vrPageStart, vrPageStart + VR_PAGE_SIZE);
+
+    document.getElementById('vrPrevArrow').disabled = vrPageStart <= 0;
+    document.getElementById('vrNextArrow').disabled = vrPageStart + VR_PAGE_SIZE >= upcoming.length;
+
+    const nowIdx = vrCurrentSlotIndex(queueData.slots || []);
+    row.innerHTML = visible.map(s => {
+      const isFull = s.entries.length >= s.capacity;
+      const isCurrent = s.index === nowIdx;
+      const isSelected = s.index === selectedSlotIndex;
+      return `
+        <button type="button" class="vr-slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isSelected ? 'selected' : ''}"
+                ${isFull ? 'disabled' : ''} onclick="selectSlot(${s.index})">
+          <div class="t">${s.time}</div>
+          <div class="a">${isFull ? '마감' : `${s.capacity - s.entries.length}자리 남음`}</div>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function selectSlot(index) {
+    selectedSlotIndex = index;
+    renderVrSlots();
+  }
+
+  function openWebSocket() {
+    setConnStatus(false, '연결 중...');
+    ws = new WebSocket(`${WS_URL_BASE}/ws?session=${sessionCode}`);
+
+    ws.onopen = () => {
+      setConnStatus(true, '실시간 연결됨');
+      const settings = loadFormSettings();
+      const baseDate = settings.date || todayStr();
+      const programId = currentMode === 'vr' ? `${baseDate}-vr` : baseDate;
+      send({ type: 'update', field: 'programId', value: programId });
+      send({ type: 'update', field: '장소', value: settings.place || '전주MBC' });
+      if (currentMode === 'vr') {
+        send({ type: 'update', field: '동의', value: true }); // VR버스 서식엔 별도 동의 문구가 없어 자동 처리
+      }
+    };
+    ws.onclose = () => {
+      if (intentionalDisconnect) {
+        intentionalDisconnect = false;
+        return;
+      }
+      setConnStatus(false, '연결 끊김 - 재연결 중...');
+      setTimeout(openWebSocket, 2000);
+    };
+    ws.onerror = () => setConnStatus(false, '연결 오류');
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'state') applyRemoteState(msg.data);
+      else if (msg.type === 'submitted') onSubmitted(msg.result);
+      else if (msg.type === 'error') {
+        showStatus(msg.message, 'err');
+        document.getElementById('submitBtn').disabled = false;
+      }
+      else if (msg.type === 'strokeLive') handleLiveStroke(msg);
+      else if (msg.type === 'peers') handlePeers(msg.count);
+    };
+  }
+
+  function setConnStatus(on, text) {
+    document.getElementById('connDot').className = 'dot ' + (on ? 'on' : 'off');
+    document.getElementById('connText').textContent = text;
+  }
+
+  function send(payload) {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+  }
+
+  function handleLiveStroke(msg) {
+    if (hasLocalStroke) return; // 이 기기에서 이미 직접 서명 중이면 무시
+
+    if (msg.phase === 'clear') {
+      clearLiveCanvas();
+      liveIndicator.style.display = 'none';
+      remoteBadge.style.display = 'none';
+      placeholder.style.display = 'block';
+    } else if (msg.phase === 'done') {
+      // 펜을 뗐다고 바로 지우지 않음.
+      // 마지막 live snapshot을 그대로 유지하고, 뒤이어 오는 state.signature로 확정 이미지를 다시 그림.
+      liveIndicator.style.display = 'none';
+    } else {
+      placeholder.style.display = 'none';
+      remoteBadge.style.display = 'none';
+      liveIndicator.style.display = 'flex';
+      drawLiveStrokes(msg.points || []);
+    }
+  }
+
+  // ---------- 원격 상태 반영 ----------
+  function applyRemoteState(data) {
+    suppressEcho = true;
+
+    const nameEl = document.getElementById('name');
+    const phoneEl = document.getElementById('phone');
+    const agreeEl = document.getElementById('agree');
+    const companyEl = document.getElementById('company');
+    const companyField = document.getElementById('companyField');
+    const schoolEl = document.getElementById('school');
+    const schoolField = document.getElementById('schoolField');
+
+    // 지금 포커스 중인 입력창은 덮어쓰지 않음 (타이핑 방해 방지)
+    if (document.activeElement !== nameEl) nameEl.value = data.성명 || '';
+    if (document.activeElement !== phoneEl) phoneEl.value = data.연락처 || '';
+    if (document.activeElement !== companyEl) companyEl.value = data.회사명 || '';
+    if (document.activeElement !== schoolEl) schoolEl.value = data.학교명 || '';
+    agreeEl.checked = !!data.동의;
+
+    document.querySelectorAll('input[name="status"]').forEach(r => {
+      r.checked = (r.value === data.재직자여부);
+    });
+    companyField.classList.toggle('show', data.재직자여부 === '재직자');
+    schoolField.classList.toggle('show', data.재직자여부 === '미래인재');
+
+    // 서명: 이 기기에서 직접 그린 게 아니면 썸네일로만 표시
+    if (data.signature && !hasLocalStroke) {
+      lastRemoteSignature = data.signature;
+      remoteImg.src = data.signature;
+      remoteBadge.style.display = 'flex';
+      placeholder.style.display = 'none';
+      liveIndicator.style.display = 'none';
+      // 완료된 원격 서명도 캔버스 위에 계속 표시해서 '사라지는' 느낌을 없앰
+      drawSignatureImageOnLiveCanvas(data.signature);
+    } else if (!data.signature) {
+      lastRemoteSignature = '';
+      remoteBadge.style.display = 'none';
+      clearLiveCanvas();
+      if (!hasLocalStroke) placeholder.style.display = 'block';
+    }
+
+    suppressEcho = false;
+  }
+
+  // ---------- 입력 변경 → 서버로 전송 ----------
+  function bindField(id, field) {
+    const el = document.getElementById(id);
+    let timer;
+    el.addEventListener('input', () => {
+      if (suppressEcho) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => send({ type: 'update', field, value: el.value }), 250);
+    });
+  }
+  bindField('name', '성명');
+  bindField('phone', '연락처');
+  bindField('company', '회사명');
+  bindField('school', '학교명');
+
+  // ---------- 연락처 전용 커스텀 숫자패드 (팝업 방식) ----------
+  // OS 화면 키보드에 기대지 않고 항상 똑같이 동작하는 숫자 버튼판. 블루투스 키보드로 직접 타이핑도 그대로 가능.
+  const phoneInput = document.getElementById('phone');
+  const phoneNumpad = document.getElementById('phoneNumpad');
+  const numpadModalBackdrop = document.getElementById('numpadModalBackdrop');
+  const numpadPreview = document.getElementById('numpadPreview');
+
+  function openPhoneNumpad() {
+    updateNumpadPreview();
+    numpadModalBackdrop.classList.add('open');
+  }
+  function closePhoneNumpad() {
+    numpadModalBackdrop.classList.remove('open');
+  }
+  function updateNumpadPreview() {
+    numpadPreview.textContent = phoneInput.value || '010-0000-0000';
+    numpadPreview.style.color = phoneInput.value ? 'var(--text)' : '#c9a8b0';
+  }
+  // ⚠️ 'focus'가 아니라 'click'을 씀 — Enter로 넘어오거나 자동 포커스되는 경우(프로그램이
+  // .focus()를 호출하는 경우)엔 안 뜨고, 사용자가 실제로 손가락/마우스로 눌렀을 때만 팝업이 뜸
+  phoneInput.addEventListener('click', openPhoneNumpad);
+
+  phoneNumpad.querySelectorAll('.numpad-key').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      const start = phoneInput.selectionStart ?? phoneInput.value.length;
+      const end = phoneInput.selectionEnd ?? phoneInput.value.length;
+      if (key === 'del') {
+        if (start === end && start > 0) {
+          phoneInput.value = phoneInput.value.slice(0, start - 1) + phoneInput.value.slice(end);
+          setCaret(start - 1);
+        } else {
+          phoneInput.value = phoneInput.value.slice(0, start) + phoneInput.value.slice(end);
+          setCaret(start);
+        }
+      } else {
+        phoneInput.value = phoneInput.value.slice(0, start) + key + phoneInput.value.slice(end);
+        setCaret(start + 1);
+      }
+      phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+      updateNumpadPreview();
+    });
+  });
+
+  function setCaret(pos) {
+    phoneInput.focus();
+    phoneInput.setSelectionRange(pos, pos);
+  }
+
+  // ---------- Enter로 다음 칸 이동 ----------
+  document.getElementById('name').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const phoneField = document.getElementById('phoneField');
+    if (!phoneField.classList.contains('hidden')) {
+      document.getElementById('phone').focus();
+    } else {
+      // VR모드처럼 연락처 칸이 없으면 재직자 여부 라디오로
+      const firstRadio = document.querySelector('input[name="status"]');
+      if (firstRadio) firstRadio.focus();
+    }
+  });
+  document.getElementById('phone').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const firstRadio = document.querySelector('input[name="status"]');
+    if (firstRadio) firstRadio.focus();
+  });
+
+  // ---------- 포커스 없이 숫자만 치면 자동으로 연락처 칸으로 (넘버패드 등) ----------
+  // 브라우저는 어떤 물리적 장치(키보드/넘버패드)에서 왔는지 구분 못 하지만,
+  // "아무 입력칸에도 포커스가 없는 상태에서 숫자가 눌렸다"는 감지 가능해서 이걸로 대신함.
+  // 한글/영문은 IME 조합 방식이라 이 방식이 안 통해서 숫자에만 적용.
+  document.addEventListener('keydown', (e) => {
+    if (document.getElementById('formArea').classList.contains('hidden')) return; // 세션 연결 전엔 무시
+    const active = document.activeElement;
+    const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    if (isTyping) return;
+    if (!/^[0-9]$/.test(e.key)) return;
+
+    const phoneField = document.getElementById('phoneField');
+    if (phoneField.classList.contains('hidden')) return; // VR모드 등 연락처 칸이 없으면 무시
+
+    e.preventDefault();
+    const phoneInput = document.getElementById('phone');
+    phoneInput.focus();
+    phoneInput.value += e.key;
+    phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  document.getElementById('agree').addEventListener('change', (e) => {
+    if (suppressEcho) return;
+    send({ type: 'update', field: '동의', value: e.target.checked });
+  });
+  document.querySelectorAll('input[name="status"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (suppressEcho) return;
+      document.getElementById('companyField').classList.toggle('show', radio.value === '재직자');
+      document.getElementById('schoolField').classList.toggle('show', radio.value === '미래인재');
+      if (radio.value !== '재직자') {
+        document.getElementById('company').value = '';
+        send({ type: 'update', field: '회사명', value: '' });
+      }
+      if (radio.value !== '미래인재') {
+        document.getElementById('school').value = '';
+        send({ type: 'update', field: '학교명', value: '' });
+      }
+      send({ type: 'update', field: '재직자여부', value: radio.value });
+
+      // 재직자/미래인재 고르면 펼쳐지는 회사명/학교명 칸으로 자동 포커스
+      if (radio.value === '재직자') {
+        setTimeout(() => document.getElementById('company').focus(), 120);
+      } else if (radio.value === '미래인재') {
+        setTimeout(() => document.getElementById('school').focus(), 120);
+      }
+    });
+  });
+
+  // ---------- 제출 ----------
+  function submitForm() {
+    const name = document.getElementById('name').value.trim();
+    const agree = document.getElementById('agree').checked;
+    const statusRadio = document.querySelector('input[name="status"]:checked');
+    const 재직자여부 = statusRadio ? statusRadio.value : '';
+    const company = document.getElementById('company').value.trim();
+    const school = document.getElementById('school').value.trim();
+    const hasSignature = hasLocalStroke ? !signaturePad.isEmpty() : remoteBadge.style.display === 'flex';
+
+    if (!name) { showStatus('성명을 입력해주세요.', 'err'); return; }
+    if (!재직자여부) { showStatus('재직자 여부를 선택해주세요.', 'err'); return; }
+    if (재직자여부 === '재직자' && !company) { showStatus('회사명을 입력해주세요.', 'err'); return; }
+    if (재직자여부 === '미래인재' && !school) { showStatus('학교명을 입력해주세요.', 'err'); return; }
+    if (currentMode !== 'vr' && !agree) { showStatus('개인정보 동의가 필요합니다.', 'err'); return; }
+    if (!hasSignature) { showStatus('서명을 완료해주세요.', 'err'); return; }
+    if (currentMode === 'vr' && selectedSlotIndex === null) { showStatus('VR체험버스 시간대를 선택해주세요.', 'err'); return; }
+    if (currentMode === 'vr') {
+      const slot = (queueData.slots || [])[selectedSlotIndex];
+      if (slot && slot.entries.length >= slot.capacity) {
+        showStatus('선택한 시간대가 방금 마감됐어요. 다른 시간대를 골라주세요.', 'err');
+        selectedSlotIndex = null;
+        renderVrSlots();
+        return;
+      }
+    }
+
+    document.getElementById('submitBtn').disabled = true;
+    showStatus('제출 중...', '');
+    send({ type: 'submit' });
+  }
+
+  function onSubmitted(result) {
+    // VR체험버스 모드면 서명 제출과 함께 시간대에도 등록
+    if (currentMode === 'vr' && selectedSlotIndex !== null) {
+      const name = document.getElementById('name').value.trim();
+      const statusRadio = document.querySelector('input[name="status"]:checked');
+      const cat = statusRadio ? statusRadio.value : '';
+      const company = cat === '재직자' ? document.getElementById('company').value.trim() : '';
+      const school = cat === '미래인재' ? document.getElementById('school').value.trim() : '';
+      if (queueWs && queueWs.readyState === WebSocket.OPEN) {
+        queueWs.send(JSON.stringify({
+          type: 'checkin', slotIndex: selectedSlotIndex,
+          성명: name, 재직자여부: cat, 회사명: company, 학교명: school,
+        }));
+      }
+    }
+
+    const extraNote = currentMode === 'vr' ? ' 같은 시간대로 다음 분 이름만 입력하면 돼요.' : '';
+    showStatus(`제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸${extraNote}`, 'ok');
+    document.getElementById('submitBtn').disabled = false;
+    // 폼 초기화 (다음 사람 차례)
+    document.getElementById('name').value = '';
+    document.getElementById('phone').value = '';
+    document.getElementById('company').value = '';
+    document.getElementById('school').value = '';
+    document.querySelectorAll('input[name="status"]').forEach(r => r.checked = false);
+    document.getElementById('companyField').classList.remove('show');
+    document.getElementById('schoolField').classList.remove('show');
+    document.getElementById('agree').checked = false;
+    signaturePad.clear();
+    hasLocalStroke = false;
+    lastRemoteSignature = '';
+    clearLiveCanvas();
+    placeholder.style.display = 'block';
+    remoteBadge.style.display = 'none';
+
+    if (currentMode === 'vr') {
+      // 같은 그룹이 연달아 등록할 수 있게 시간대 선택은 유지 (마감되면 renderVrSlots에서 자동으로 막힘)
+      vrPageStart = 0;
+      renderVrSlots();
+      send({ type: 'update', field: '동의', value: true }); // 다음 사람 제출을 위해 다시 세팅
+    } else {
+      selectedSlotIndex = null;
+    }
+  }
+
+  function showStatus(text, cls) {
+    const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = 'status' + (cls ? ' ' + cls : '');
+  }
+</script>
+
+</body>
+</html>
