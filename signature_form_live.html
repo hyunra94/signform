@@ -407,7 +407,8 @@
         <p class="field-hint">재직 또는 재학 여부를 체크해주세요. 해당이 없을 경우 일반 시민 항목을 선택해주세요.</p>
         <div class="radio-group">
           <label class="radio-pill"><input type="radio" name="status" value="재직자"> 재직자</label>
-          <label class="radio-pill"><input type="radio" name="status" value="미래인재"> 미래인재(직업계·대학)</label>
+          <label class="radio-pill"><input type="radio" name="status" value="직업계고"> 직업계고</label>
+          <label class="radio-pill"><input type="radio" name="status" value="대학생"> 대학생</label>
           <label class="radio-pill"><input type="radio" name="status" value="일반시민"> 일반 시민</label>
         </div>
         <div id="companyField" class="hidden-field">
@@ -945,8 +946,15 @@
     if (document.activeElement !== schoolEl) schoolEl.value = data.학교명 || '';
     agreeEl.checked = !!data.동의;
 
+    // 직업계고/대학생은 둘 다 '미래인재'로 합쳐져서 전송되므로, 원격 state만으로는
+    // 어느 쪽을 골랐는지 정확히 알 수 없음 — 이 기기에서 이미 고른 게 있으면 그대로 유지하고,
+    // 카테고리 자체가 바뀐 경우에만 초기화함
     document.querySelectorAll('input[name="status"]').forEach(r => {
-      r.checked = (r.value === data.재직자여부);
+      if (r.value === '직업계고' || r.value === '대학생') {
+        if (data.재직자여부 !== '미래인재') r.checked = false;
+      } else {
+        r.checked = (r.value === data.재직자여부);
+      }
     });
     companyField.classList.toggle('show', data.재직자여부 === '재직자');
     schoolField.classList.toggle('show', data.재직자여부 === '미래인재');
@@ -1079,25 +1087,28 @@
     if (suppressEcho) return;
     send({ type: 'update', field: '동의', value: e.target.checked });
   });
+  // 직업계고/대학생은 UI 선택지일 뿐, 실제 서명록에는 '미래인재'로 합쳐서 저장됨
+  const isFutureTalent = (value) => value === '직업계고' || value === '대학생';
   document.querySelectorAll('input[name="status"]').forEach(radio => {
     radio.addEventListener('change', () => {
       if (suppressEcho) return;
+      const isFuture = isFutureTalent(radio.value);
       document.getElementById('companyField').classList.toggle('show', radio.value === '재직자');
-      document.getElementById('schoolField').classList.toggle('show', radio.value === '미래인재');
+      document.getElementById('schoolField').classList.toggle('show', isFuture);
       if (radio.value !== '재직자') {
         document.getElementById('company').value = '';
         send({ type: 'update', field: '회사명', value: '' });
       }
-      if (radio.value !== '미래인재') {
+      if (!isFuture) {
         document.getElementById('school').value = '';
         send({ type: 'update', field: '학교명', value: '' });
       }
-      send({ type: 'update', field: '재직자여부', value: radio.value });
+      send({ type: 'update', field: '재직자여부', value: isFuture ? '미래인재' : radio.value });
 
-      // 재직자/미래인재 고르면 펼쳐지는 회사명/학교명 칸으로 자동 포커스
+      // 재직자/직업계고/대학생 고르면 펼쳐지는 회사명/학교명 칸으로 자동 포커스
       if (radio.value === '재직자') {
         setTimeout(() => document.getElementById('company').focus(), 120);
-      } else if (radio.value === '미래인재') {
+      } else if (isFuture) {
         setTimeout(() => document.getElementById('school').focus(), 120);
       }
     });
@@ -1108,7 +1119,8 @@
     const name = document.getElementById('name').value.trim();
     const agree = document.getElementById('agree').checked;
     const statusRadio = document.querySelector('input[name="status"]:checked');
-    const 재직자여부 = statusRadio ? statusRadio.value : '';
+    const statusRaw = statusRadio ? statusRadio.value : '';
+    const 재직자여부 = isFutureTalent(statusRaw) ? '미래인재' : statusRaw;
     const company = document.getElementById('company').value.trim();
     const school = document.getElementById('school').value.trim();
     const hasSignature = hasLocalStroke ? !signaturePad.isEmpty() : remoteBadge.style.display === 'flex';
@@ -1140,7 +1152,8 @@
     if (currentMode === 'vr' && selectedSlotIndex !== null) {
       const name = document.getElementById('name').value.trim();
       const statusRadio = document.querySelector('input[name="status"]:checked');
-      const cat = statusRadio ? statusRadio.value : '';
+      const catRaw = statusRadio ? statusRadio.value : '';
+      const cat = isFutureTalent(catRaw) ? '미래인재' : catRaw;
       const company = cat === '재직자' ? document.getElementById('company').value.trim() : '';
       const school = cat === '미래인재' ? document.getElementById('school').value.trim() : '';
       if (queueWs && queueWs.readyState === WebSocket.OPEN) {

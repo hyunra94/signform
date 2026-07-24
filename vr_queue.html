@@ -292,7 +292,8 @@
               </div>
               <div class="quick-add-cats">
                 <button type="button" class="quick-cat-btn" id="qcat-${i}-재직자" onclick="setQuickCat(${i},'재직자')">재직자</button>
-                <button type="button" class="quick-cat-btn" id="qcat-${i}-미래인재" onclick="setQuickCat(${i},'미래인재')">미래인재</button>
+                <button type="button" class="quick-cat-btn" id="qcat-${i}-직업계고" onclick="setQuickCat(${i},'직업계고')">직업계고</button>
+                <button type="button" class="quick-cat-btn" id="qcat-${i}-대학생" onclick="setQuickCat(${i},'대학생')">대학생</button>
                 <button type="button" class="quick-cat-btn" id="qcat-${i}-일반시민" onclick="setQuickCat(${i},'일반시민')">일반시민</button>
               </div>
               <div class="quick-add-sub" id="qsub-company-${i}"><input type="text" id="qcompany-${i}" placeholder="회사명"></div>
@@ -305,14 +306,16 @@
     }).join('');
   }
 
-  const quickCatState = {}; // { [slotIndex]: '재직자'|'미래인재'|'일반시민' }
+  // 직업계고/대학생은 UI 선택지일 뿐, 실제 저장되는 값은 '미래인재'로 합쳐짐
+  const isFutureTalent = (value) => value === '직업계고' || value === '대학생';
+  const quickCatState = {}; // { [slotIndex]: '재직자'|'직업계고'|'대학생'|'일반시민' }
   function setQuickCat(i, cat) {
     quickCatState[i] = cat;
-    ['재직자', '미래인재', '일반시민'].forEach(c => {
+    ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
       document.getElementById(`qcat-${i}-${c}`).classList.toggle('active', c === cat);
     });
     document.getElementById(`qsub-company-${i}`).classList.toggle('show', cat === '재직자');
-    document.getElementById(`qsub-school-${i}`).classList.toggle('show', cat === '미래인재');
+    document.getElementById(`qsub-school-${i}`).classList.toggle('show', isFutureTalent(cat));
   }
 
   function toggleEntries(i) {
@@ -323,8 +326,9 @@
   function quickAdd(i) {
     const name = document.getElementById(`qname-${i}`).value.trim();
     if (!name) { alert('이름을 입력해주세요.'); return; }
-    const cat = quickCatState[i] || '';
-    if (!cat) { alert('재직자 여부를 선택해주세요.'); return; }
+    const catRaw = quickCatState[i] || '';
+    if (!catRaw) { alert('재직자 여부를 선택해주세요.'); return; }
+    const cat = isFutureTalent(catRaw) ? '미래인재' : catRaw;
     const company = cat === '재직자' ? document.getElementById(`qcompany-${i}`).value.trim() : '';
     const school = cat === '미래인재' ? document.getElementById(`qschool-${i}`).value.trim() : '';
     send({ type: 'checkin', slotIndex: i, 성명: name, 재직자여부: cat, 회사명: company, 학교명: school });

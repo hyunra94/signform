@@ -242,7 +242,8 @@
   <label>재직자 여부</label>
   <div class="radio-group" id="statusGroup">
     <label class="radio-pill"><input type="radio" name="status" value="재직자"> 재직자</label>
-    <label class="radio-pill"><input type="radio" name="status" value="미래인재"> 미래인재(직업계·대학)</label>
+    <label class="radio-pill"><input type="radio" name="status" value="직업계고"> 직업계고</label>
+    <label class="radio-pill"><input type="radio" name="status" value="대학생"> 대학생</label>
     <label class="radio-pill"><input type="radio" name="status" value="일반시민"> 일반 시민</label>
   </div>
   <div id="companyField" class="hidden-field">
@@ -299,15 +300,17 @@
   resizeCanvas();
 
   // 재직자여부 선택에 따라 회사명/학교명 필드 조건부 표시
+  // (직업계고/대학생은 UI에서만 구분하고, 실제 저장되는 값은 '미래인재'로 합쳐짐)
+  const isFutureTalent = (value) => value === '직업계고' || value === '대학생';
   const companyField = document.getElementById('companyField');
   const schoolField = document.getElementById('schoolField');
   document.querySelectorAll('input[name="status"]').forEach(radio => {
     radio.addEventListener('change', () => {
       if (!radio.checked) return;
       companyField.classList.toggle('show', radio.value === '재직자');
-      schoolField.classList.toggle('show', radio.value === '미래인재');
+      schoolField.classList.toggle('show', isFutureTalent(radio.value));
       if (radio.value !== '재직자') document.getElementById('company').value = '';
-      if (radio.value !== '미래인재') document.getElementById('school').value = '';
+      if (!isFutureTalent(radio.value)) document.getElementById('school').value = '';
     });
   });
 
@@ -354,7 +357,9 @@
 
     const agree = document.getElementById('agree').checked;
     const statusRadio = document.querySelector('input[name="status"]:checked');
-    const 재직자여부 = statusRadio ? statusRadio.value : '';
+    const statusRaw = statusRadio ? statusRadio.value : '';
+    // 직업계고/대학생은 UI 선택지일 뿐, 서명록에는 '미래인재'로 합쳐서 저장됨
+    const 재직자여부 = isFutureTalent(statusRaw) ? '미래인재' : statusRaw;
     const company = document.getElementById('company').value.trim();
     const school = document.getElementById('school').value.trim();
 
