@@ -58,19 +58,10 @@
   .sign-screen { display: none; flex-direction: column; height: 100%; padding: 16px; overflow-y: auto; }
   .sign-screen.active { display: flex; }
 
-  .content-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-  .sign-col { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-  @media (min-width: 700px) {
-    .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-    .info-col { overflow-y: auto; padding-right: 4px; }
-  }
-
   .top-bar {
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: flex-end; align-items: center;
     padding: 4px 6px 12px 54px;
   }
-  .who { font-size: 15px; font-weight: 700; color: var(--text); }
-  .who .placeholder-name { color: #c9a8b0; font-weight: 400; }
   .conn-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #a98a92; }
   .btn-plain {
     background: none; border: none; color: var(--accent-dark); font-size: 11px;
@@ -84,6 +75,18 @@
     font-size: 12.5px; font-weight: 700; color: var(--accent-dark); margin: 6px 0 8px;
   }
 
+  /* ---- 안내 패널 ---- */
+  .guide-panel {
+    display: flex; align-items: center; gap: 12px; padding: 16px 18px; margin-bottom: 16px;
+    border-radius: 16px; background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white; box-shadow: 0 6px 18px var(--shadow);
+  }
+  .guide-panel .guide-icon { font-size: 22px; flex-shrink: 0; }
+  .guide-panel .guide-text { font-size: 16.5px; font-weight: 700; line-height: 1.4; }
+
+  /* ---- 아직 차례가 아닌 구간 ---- */
+  .locked { opacity: 0.4; pointer-events: none; filter: grayscale(55%); transition: opacity 0.25s ease; }
+
   /* ---- 연락처 ---- */
   .phone-section { margin-bottom: 14px; }
   .phone-display-btn {
@@ -96,11 +99,7 @@
   .phone-display-btn .icon { font-size: 20px; flex-shrink: 0; }
 
   /* ---- 소속 구분 ---- */
-  .cat-section {
-    overflow: hidden; max-height: 0; opacity: 0; margin-bottom: 0;
-    transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
-  }
-  .cat-section.show { max-height: 260px; opacity: 1; margin-bottom: 14px; }
+  .cat-section { margin-bottom: 14px; }
   .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .cat-btn {
     padding: 16px 8px; border-radius: 14px; border: 2px solid var(--lavender);
@@ -120,17 +119,6 @@
   }
   .sub-field input:focus { border-color: var(--accent); }
   .sub-field .hint { font-size: 11px; color: #a98a92; margin-top: 4px; }
-
-  /* ---- 입력 내용 확인 ---- */
-  .confirm-summary {
-    margin-bottom: 14px; padding: 14px 16px; border-radius: 14px;
-    background: #FDF3F6; border: 1.5px solid var(--accent);
-  }
-  .confirm-summary .confirm-title { font-size: 12px; font-weight: 700; color: var(--accent-dark); margin-bottom: 8px; }
-  .confirm-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: 14px; }
-  .confirm-row .confirm-label { color: #a98a92; font-weight: 500; flex-shrink: 0; }
-  .confirm-row .confirm-val { font-weight: 700; color: var(--text); text-align: right; }
-  .confirm-row .confirm-val.empty { color: #c9a8b0; font-weight: 400; }
 
   /* ---- 개인정보 동의 ---- */
   .consent-box {
@@ -267,81 +255,74 @@
 <!-- 입력 화면 -->
 <div class="sign-screen" id="signScreen">
   <div class="top-bar">
-    <div class="who">
-      <span id="whoName" class="placeholder-name">이름 입력 대기중...</span>
-    </div>
     <div class="conn-status">
       <span class="dot" id="connDot"></span><span id="connText">연결 중</span>
       <button class="btn-plain" onclick="resetSession()">코드 변경</button>
     </div>
   </div>
 
-  <div class="content-grid">
-    <div class="info-col">
-      <div class="phone-section">
-        <div class="section-label">📱 연락처</div>
-        <button type="button" class="phone-display-btn" id="phoneDisplayBtn" onclick="openPhoneNumpad()">
-          <span class="val empty" id="phoneVal">숫자 키패드로 입력하기</span>
-          <span class="icon">🔢</span>
-        </button>
-      </div>
+  <div class="guide-panel" id="guidePanel">
+    <span class="guide-icon">🔵</span>
+    <span class="guide-text" id="guideText">이름 입력을 기다리는 중이에요...</span>
+  </div>
 
-      <div class="cat-section" id="catSection">
-        <div class="section-label">🙋 소속을 골라주세요</div>
-        <div class="cat-grid">
-          <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
-          <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
-          <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
-          <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
-        </div>
-      </div>
+  <div class="phone-section">
+    <div class="section-label">📱 연락처</div>
+    <button type="button" class="phone-display-btn" id="phoneDisplayBtn" onclick="openPhoneNumpad()">
+      <span class="val empty" id="phoneVal">숫자 키패드로 입력하기</span>
+      <span class="icon">🔢</span>
+    </button>
+  </div>
 
-      <div class="confirm-summary" id="confirmSummary">
-        <div class="confirm-title">✅ 입력하신 내용이에요</div>
-        <div class="confirm-row"><span class="confirm-label">성함</span><span class="confirm-val empty" id="cfName">-</span></div>
-        <div class="confirm-row"><span class="confirm-label">연락처</span><span class="confirm-val empty" id="cfPhone">-</span></div>
-        <div class="confirm-row"><span class="confirm-label">소속</span><span class="confirm-val empty" id="cfAffil">-</span></div>
-      </div>
-
-      <div class="consent-box">
-        <div class="consent-section">
-          <div class="consent-title">개인정보 수집·이용 동의</div>
-          <ul>
-            <li>수집·이용 목적: 사업 운영 안내 및</li>
-            <li>수집·이용하는 개인정보 항목: 소속, 성명, 연락처</li>
-            <li>개인정보 보유 및 이용기간: 3년</li>
-          </ul>
-        </div>
-        <div class="consent-section">
-          <div class="consent-title">개인정보 제 3자 제공 동의</div>
-          <ul>
-            <li>개인정보를 제공받는 자: 산업인력공단, 고용노동부</li>
-            <li>개인정보를 제공받는 자의 이용 목적: 만족도 조사 요청</li>
-            <li>제공하는 개인정보 항목: 소속, 성명, 연락처</li>
-            <li>개인정보 보유 및 이용기간: 3년</li>
-          </ul>
-        </div>
-      </div>
-      <div class="agree-row">
-        <input type="checkbox" id="agree">
-        <label for="agree">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
-      </div>
-    </div>
-
-    <div class="sign-col">
-      <div class="pad-wrap">
-        <canvas id="signature-pad"></canvas>
-        <span class="pad-placeholder" id="pad-placeholder">여기에 크게 서명해주세요 ✍️</span>
-        <div class="saved-badge" id="savedBadge">✓ 저장됨</div>
-      </div>
-
-      <div class="bottom-bar">
-        <button class="btn-clear" onclick="clearSignature()">다시 서명</button>
-      </div>
-      <p class="wait-note">서명까지 마치면 담당자가 확인 후 제출해드려요. 따로 제출 버튼을 누르지 않아도 돼요.</p>
-      <div class="status" id="status"></div>
+  <div class="cat-section" id="catSection">
+    <div class="section-label">🙋 소속을 골라주세요</div>
+    <div class="cat-grid">
+      <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
+      <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
+      <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
+      <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
     </div>
   </div>
+
+  <div class="consent-area" id="consentArea">
+    <div class="consent-box">
+      <div class="consent-section">
+        <div class="consent-title">개인정보 수집·이용 동의</div>
+        <ul>
+          <li>수집·이용 목적: 사업 운영 안내 및</li>
+          <li>수집·이용하는 개인정보 항목: 소속, 성명, 연락처</li>
+          <li>개인정보 보유 및 이용기간: 3년</li>
+        </ul>
+      </div>
+      <div class="consent-section">
+        <div class="consent-title">개인정보 제 3자 제공 동의</div>
+        <ul>
+          <li>개인정보를 제공받는 자: 산업인력공단, 고용노동부</li>
+          <li>개인정보를 제공받는 자의 이용 목적: 만족도 조사 요청</li>
+          <li>제공하는 개인정보 항목: 소속, 성명, 연락처</li>
+          <li>개인정보 보유 및 이용기간: 3년</li>
+        </ul>
+      </div>
+    </div>
+    <div class="agree-row">
+      <input type="checkbox" id="agree">
+      <label for="agree">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+    </div>
+  </div>
+
+  <div class="sign-area" id="signArea">
+    <div class="pad-wrap">
+      <canvas id="signature-pad"></canvas>
+      <span class="pad-placeholder" id="pad-placeholder">여기에 크게 서명해주세요 ✍️</span>
+      <div class="saved-badge" id="savedBadge">✓ 저장됨</div>
+    </div>
+
+    <div class="bottom-bar">
+      <button class="btn-clear" onclick="clearSignature()">다시 서명</button>
+    </div>
+  </div>
+  <p class="wait-note">서명까지 마치면 담당자가 확인 후 제출해드려요. 따로 제출 버튼을 누르지 않아도 돼요.</p>
+  <div class="status" id="status"></div>
 </div>
 
 <script>
@@ -509,18 +490,15 @@
     if (signaturePad) signaturePad.clear();
     placeholder.style.display = 'block';
     savedBadge.style.display = 'none';
-    document.getElementById('whoName').textContent = '이름 입력 대기중...';
-    document.getElementById('whoName').classList.add('placeholder-name');
     resetPhoneAndCatUI();
     document.getElementById('agree').checked = false;
-    renderConfirmSummary();
+    renderGuide();
     showStatus('', '');
   }
 
   function resetPhoneAndCatUI() {
     document.getElementById('phoneVal').textContent = '숫자 키패드로 입력하기';
     document.getElementById('phoneVal').classList.add('empty');
-    document.getElementById('catSection').classList.remove('show');
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
       const el = document.getElementById(`catBtn-${c}`);
       if (el) el.classList.remove('active');
@@ -538,14 +516,6 @@
 
   function applyRemoteState(data) {
     remoteState = data;
-    const whoEl = document.getElementById('whoName');
-    if (data.성명) {
-      whoEl.textContent = `${data.성명}님, 입력해주세요`;
-      whoEl.classList.remove('placeholder-name');
-    } else {
-      whoEl.textContent = '이름 입력 대기중...';
-      whoEl.classList.add('placeholder-name');
-    }
 
     // 연락처 표시 (팝업이 열려있는 동안엔 미리보기가 따로 갱신되므로 덮어쓰지 않음)
     const phoneValEl = document.getElementById('phoneVal');
@@ -558,9 +528,6 @@
         phoneValEl.classList.add('empty');
       }
     }
-
-    // 연락처가 한 번이라도 입력됐으면 소속 선택 영역 노출
-    document.getElementById('catSection').classList.toggle('show', !!data.연락처);
 
     // 소속 하이라이트: 이 기기에서 직접 고른 버튼 기준(로컬), 없으면 카테고리 대분류만 반영
     if (!selectedCatButton && data.재직자여부) {
@@ -576,34 +543,38 @@
 
     document.getElementById('agree').checked = !!data.동의;
 
-    renderConfirmSummary();
+    renderGuide();
   }
 
   document.getElementById('agree').addEventListener('change', (e) => {
     send({ type: 'update', field: '동의', value: e.target.checked });
+    renderGuide();
   });
 
-  function setCf(id, text) {
-    const el = document.getElementById(id);
-    el.textContent = text || '-';
-    el.classList.toggle('empty', !text);
-  }
-
-  function renderConfirmSummary() {
+  // 연락처 → 소속 → 개인정보 동의 → 서명 순서로 한 단계씩 열어주는 안내 패널
+  function renderGuide() {
     const data = remoteState;
-    setCf('cfName', data.성명 || '');
-    setCf('cfPhone', data.연락처 || '');
-
-    let affil = '';
-    if (data.재직자여부 === '재직자') {
-      affil = data.회사명 ? `재직자 · ${data.회사명}` : '재직자 (회사명 입력 필요)';
-    } else if (data.재직자여부 === '미래인재') {
-      const label = (selectedCatButton === '직업계고' || selectedCatButton === '대학생') ? selectedCatButton : '미래인재';
-      affil = data.학교명 ? `${label} · ${data.학교명}` : `${label} (학교명 입력 필요)`;
-    } else if (data.재직자여부 === '일반시민') {
-      affil = '일반 시민';
+    const namePrefix = data.성명 ? `${data.성명}님, ` : '';
+    let text;
+    if (!data.성명) {
+      text = '담당자가 성함을 입력하는 중이에요...';
+    } else if (!data.연락처) {
+      text = `${namePrefix}연락처를 입력해주세요`;
+    } else if (!data.재직자여부) {
+      text = `${namePrefix}소속을 선택해주세요`;
+    } else if (!data.동의) {
+      text = `${namePrefix}아래 개인정보 동의 내용을 확인해주세요`;
+    } else {
+      text = `${namePrefix}서명해주세요`;
     }
-    setCf('cfAffil', affil);
+
+    document.getElementById('guideText').textContent = text;
+
+    const catDone = !!data.재직자여부;
+    const consentDone = !!data.동의;
+    document.getElementById('catSection').classList.toggle('locked', !data.연락처);
+    document.getElementById('consentArea').classList.toggle('locked', !catDone);
+    document.getElementById('signArea').classList.toggle('locked', !consentDone);
   }
 
   function onSubmitted(result) {
@@ -614,7 +585,7 @@
     selectedCatButton = '';
     resetPhoneAndCatUI();
     document.getElementById('agree').checked = false;
-    renderConfirmSummary();
+    renderGuide();
   }
 
   function showStatus(text, cls) {
@@ -632,7 +603,7 @@
     const stored = (cat === '직업계고' || cat === '대학생') ? '미래인재' : cat;
     send({ type: 'update', field: '재직자여부', value: stored });
     if (stored === '미래인재') send({ type: 'hint', kind: 'subCategory', value: cat });
-    renderConfirmSummary();
+    renderGuide();
   }
 
   // ---------- 연락처 전용 커스텀 숫자패드 (팝업 방식) ----------
@@ -652,7 +623,6 @@
     if (phoneDraft) {
       phoneValEl.textContent = phoneDraft;
       phoneValEl.classList.remove('empty');
-      document.getElementById('catSection').classList.add('show');
     }
   }
   function updateNumpadPreview() {
