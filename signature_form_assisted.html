@@ -359,6 +359,7 @@
   let suppressEcho = false;
   let subCatLocal = ''; // 원격 힌트로 받은 직업계고/대학생 표시(비영속)
   let latestAgree = false; // 참석자가 태블릿에서 체크한 개인정보 동의 상태(읽기전용 미러)
+  let lastCatSeen = ''; // 소속 구분이 새로 바뀐 순간을 감지해서 자동 포커스 이동에 씀
 
   const liveCanvas = document.getElementById('live-preview-canvas');
   const placeholder = document.getElementById('pad-placeholder');
@@ -624,6 +625,12 @@
 
     companyField.classList.toggle('show', data.재직자여부 === '재직자');
     schoolField.classList.toggle('show', data.재직자여부 === '미래인재');
+
+    if (data.재직자여부 !== lastCatSeen) {
+      if (data.재직자여부 === '재직자') companyEl.focus();
+      else if (data.재직자여부 === '미래인재') schoolEl.focus();
+      lastCatSeen = data.재직자여부;
+    }
 
     if (data.signature) {
       lastRemoteSignature = data.signature;

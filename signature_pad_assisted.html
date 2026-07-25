@@ -551,10 +551,18 @@
     renderGuide();
   });
 
-  // 연락처 → 소속 → 개인정보 동의 → 서명 순서로 한 단계씩 열어주는 안내 패널
+  // 연락처 → 소속 → (회사명/학교명 말씀) → 개인정보 동의 → 서명 순서로 한 단계씩 열어주는 안내 패널
   function renderGuide() {
     const data = remoteState;
     const namePrefix = data.성명 ? `${data.성명}님, ` : '';
+
+    // 재직자/직업계고/대학생은 회사명·학교명을 담당자가 PC에 받아 적어야 다음 단계로 넘어감
+    // (일반시민은 해당 없음)
+    const needsAffilName = data.재직자여부 === '재직자' || data.재직자여부 === '미래인재';
+    const affilNameDone = data.재직자여부 === '재직자' ? !!data.회사명
+      : data.재직자여부 === '미래인재' ? !!data.학교명
+      : true;
+
     let text;
     if (!data.성명) {
       text = '담당자가 성함을 입력하는 중이에요...';
@@ -562,6 +570,13 @@
       text = `${namePrefix}연락처를 입력해주세요`;
     } else if (!data.재직자여부) {
       text = `${namePrefix}소속을 선택해주세요`;
+    } else if (needsAffilName && !affilNameDone) {
+      if (data.재직자여부 === '재직자') {
+        text = '재직 중이신 회사명을 담당자에게 말씀해주세요 (예: 전주MBC)';
+      } else {
+        const ex = selectedCatButton === '대학생' ? 'OO대' : 'OO고';
+        text = `다니시는 학교명을 담당자에게 말씀해주세요 (예: ${ex})`;
+      }
     } else if (!data.동의) {
       text = `${namePrefix}아래 개인정보 동의 내용을 확인해주세요`;
     } else {
@@ -570,11 +585,10 @@
 
     document.getElementById('guideText').textContent = text;
 
-    const catDone = !!data.재직자여부;
-    const consentDone = !!data.동의;
+    const affilDone = !!data.재직자여부 && affilNameDone;
     document.getElementById('catSection').classList.toggle('locked', !data.연락처);
-    document.getElementById('consentArea').classList.toggle('locked', !catDone);
-    document.getElementById('signArea').classList.toggle('locked', !consentDone);
+    document.getElementById('consentArea').classList.toggle('locked', !affilDone);
+    document.getElementById('signArea').classList.toggle('locked', !data.동의);
   }
 
   function onSubmitted(result) {
