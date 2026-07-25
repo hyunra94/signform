@@ -114,6 +114,17 @@
   .sub-field input:focus { border-color: var(--accent); }
   .sub-field .hint { font-size: 11px; color: #a98a92; margin-top: 4px; }
 
+  /* ---- 입력 내용 확인 ---- */
+  .confirm-summary {
+    margin-bottom: 14px; padding: 14px 16px; border-radius: 14px;
+    background: #FDF3F6; border: 1.5px solid var(--accent);
+  }
+  .confirm-summary .confirm-title { font-size: 12px; font-weight: 700; color: var(--accent-dark); margin-bottom: 8px; }
+  .confirm-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: 14px; }
+  .confirm-row .confirm-label { color: #a98a92; font-weight: 500; flex-shrink: 0; }
+  .confirm-row .confirm-val { font-weight: 700; color: var(--text); text-align: right; }
+  .confirm-row .confirm-val.empty { color: #c9a8b0; font-weight: 400; }
+
   /* ---- 서명 ---- */
   .pad-wrap {
     flex: 1; min-height: 200px; position: relative; border: 3px dashed var(--accent); border-radius: 20px;
@@ -257,6 +268,13 @@
       <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
       <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
     </div>
+  </div>
+
+  <div class="confirm-summary" id="confirmSummary">
+    <div class="confirm-title">✅ 입력하신 내용이에요</div>
+    <div class="confirm-row"><span class="confirm-label">성함</span><span class="confirm-val empty" id="cfName">-</span></div>
+    <div class="confirm-row"><span class="confirm-label">연락처</span><span class="confirm-val empty" id="cfPhone">-</span></div>
+    <div class="confirm-row"><span class="confirm-label">소속</span><span class="confirm-val empty" id="cfAffil">-</span></div>
   </div>
 
   <div class="pad-wrap">
@@ -440,6 +458,7 @@
     document.getElementById('whoName').textContent = '이름 입력 대기중...';
     document.getElementById('whoName').classList.add('placeholder-name');
     resetPhoneAndCatUI();
+    renderConfirmSummary();
     showStatus('', '');
   }
 
@@ -499,6 +518,31 @@
         el.classList.toggle('active', matches);
       });
     }
+
+    renderConfirmSummary();
+  }
+
+  function setCf(id, text) {
+    const el = document.getElementById(id);
+    el.textContent = text || '-';
+    el.classList.toggle('empty', !text);
+  }
+
+  function renderConfirmSummary() {
+    const data = remoteState;
+    setCf('cfName', data.성명 || '');
+    setCf('cfPhone', data.연락처 || '');
+
+    let affil = '';
+    if (data.재직자여부 === '재직자') {
+      affil = data.회사명 ? `재직자 · ${data.회사명}` : '재직자 (회사명 입력 필요)';
+    } else if (data.재직자여부 === '미래인재') {
+      const label = (selectedCatButton === '직업계고' || selectedCatButton === '대학생') ? selectedCatButton : '미래인재';
+      affil = data.학교명 ? `${label} · ${data.학교명}` : `${label} (학교명 입력 필요)`;
+    } else if (data.재직자여부 === '일반시민') {
+      affil = '일반 시민';
+    }
+    setCf('cfAffil', affil);
   }
 
   function onSubmitted(result) {
@@ -508,6 +552,7 @@
     savedBadge.style.display = 'none';
     selectedCatButton = '';
     resetPhoneAndCatUI();
+    renderConfirmSummary();
   }
 
   function showStatus(text, cls) {
@@ -525,6 +570,7 @@
     const stored = (cat === '직업계고' || cat === '대학생') ? '미래인재' : cat;
     send({ type: 'update', field: '재직자여부', value: stored });
     if (stored === '미래인재') send({ type: 'hint', kind: 'subCategory', value: cat });
+    renderConfirmSummary();
   }
 
   // ---------- 연락처 전용 커스텀 숫자패드 (팝업 방식) ----------
