@@ -173,6 +173,17 @@
   }
   .remote-sig-badge img { height: 32px; border-radius: 4px; }
 
+  /* ---- 담당자 확인용 요약 ---- */
+  .confirm-summary {
+    margin-top: 18px; padding: 14px 16px; border-radius: 14px;
+    background: #FDF3F6; border: 1.5px solid var(--accent);
+  }
+  .confirm-summary .confirm-title { font-size: 12px; font-weight: 700; color: var(--accent-dark); margin-bottom: 8px; }
+  .confirm-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: 14px; }
+  .confirm-row .confirm-label { color: #a98a92; font-weight: 500; flex-shrink: 0; }
+  .confirm-row .confirm-val { font-weight: 700; color: var(--text); text-align: right; }
+  .confirm-row .confirm-val.empty { color: #c9a8b0; font-weight: 400; }
+
   .submit-btn {
     width: 100%; margin-top: 22px; padding: 13px; border: none; border-radius: 14px;
     background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
@@ -240,7 +251,7 @@
         <input type="text" id="name" placeholder="참석자에게 성함을 여쭤보고 입력하세요">
 
         <label>연락처</label>
-        <div class="phone-mirror-row" onclick="requestPhoneEntry()">
+        <div class="phone-mirror-row" id="phoneMirrorRow" tabindex="0" role="button" onclick="requestPhoneEntry()">
           <span class="val empty" id="phoneVal">탭하면 태블릿에 숫자 키패드가 열려요</span>
           <span class="req-icon">📱</span>
         </div>
@@ -303,6 +314,13 @@
             <img id="remoteSigImg" src="" alt="서명">
             <span id="remoteSigText">서명 완료됨</span>
           </div>
+        </div>
+
+        <div class="confirm-summary" id="confirmSummary">
+          <div class="confirm-title">✅ 참석자에게 확인해주세요</div>
+          <div class="confirm-row"><span class="confirm-label">성함</span><span class="confirm-val empty" id="cfName">-</span></div>
+          <div class="confirm-row"><span class="confirm-label">연락처</span><span class="confirm-val empty" id="cfPhone">-</span></div>
+          <div class="confirm-row"><span class="confirm-label">소속</span><span class="confirm-val empty" id="cfAffil">-</span></div>
         </div>
 
         <button class="submit-btn" id="submitBtn" onclick="submitForm()">제출하기</button>
@@ -505,13 +523,49 @@
     showStatus('태블릿에 숫자 키패드를 열었어요. 참석자에게 입력을 안내해주세요.', '');
   }
 
+  const phoneMirrorRow = document.getElementById('phoneMirrorRow');
+  phoneMirrorRow.addEventListener('focus', requestPhoneEntry);
+  phoneMirrorRow.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); requestPhoneEntry(); }
+  });
+
   function applySubCatHint(value) {
     subCatLocal = value;
     renderSubCatHint();
+    renderConfirmSummary();
   }
   function renderSubCatHint() {
     const el = document.getElementById('subCatHint');
     el.textContent = subCatLocal ? `🎓 ${subCatLocal} 선택됨` : '';
+  }
+
+  function setCf(id, text) {
+    const el = document.getElementById(id);
+    el.textContent = text || '-';
+    el.classList.toggle('empty', !text);
+  }
+
+  function renderConfirmSummary() {
+    setCf('cfName', document.getElementById('name').value.trim());
+
+    const phoneValEl = document.getElementById('phoneVal');
+    setCf('cfPhone', phoneValEl.classList.contains('empty') ? '' : phoneValEl.textContent);
+
+    const cat = ['재직자', '미래인재', '일반시민'].find(
+      c => document.getElementById(`catBadge-${c}`).classList.contains('active')
+    ) || '';
+    let affil = '';
+    if (cat === '재직자') {
+      const company = document.getElementById('company').value.trim();
+      affil = company ? `재직자 · ${company}` : '재직자 (회사명 입력 필요)';
+    } else if (cat === '미래인재') {
+      const label = subCatLocal || '미래인재';
+      const school = document.getElementById('school').value.trim();
+      affil = school ? `${label} · ${school}` : `${label} (학교명 입력 필요)`;
+    } else if (cat === '일반시민') {
+      affil = '일반 시민';
+    }
+    setCf('cfAffil', affil);
   }
 
   function handleLiveStroke(msg) {
@@ -578,12 +632,14 @@
     }
 
     suppressEcho = false;
+    renderConfirmSummary();
   }
 
   function bindField(id, field) {
     const el = document.getElementById(id);
     let timer;
     el.addEventListener('input', () => {
+      renderConfirmSummary();
       if (suppressEcho) return;
       clearTimeout(timer);
       timer = setTimeout(() => send({ type: 'update', field, value: el.value }), 250);
@@ -642,6 +698,7 @@
     clearLiveCanvas();
     placeholder.style.display = 'block';
     remoteBadge.style.display = 'none';
+    renderConfirmSummary();
   }
 
   function showStatus(text, cls) {
