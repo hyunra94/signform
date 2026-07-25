@@ -134,10 +134,12 @@
   }
   .hidden-field.show { max-height: 100px; opacity: 1; }
 
-  .agree-row {
-    margin-top: 16px; padding: 10px 12px; background: #FFF8FA; border-radius: 10px;
-    font-size: 12.5px; color: var(--text);
+  .agree-status-row {
+    margin-top: 16px; display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 700;
+    background: #FDF3F6; color: #c9a8b0;
   }
+  .agree-status-row.done { background: #F0FAF2; color: #4a7d52; }
   .consent-box {
     margin-top: 16px; border: 1px solid var(--lavender); border-radius: 12px;
     overflow: hidden; font-size: 11.5px;
@@ -154,9 +156,8 @@
     background: #FFFDFE; overflow: hidden;
   }
   #live-preview-canvas {
-    display: block; width: 100%; height: clamp(120px, 28vh, 180px);
+    display: block; width: 100%; aspect-ratio: 2.2 / 1;
   }
-  @media (min-width: 860px) { #live-preview-canvas { height: clamp(180px, 32vh, 280px); } }
   .live-indicator {
     display: none; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px;
     background: #FFF8E8; border-radius: 10px; font-size: 12px; color: #b8860b;
@@ -294,9 +295,9 @@
             </ul>
           </div>
         </div>
-        <div class="agree-row">
-          <input type="checkbox" id="agree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
-          <label for="agree" style="display:inline;margin:0;font-weight:400;">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+        <div class="agree-status-row" id="agreeStatusRow">
+          <span id="agreeStatusIcon">⬜</span>
+          <span id="agreeStatusText">참석자가 태블릿에서 직접 동의해야 해요</span>
         </div>
       </div>
 
@@ -357,6 +358,7 @@
   let sessionCode = null;
   let suppressEcho = false;
   let subCatLocal = ''; // 원격 힌트로 받은 직업계고/대학생 표시(비영속)
+  let latestAgree = false; // 참석자가 태블릿에서 체크한 개인정보 동의 상태(읽기전용 미러)
 
   const liveCanvas = document.getElementById('live-preview-canvas');
   const placeholder = document.getElementById('pad-placeholder');
@@ -588,7 +590,6 @@
     suppressEcho = true;
 
     const nameEl = document.getElementById('name');
-    const agreeEl = document.getElementById('agree');
     const companyEl = document.getElementById('company');
     const companyField = document.getElementById('companyField');
     const schoolEl = document.getElementById('school');
@@ -597,7 +598,14 @@
     if (document.activeElement !== nameEl) nameEl.value = data.성명 || '';
     if (document.activeElement !== companyEl) companyEl.value = data.회사명 || '';
     if (document.activeElement !== schoolEl) schoolEl.value = data.학교명 || '';
-    agreeEl.checked = !!data.동의;
+
+    latestAgree = !!data.동의;
+    const agreeRow = document.getElementById('agreeStatusRow');
+    document.getElementById('agreeStatusIcon').textContent = latestAgree ? '✅' : '⬜';
+    document.getElementById('agreeStatusText').textContent = latestAgree
+      ? '개인정보 동의 완료'
+      : '참석자가 태블릿에서 직접 동의해야 해요';
+    agreeRow.classList.toggle('done', latestAgree);
 
     const phoneValEl = document.getElementById('phoneVal');
     if (data.연락처) {
@@ -655,14 +663,9 @@
     document.getElementById('company').focus();
   });
 
-  document.getElementById('agree').addEventListener('change', (e) => {
-    if (suppressEcho) return;
-    send({ type: 'update', field: '동의', value: e.target.checked });
-  });
-
   function submitForm() {
     const name = document.getElementById('name').value.trim();
-    const agree = document.getElementById('agree').checked;
+    const agree = latestAgree;
     const catBadgeActive = ['재직자', '미래인재', '일반시민'].find(
       c => document.getElementById(`catBadge-${c}`).classList.contains('active')
     );
@@ -675,7 +678,7 @@
     if (!재직자여부) { showStatus('참석자가 태블릿에서 소속 구분을 먼저 선택해야 해요.', 'err'); return; }
     if (재직자여부 === '재직자' && !company) { showStatus('회사명을 입력해주세요.', 'err'); return; }
     if (재직자여부 === '미래인재' && !school) { showStatus('학교명을 입력해주세요.', 'err'); return; }
-    if (!agree) { showStatus('개인정보 동의가 필요합니다.', 'err'); return; }
+    if (!agree) { showStatus('참석자가 태블릿에서 개인정보 동의를 체크해야 해요.', 'err'); return; }
     if (!hasSignature) { showStatus('참석자가 태블릿에서 서명을 완료해야 해요.', 'err'); return; }
 
     document.getElementById('submitBtn').disabled = true;
@@ -691,7 +694,6 @@
     document.getElementById('school').value = '';
     document.getElementById('companyField').classList.remove('show');
     document.getElementById('schoolField').classList.remove('show');
-    document.getElementById('agree').checked = false;
     subCatLocal = '';
     renderSubCatHint();
     lastRemoteSignature = '';

@@ -58,6 +58,13 @@
   .sign-screen { display: none; flex-direction: column; height: 100%; padding: 16px; overflow-y: auto; }
   .sign-screen.active { display: flex; }
 
+  .content-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .sign-col { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  @media (min-width: 700px) {
+    .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .info-col { overflow-y: auto; padding-right: 4px; }
+  }
+
   .top-bar {
     display: flex; justify-content: space-between; align-items: center;
     padding: 4px 6px 12px 54px;
@@ -125,9 +132,26 @@
   .confirm-row .confirm-val { font-weight: 700; color: var(--text); text-align: right; }
   .confirm-row .confirm-val.empty { color: #c9a8b0; font-weight: 400; }
 
+  /* ---- 개인정보 동의 ---- */
+  .consent-box {
+    margin-bottom: 14px; border: 1px solid var(--lavender); border-radius: 12px;
+    overflow: hidden; font-size: 11.5px;
+  }
+  .consent-section { padding: 10px 12px; }
+  .consent-section + .consent-section { border-top: 1px solid var(--lavender); }
+  .consent-title { font-weight: 700; color: var(--accent-dark); margin-bottom: 5px; }
+  .consent-box ul { margin: 0; padding-left: 16px; color: var(--text); line-height: 1.6; }
+  .consent-box li { margin: 0; }
+  .agree-row {
+    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px;
+    padding: 12px 14px; background: #FFF8FA; border-radius: 12px; font-size: 13px; color: var(--text);
+  }
+  .agree-row input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
+  .agree-row label { display: inline; margin: 0; font-weight: 400; line-height: 1.5; }
+
   /* ---- 서명 ---- */
   .pad-wrap {
-    flex: 1; min-height: 200px; position: relative; border: 3px dashed var(--accent); border-radius: 20px;
+    width: 100%; aspect-ratio: 2.2 / 1; position: relative; border: 3px dashed var(--accent); border-radius: 20px;
     background: var(--white); overflow: hidden; box-shadow: 0 8px 24px var(--shadow);
   }
   #signature-pad { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -252,42 +276,72 @@
     </div>
   </div>
 
-  <div class="phone-section">
-    <div class="section-label">📱 연락처</div>
-    <button type="button" class="phone-display-btn" id="phoneDisplayBtn" onclick="openPhoneNumpad()">
-      <span class="val empty" id="phoneVal">숫자 키패드로 입력하기</span>
-      <span class="icon">🔢</span>
-    </button>
-  </div>
+  <div class="content-grid">
+    <div class="info-col">
+      <div class="phone-section">
+        <div class="section-label">📱 연락처</div>
+        <button type="button" class="phone-display-btn" id="phoneDisplayBtn" onclick="openPhoneNumpad()">
+          <span class="val empty" id="phoneVal">숫자 키패드로 입력하기</span>
+          <span class="icon">🔢</span>
+        </button>
+      </div>
 
-  <div class="cat-section" id="catSection">
-    <div class="section-label">🙋 소속을 골라주세요</div>
-    <div class="cat-grid">
-      <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
-      <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
-      <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
-      <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+      <div class="cat-section" id="catSection">
+        <div class="section-label">🙋 소속을 골라주세요</div>
+        <div class="cat-grid">
+          <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
+          <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
+          <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
+          <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+        </div>
+      </div>
+
+      <div class="confirm-summary" id="confirmSummary">
+        <div class="confirm-title">✅ 입력하신 내용이에요</div>
+        <div class="confirm-row"><span class="confirm-label">성함</span><span class="confirm-val empty" id="cfName">-</span></div>
+        <div class="confirm-row"><span class="confirm-label">연락처</span><span class="confirm-val empty" id="cfPhone">-</span></div>
+        <div class="confirm-row"><span class="confirm-label">소속</span><span class="confirm-val empty" id="cfAffil">-</span></div>
+      </div>
+
+      <div class="consent-box">
+        <div class="consent-section">
+          <div class="consent-title">개인정보 수집·이용 동의</div>
+          <ul>
+            <li>수집·이용 목적: 사업 운영 안내 및</li>
+            <li>수집·이용하는 개인정보 항목: 소속, 성명, 연락처</li>
+            <li>개인정보 보유 및 이용기간: 3년</li>
+          </ul>
+        </div>
+        <div class="consent-section">
+          <div class="consent-title">개인정보 제 3자 제공 동의</div>
+          <ul>
+            <li>개인정보를 제공받는 자: 산업인력공단, 고용노동부</li>
+            <li>개인정보를 제공받는 자의 이용 목적: 만족도 조사 요청</li>
+            <li>제공하는 개인정보 항목: 소속, 성명, 연락처</li>
+            <li>개인정보 보유 및 이용기간: 3년</li>
+          </ul>
+        </div>
+      </div>
+      <div class="agree-row">
+        <input type="checkbox" id="agree">
+        <label for="agree">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+      </div>
+    </div>
+
+    <div class="sign-col">
+      <div class="pad-wrap">
+        <canvas id="signature-pad"></canvas>
+        <span class="pad-placeholder" id="pad-placeholder">여기에 크게 서명해주세요 ✍️</span>
+        <div class="saved-badge" id="savedBadge">✓ 저장됨</div>
+      </div>
+
+      <div class="bottom-bar">
+        <button class="btn-clear" onclick="clearSignature()">다시 서명</button>
+      </div>
+      <p class="wait-note">서명까지 마치면 담당자가 확인 후 제출해드려요. 따로 제출 버튼을 누르지 않아도 돼요.</p>
+      <div class="status" id="status"></div>
     </div>
   </div>
-
-  <div class="confirm-summary" id="confirmSummary">
-    <div class="confirm-title">✅ 입력하신 내용이에요</div>
-    <div class="confirm-row"><span class="confirm-label">성함</span><span class="confirm-val empty" id="cfName">-</span></div>
-    <div class="confirm-row"><span class="confirm-label">연락처</span><span class="confirm-val empty" id="cfPhone">-</span></div>
-    <div class="confirm-row"><span class="confirm-label">소속</span><span class="confirm-val empty" id="cfAffil">-</span></div>
-  </div>
-
-  <div class="pad-wrap">
-    <canvas id="signature-pad"></canvas>
-    <span class="pad-placeholder" id="pad-placeholder">여기에 크게 서명해주세요 ✍️</span>
-    <div class="saved-badge" id="savedBadge">✓ 저장됨</div>
-  </div>
-
-  <div class="bottom-bar">
-    <button class="btn-clear" onclick="clearSignature()">다시 서명</button>
-  </div>
-  <p class="wait-note">서명까지 마치면 담당자가 확인 후 제출해드려요. 따로 제출 버튼을 누르지 않아도 돼요.</p>
-  <div class="status" id="status"></div>
 </div>
 
 <script>
@@ -458,6 +512,7 @@
     document.getElementById('whoName').textContent = '이름 입력 대기중...';
     document.getElementById('whoName').classList.add('placeholder-name');
     resetPhoneAndCatUI();
+    document.getElementById('agree').checked = false;
     renderConfirmSummary();
     showStatus('', '');
   }
@@ -519,8 +574,14 @@
       });
     }
 
+    document.getElementById('agree').checked = !!data.동의;
+
     renderConfirmSummary();
   }
+
+  document.getElementById('agree').addEventListener('change', (e) => {
+    send({ type: 'update', field: '동의', value: e.target.checked });
+  });
 
   function setCf(id, text) {
     const el = document.getElementById(id);
@@ -552,6 +613,7 @@
     savedBadge.style.display = 'none';
     selectedCatButton = '';
     resetPhoneAndCatUI();
+    document.getElementById('agree').checked = false;
     renderConfirmSummary();
   }
 
