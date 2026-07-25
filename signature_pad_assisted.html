@@ -108,6 +108,16 @@
   }
   .cat-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); color: white; }
 
+  /* ---- 소속 상세(회사명/학교명, 담당자가 PC에 입력) ---- */
+  .affil-detail-section { margin-bottom: 14px; }
+  .affil-detail-section.hidden-affil { display: none; }
+  .affil-detail-display {
+    padding: 16px 18px; border-radius: 14px; border: 2px dashed var(--accent);
+    background: #FDFBFF;
+  }
+  .affil-detail-display .val { font-size: 18px; font-weight: 700; color: var(--text); }
+  .affil-detail-display .val.empty { font-size: 14px; font-weight: 400; color: #c9a8b0; line-height: 1.5; }
+
   .sub-field {
     overflow: hidden; max-height: 0; opacity: 0;
     transition: max-height 0.25s ease, opacity 0.25s ease, margin 0.25s ease;
@@ -281,6 +291,13 @@
       <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
       <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
       <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+    </div>
+  </div>
+
+  <div class="affil-detail-section hidden-affil" id="affilDetailSection">
+    <div class="section-label">🏢 소속 상세</div>
+    <div class="affil-detail-display">
+      <span class="val empty" id="affilDetailVal">-</span>
     </div>
   </div>
 
@@ -584,11 +601,41 @@
     }
 
     document.getElementById('guideText').textContent = text;
+    renderAffilDetail(data);
 
     const affilDone = !!data.재직자여부 && affilNameDone;
     document.getElementById('catSection').classList.toggle('locked', !data.연락처);
     document.getElementById('consentArea').classList.toggle('locked', !affilDone);
     document.getElementById('signArea').classList.toggle('locked', !data.동의);
+  }
+
+  // 담당자가 PC에 입력 중인 회사명/학교명을 태블릿에도 실시간으로 보여줌
+  function renderAffilDetail(data) {
+    const section = document.getElementById('affilDetailSection');
+    const valEl = document.getElementById('affilDetailVal');
+
+    if (data.재직자여부 === '재직자') {
+      section.classList.remove('hidden-affil');
+      if (data.회사명) {
+        valEl.textContent = data.회사명;
+        valEl.classList.remove('empty');
+      } else {
+        valEl.textContent = '재직 중이신 회사명을 담당자에게 말씀해주세요 (예: 전주MBC)';
+        valEl.classList.add('empty');
+      }
+    } else if (data.재직자여부 === '미래인재') {
+      section.classList.remove('hidden-affil');
+      if (data.학교명) {
+        valEl.textContent = data.학교명;
+        valEl.classList.remove('empty');
+      } else {
+        const ex = selectedCatButton === '대학생' ? 'OO대' : 'OO고';
+        valEl.textContent = `다니시는 학교명을 담당자에게 말씀해주세요 (예: ${ex})`;
+        valEl.classList.add('empty');
+      }
+    } else {
+      section.classList.add('hidden-affil');
+    }
   }
 
   function onSubmitted(result) {
