@@ -162,8 +162,9 @@
   .agree-row label { display: inline; margin: 0; font-weight: 400; line-height: 1.5; }
 
   /* ---- 서명 ---- */
+  .sign-area { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .pad-wrap {
-    width: 100%; aspect-ratio: 2.2 / 1; position: relative; border: 3px dashed var(--accent); border-radius: 20px;
+    width: 100%; flex: 1; min-height: 180px; position: relative; border: 3px dashed var(--accent); border-radius: 20px;
     background: var(--white); overflow: hidden; box-shadow: 0 8px 24px var(--shadow);
   }
   #signature-pad { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -406,6 +407,14 @@
       signaturePad.clear();
       if (saved && saved.length) signaturePad.fromData(saved);
     }
+    sendPadAspect();
+  }
+
+  // 태블릿 서명판은 화면에 꽉 차게 자유로운 비율로 그려지므로, 그 비율을 PC에 알려줘서
+  // 실시간 미리보기 캔버스도 같은 비율로 맞춰야 서명 위치가 어긋나지 않음
+  function sendPadAspect() {
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+    if (w > 0 && h > 0) send({ type: 'hint', kind: 'padAspect', value: +(w / h).toFixed(4) });
   }
   window.addEventListener('resize', resizeCanvas);
 
@@ -509,7 +518,10 @@
     setConnStatus(false, '연결 중');
     ws = new WebSocket(`${WS_URL_BASE}/ws?session=${sessionCode}`);
 
-    ws.onopen = () => setConnStatus(true, '연결됨');
+    ws.onopen = () => {
+      setConnStatus(true, '연결됨');
+      sendPadAspect(); // 담당자 PC가 연결되자마자 지금 서명판 비율을 알 수 있게
+    };
     ws.onclose = () => {
       if (intentionalDisconnect) { intentionalDisconnect = false; return; }
       setConnStatus(false, '재연결 중');
@@ -726,16 +738,27 @@
   let phoneDraft = '';
 
   function openPhoneNumpad() {
-    phoneDraft = (remoteState.연락처 && remoteState.연락처 !== '') ? remoteState.연락처 : '';
+    // 010은 거의 항상 붙는 번호라 미리 채워둠 (지우고 다른 번호를 넣는 것도 가능)
+    phoneDraft = (remoteState.연락처 && remoteState.연락처 !== '') ? remoteState.연락처 : '010';
     updateNumpadPreview();
     numpadModalBackdrop.classList.add('open');
   }
   function closePhoneNumpad() {
+    normalizePhoneDraft();
     numpadModalBackdrop.classList.remove('open');
     const phoneValEl = document.getElementById('phoneVal');
     if (phoneDraft) {
       phoneValEl.textContent = phoneDraft;
       phoneValEl.classList.remove('empty');
+    }
+  }
+  // 010을 지우고 나머지 8자리만 입력한 경우, 앞에 010을 자동으로 붙여줌
+  function normalizePhoneDraft() {
+    const digitsOnly = phoneDraft.replace(/[^0-9]/g, '');
+    if (digitsOnly.length === 8) {
+      phoneDraft = '010' + phoneDraft;
+      updateNumpadPreview();
+      send({ type: 'update', field: '연락처', value: phoneDraft });
     }
   }
   function updateNumpadPreview() {

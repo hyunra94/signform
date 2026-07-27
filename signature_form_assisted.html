@@ -509,6 +509,7 @@
       else if (msg.type === 'strokeLive') handleLiveStroke(msg);
       else if (msg.type === 'peers') handlePeers(msg.count);
       else if (msg.type === 'hint' && msg.kind === 'subCategory') applySubCatHint(msg.value);
+      else if (msg.type === 'hint' && msg.kind === 'padAspect') liveCanvas.style.aspectRatio = msg.value;
     };
   }
 
