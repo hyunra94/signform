@@ -148,9 +148,10 @@
   .consent-box {
     margin-bottom: 14px; border: 1px solid var(--lavender); border-radius: 12px;
     overflow: hidden; font-size: 11.5px;
+    display: grid; grid-template-columns: 1fr 1fr;
   }
   .consent-section { padding: 10px 12px; }
-  .consent-section + .consent-section { border-top: 1px solid var(--lavender); }
+  .consent-section + .consent-section { border-top: none; border-left: 1px solid var(--lavender); }
   .consent-title { font-weight: 700; color: var(--accent-dark); margin-bottom: 5px; }
   .consent-box ul { margin: 0; padding-left: 16px; color: var(--text); line-height: 1.6; }
   .consent-box li { margin: 0; }
@@ -754,12 +755,16 @@
   }
   // 010을 지우고 나머지 8자리만 입력한 경우, 앞에 010을 자동으로 붙여줌
   function normalizePhoneDraft() {
+    // 010이 미리 채워져 있는 걸 못 보고 습관적으로 010을 또 눌러 중복된 경우 보정
+    if (phoneDraft.startsWith('010010')) {
+      phoneDraft = '010' + phoneDraft.slice(6);
+    }
     const digitsOnly = phoneDraft.replace(/[^0-9]/g, '');
     if (digitsOnly.length === 8) {
       phoneDraft = '010' + phoneDraft;
-      updateNumpadPreview();
-      send({ type: 'update', field: '연락처', value: phoneDraft });
     }
+    updateNumpadPreview();
+    send({ type: 'update', field: '연락처', value: phoneDraft });
   }
   function updateNumpadPreview() {
     numpadPreview.textContent = phoneDraft || '010-0000-0000';

@@ -143,9 +143,10 @@
   .consent-box {
     margin-top: 16px; border: 1px solid var(--lavender); border-radius: 12px;
     overflow: hidden; font-size: 11.5px;
+    display: grid; grid-template-columns: 1fr 1fr;
   }
   .consent-section { padding: 10px 12px; }
-  .consent-section + .consent-section { border-top: 1px solid var(--lavender); }
+  .consent-section + .consent-section { border-top: none; border-left: 1px solid var(--lavender); }
   .consent-title { font-weight: 700; color: var(--accent-dark); margin-bottom: 5px; }
   .consent-box ul { margin: 0; padding-left: 16px; color: var(--text); line-height: 1.6; }
   .consent-box li { margin: 0; }
