@@ -753,12 +753,17 @@
       phoneValEl.classList.remove('empty');
     }
   }
-  // 010을 지우고 나머지 8자리만 입력한 경우, 앞에 010을 자동으로 붙여줌
-  function normalizePhoneDraft() {
-    // 010이 미리 채워져 있는 걸 못 보고 습관적으로 010을 또 눌러 중복된 경우 보정
+  // 010이 미리 채워져 있는 걸 못 보고 습관적으로 010을 또 눌러 중복된 경우, 입력되는 순간 바로 보정
+  function collapseDuplicate010() {
     if (phoneDraft.startsWith('010010')) {
       phoneDraft = '010' + phoneDraft.slice(6);
+      return true;
     }
+    return false;
+  }
+  // 010을 지우고 나머지 8자리만 입력한 채로 완료한 경우, 앞에 010을 자동으로 붙여줌
+  function normalizePhoneDraft() {
+    collapseDuplicate010();
     const digitsOnly = phoneDraft.replace(/[^0-9]/g, '');
     if (digitsOnly.length === 8) {
       phoneDraft = '010' + phoneDraft;
@@ -780,6 +785,7 @@
         phoneDraft = phoneDraft.slice(0, -1);
       } else {
         phoneDraft += key;
+        collapseDuplicate010();
       }
       updateNumpadPreview();
       send({ type: 'update', field: '연락처', value: phoneDraft });
