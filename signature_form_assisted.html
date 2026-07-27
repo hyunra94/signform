@@ -11,10 +11,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root {
-    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
-    --accent: #F7B8C4; --accent-dark: #E88FA2;
-    --lavender: #E6E0F8; --text: #5A4A50; --white: #FFFFFF;
-    --shadow: rgba(232, 143, 162, 0.25);
+    --bg-1: #EEF2F8; --bg-2: #E4ECF7;
+    --accent: #4A6FA5; --accent-dark: #2F4C7A;
+    --lavender: #D7E0F0; --text: #2B3A4A; --white: #FFFFFF;
+    --shadow: rgba(74, 111, 165, 0.25);
   }
   * { box-sizing: border-box; }
   html { height: 100%; }
@@ -37,7 +37,7 @@
     .form-col-right { position: sticky; top: 20px; }
   }
   h1 { font-size: 19px; font-weight: 700; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
-  .subtitle { text-align: center; font-size: 12.5px; color: #a98a92; margin-bottom: 20px; }
+  .subtitle { text-align: center; font-size: 12.5px; color: #7C8FA3; margin-bottom: 20px; }
 
   .session-choice { display: flex; flex-direction: column; gap: 14px; }
   .choice-btn {
@@ -48,7 +48,7 @@
     background: linear-gradient(135deg, var(--accent), var(--accent-dark));
     color: white; box-shadow: 0 4px 12px var(--shadow);
   }
-  .choice-btn.secondary { background: #FDF3F6; color: var(--accent-dark); border: 1.5px solid var(--accent); }
+  .choice-btn.secondary { background: #EDF2F8; color: var(--accent-dark); border: 1.5px solid var(--accent); }
   .join-row { display: flex; gap: 8px; }
   .join-row input {
     flex: 1; min-width: 0; padding: 12px; border-radius: 12px; border: 1.5px solid var(--lavender);
@@ -57,14 +57,14 @@
   }
 
   .code-display {
-    position: relative; text-align: center; padding: clamp(14px, 5vw, 22px); background: #FDF3F6;
+    position: relative; text-align: center; padding: clamp(14px, 5vw, 22px); background: #EDF2F8;
     border-radius: 16px; margin-bottom: 18px; overflow: hidden;
   }
   .code-display .code {
     font-size: clamp(28px, 12vw, 44px); font-weight: 700;
     letter-spacing: clamp(3px, 3vw, 8px); color: var(--accent-dark); white-space: nowrap;
   }
-  .code-display .label { font-size: clamp(10px, 3vw, 12px); color: #a98a92; margin-top: 4px; }
+  .code-display .label { font-size: clamp(10px, 3vw, 12px); color: #7C8FA3; margin-top: 4px; }
   .code-display-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
   .code-display-text { flex: 1; }
   .qr-box {
@@ -86,7 +86,7 @@
 
   .conn-status {
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    font-size: 12px; color: #a98a92; margin-bottom: 14px;
+    font-size: 12px; color: #7C8FA3; margin-bottom: 14px;
   }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
   .btn-plain {
@@ -99,30 +99,30 @@
   label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; color: var(--text); }
   input[type="text"] {
     width: 100%; padding: 11px 14px; border: 1.5px solid var(--lavender); border-radius: 12px;
-    font-family: inherit; font-size: 14px; background: #FDFBFF; outline: none; transition: border-color 0.2s;
+    font-family: inherit; font-size: 14px; background: #F7F9FC; outline: none; transition: border-color 0.2s;
   }
   input:focus { border-color: var(--accent); }
 
-  .field-hint { font-size: 11.5px; color: #b89aa2; margin: -3px 0 8px; line-height: 1.5; }
+  .field-hint { font-size: 11.5px; color: #8494A8; margin: -3px 0 8px; line-height: 1.5; }
 
   /* ---- 연락처: 읽기전용 표시 + 태블릿에 입력요청 버튼 ---- */
   .phone-mirror-row {
     display: flex; align-items: center; gap: 10px; padding: 12px 14px;
-    border: 1.5px dashed var(--accent); border-radius: 12px; background: #FDFBFF;
+    border: 1.5px dashed var(--accent); border-radius: 12px; background: #F7F9FC;
     cursor: pointer;
   }
   .phone-mirror-row .val { flex: 1; font-size: 15px; font-weight: 700; color: var(--text); }
-  .phone-mirror-row .val.empty { color: #c9a8b0; font-weight: 400; }
+  .phone-mirror-row .val.empty { color: #9FB0C4; font-weight: 400; }
   .phone-mirror-row .req-icon { font-size: 17px; }
-  .phone-mirror-row:active { background: #FDF3F6; }
+  .phone-mirror-row:active { background: #EDF2F8; }
 
   /* ---- 소속 구분: 읽기전용 배지 ---- */
   .cat-badge-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .cat-badge {
     padding: 9px 12px; border-radius: 20px; border: 1.5px solid var(--lavender);
-    font-size: 12.5px; font-weight: 500; color: #b89aa2; background: #FDFBFF;
+    font-size: 12.5px; font-weight: 500; color: #8494A8; background: #F7F9FC;
   }
-  .cat-badge.active { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); font-weight: 700; }
+  .cat-badge.active { border-color: var(--accent-dark); background: #EDF2F8; color: var(--accent-dark); font-weight: 700; }
   .sub-cat-hint {
     margin-top: 8px; font-size: 12.5px; color: var(--accent-dark); font-weight: 500;
     min-height: 16px;
@@ -137,7 +137,7 @@
   .agree-status-row {
     margin-top: 16px; display: flex; align-items: center; gap: 8px;
     padding: 10px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 700;
-    background: #FDF3F6; color: #c9a8b0;
+    background: #EDF2F8; color: #9FB0C4;
   }
   .agree-status-row.done { background: #F0FAF2; color: #4a7d52; }
   .consent-box {
@@ -153,7 +153,7 @@
   .signature-section { margin-top: 22px; }
   .pad-wrap {
     position: relative; border: 2px dashed var(--accent); border-radius: 14px;
-    background: #FFFDFE; overflow: hidden;
+    background: #FBFCFE; overflow: hidden;
   }
   #live-preview-canvas {
     display: block; width: 100%; aspect-ratio: 2.2 / 1;
@@ -166,7 +166,7 @@
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
   .pad-placeholder {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    color: #d8b8c0; font-size: 13px; pointer-events: none; text-align: center;
+    color: #B7C4D3; font-size: 13px; pointer-events: none; text-align: center;
   }
   .remote-sig-badge {
     display: none; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px;
@@ -177,13 +177,13 @@
   /* ---- 담당자 확인용 요약 ---- */
   .confirm-summary {
     margin-top: 18px; padding: 14px 16px; border-radius: 14px;
-    background: #FDF3F6; border: 1.5px solid var(--accent);
+    background: #EDF2F8; border: 1.5px solid var(--accent);
   }
   .confirm-summary .confirm-title { font-size: 12px; font-weight: 700; color: var(--accent-dark); margin-bottom: 8px; }
   .confirm-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: 14px; }
-  .confirm-row .confirm-label { color: #a98a92; font-weight: 500; flex-shrink: 0; }
+  .confirm-row .confirm-label { color: #7C8FA3; font-weight: 500; flex-shrink: 0; }
   .confirm-row .confirm-val { font-weight: 700; color: var(--text); text-align: right; }
-  .confirm-row .confirm-val.empty { color: #c9a8b0; font-weight: 400; }
+  .confirm-row .confirm-val.empty { color: #9FB0C4; font-weight: 400; }
 
   .submit-btn {
     width: 100%; margin-top: 22px; padding: 13px; border: none; border-radius: 14px;
@@ -203,7 +203,7 @@
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
     width: 38px; height: 38px; border-radius: 50%;
-    background: white; box-shadow: 0 4px 12px rgba(232,143,162,0.35);
+    background: white; box-shadow: 0 4px 12px rgba(74,111,165,0.35);
     display: flex; align-items: center; justify-content: center;
     font-size: 17px; text-decoration: none; color: inherit; border: none; cursor: pointer;
   }
@@ -383,7 +383,7 @@
 
   function drawLiveStrokes(strokes) {
     const { ctx, w, h } = prepareLiveCanvas();
-    ctx.strokeStyle = '#5A4A50';
+    ctx.strokeStyle = '#2B3A4A';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -445,7 +445,7 @@
       const tabletUrl = new URL('signature_pad_assisted.html?code=' + encodeURIComponent(code), window.location.href).href;
       new QRCode(box, {
         text: tabletUrl, width: 76, height: 76,
-        colorDark: '#7A3348', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M,
+        colorDark: '#2F4C7A', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M,
       });
     } catch (e) {
       console.error('QR 생성 실패:', e);
