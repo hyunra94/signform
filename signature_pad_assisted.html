@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>참석자 입력 (담당자 보조)</title>
 <link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<link rel="manifest" href="./manifest_pad_assisted.json">
+<meta name="theme-color" content="#4A6FA5">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="https://hyunra94.github.io/assets/favicon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="서명 입력">
 <meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
 <meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -348,6 +355,11 @@
   const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
   const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
   // programId는 담당자(PC) 쪽에서 세션 시작 시 자동으로 세팅되어 동기화됨
+
+  // PWA 설치(홈 화면에 추가) 지원 — 안드로이드에서 설치하면 주소창 없이 전체화면으로 뜸
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw_pad_assisted.js').catch(() => {});
+  }
 
   // 서명 중 글자/이미지가 선택되거나 드래그되는 것 방지
   document.addEventListener('dragstart', (e) => e.preventDefault());

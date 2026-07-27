@@ -1,0 +1,13 @@
+{
+  "name": "참석자 입력 (담당자 보조)",
+  "short_name": "서명 입력",
+  "start_url": "./signature_pad_assisted.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EEF2F8",
+  "theme_color": "#4A6FA5",
+  "icons": [
+    { "src": "https://hyunra94.github.io/assets/favicon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

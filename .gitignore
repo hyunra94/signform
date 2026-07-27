@@ -8,5 +8,7 @@
 !/signature_pad_tablet.html
 !/signature_form_assisted.html
 !/signature_pad_assisted.html
+!/manifest_pad_assisted.json
+!/sw_pad_assisted.js
 !/vr_queue.html
 !/vr_queue_kiosk.html
