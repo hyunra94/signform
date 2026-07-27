@@ -11,10 +11,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
 <style>
   :root {
-    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
-    --accent: #F7B8C4; --accent-dark: #E88FA2;
-    --lavender: #E6E0F8; --text: #5A4A50; --white: #FFFFFF;
-    --shadow: rgba(232, 143, 162, 0.25);
+    --bg-1: #EEF2F8; --bg-2: #E4ECF7;
+    --accent: #4A6FA5; --accent-dark: #2F4C7A;
+    --lavender: #D7E0F0; --text: #2B3A4A; --white: #FFFFFF;
+    --shadow: rgba(74, 111, 165, 0.25);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -47,10 +47,10 @@
   }
   .kb-toggle-btn {
     padding: 18px 16px; border: 1.5px solid var(--lavender); border-radius: 14px;
-    background: #FDFBFF; font-size: 18px; cursor: pointer;
+    background: #F7F9FC; font-size: 18px; cursor: pointer;
   }
   .kb-hint {
-    font-size: 11.5px; color: #a98a92; text-align: center; margin-top: 10px;
+    font-size: 11.5px; color: #7C8FA3; text-align: center; margin-top: 10px;
     max-width: 320px; line-height: 1.5;
   }
 
@@ -62,7 +62,7 @@
     display: flex; justify-content: flex-end; align-items: center;
     padding: 4px 6px 12px 54px;
   }
-  .conn-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #a98a92; }
+  .conn-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #7C8FA3; }
   .btn-plain {
     background: none; border: none; color: var(--accent-dark); font-size: 11px;
     text-decoration: underline; cursor: pointer; padding: 0; margin-left: 2px; font-family: inherit;
@@ -92,10 +92,10 @@
   .phone-display-btn {
     width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
     padding: 16px 18px; border-radius: 14px; border: 2px dashed var(--accent);
-    background: #FDFBFF; font-family: inherit; cursor: pointer;
+    background: #F7F9FC; font-family: inherit; cursor: pointer;
   }
   .phone-display-btn .val { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: 0.5px; }
-  .phone-display-btn .val.empty { color: #c9a8b0; font-weight: 400; }
+  .phone-display-btn .val.empty { color: #9FB0C4; font-weight: 400; }
   .phone-display-btn .icon { font-size: 20px; flex-shrink: 0; }
 
   /* ---- 소속 구분 ---- */
@@ -103,7 +103,7 @@
   .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .cat-btn {
     padding: 16px 8px; border-radius: 14px; border: 2px solid var(--lavender);
-    background: #FDFBFF; color: var(--text); font-family: inherit; font-size: 15px; font-weight: 700;
+    background: #F7F9FC; color: var(--text); font-family: inherit; font-size: 15px; font-weight: 700;
     cursor: pointer;
   }
   .cat-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); color: white; }
@@ -113,10 +113,10 @@
   .affil-detail-section.hidden-affil { display: none; }
   .affil-detail-display {
     padding: 16px 18px; border-radius: 14px; border: 2px dashed var(--accent);
-    background: #FDFBFF;
+    background: #F7F9FC;
   }
   .affil-detail-display .val { font-size: 18px; font-weight: 700; color: var(--text); }
-  .affil-detail-display .val.empty { font-size: 14px; font-weight: 400; color: #c9a8b0; line-height: 1.5; }
+  .affil-detail-display .val.empty { font-size: 14px; font-weight: 400; color: #9FB0C4; line-height: 1.5; }
 
   .sub-field {
     overflow: hidden; max-height: 0; opacity: 0;
@@ -128,7 +128,7 @@
     font-family: inherit; font-size: 15px; background: var(--white); outline: none;
   }
   .sub-field input:focus { border-color: var(--accent); }
-  .sub-field .hint { font-size: 11px; color: #a98a92; margin-top: 4px; }
+  .sub-field .hint { font-size: 11px; color: #7C8FA3; margin-top: 4px; }
 
   /* ---- 개인정보 동의 ---- */
   .consent-box {
@@ -142,7 +142,7 @@
   .consent-box li { margin: 0; }
   .agree-row {
     display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px;
-    padding: 12px 14px; background: #FFF8FA; border-radius: 12px; font-size: 13px; color: var(--text);
+    padding: 12px 14px; background: #F5F8FB; border-radius: 12px; font-size: 13px; color: var(--text);
   }
   .agree-row input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
   .agree-row label { display: inline; margin: 0; font-weight: 400; line-height: 1.5; }
@@ -155,7 +155,7 @@
   #signature-pad { display: block; width: 100%; height: 100%; touch-action: none; }
   .pad-placeholder {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    color: #d8b8c0; font-size: 20px; pointer-events: none; text-align: center; padding: 0 20px;
+    color: #B7C4D3; font-size: 20px; pointer-events: none; text-align: center; padding: 0 20px;
   }
   .saved-badge {
     position: absolute; top: 14px; right: 14px; background: #F0FAF2; color: #4a7d52;
@@ -168,10 +168,10 @@
     flex: 1; padding: 15px; border-radius: 16px; border: none; font-family: inherit;
     font-size: 15px; font-weight: 700; cursor: pointer;
   }
-  .btn-clear { background: #FDF3F6; color: var(--accent-dark); border: 2px solid var(--accent) !important; }
+  .btn-clear { background: #EDF2F8; color: var(--accent-dark); border: 2px solid var(--accent) !important; }
 
   .wait-note {
-    text-align: center; font-size: 12px; color: #a98a92; margin-top: 10px; line-height: 1.5;
+    text-align: center; font-size: 12px; color: #7C8FA3; margin-top: 10px; line-height: 1.5;
   }
   .status { text-align: center; font-size: 13px; margin-top: 8px; min-height: 18px; }
   .status.ok { color: #6FA875; }
@@ -182,7 +182,7 @@
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
     width: 38px; height: 38px; border-radius: 50%;
-    background: white; box-shadow: 0 4px 12px rgba(232,143,162,0.35);
+    background: white; box-shadow: 0 4px 12px rgba(74,111,165,0.35);
     display: flex; align-items: center; justify-content: center;
     font-size: 17px; text-decoration: none; color: inherit; border: none; cursor: pointer;
   }
@@ -190,7 +190,7 @@
 
   /* ---- 연락처 숫자패드 팝업 ---- */
   .numpad-modal-backdrop {
-    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.5);
+    position: fixed; inset: 0; background: rgba(43, 58, 74, 0.5);
     display: none; align-items: center; justify-content: center; padding: 20px; z-index: 25;
   }
   .numpad-modal-backdrop.open { display: flex; }
@@ -205,15 +205,16 @@
   .numpad-modal-close { background: none; border: none; font-size: 20px; color: var(--text); cursor: pointer; line-height: 1; }
   .numpad-preview {
     text-align: center; font-size: 24px; font-weight: 700; letter-spacing: 1px; color: var(--text);
-    background: #FDF3F6; border-radius: 12px; padding: 14px; margin-bottom: 14px; min-height: 30px;
+    background: #EDF2F8; border-radius: 12px; padding: 14px; margin-bottom: 14px; min-height: 30px;
   }
   .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .numpad-key {
     padding: 18px 0; border-radius: 12px; border: 1.5px solid var(--lavender);
-    background: #FDFBFF; color: var(--text); font-family: inherit; font-size: 20px;
+    background: #F7F9FC; color: var(--text); font-family: inherit; font-size: 20px;
     font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none;
+    touch-action: manipulation;
   }
-  .numpad-key:active { background: #FDF3F6; border-color: var(--accent); }
+  .numpad-key:active { background: #EDF2F8; border-color: var(--accent); }
   .numpad-del { color: var(--accent-dark); }
   .numpad-done-btn {
     width: 100%; margin-top: 12px; padding: 14px; border: none; border-radius: 12px;
@@ -408,7 +409,7 @@
     resizeCanvas();
     signaturePad = new SignaturePad(canvas, {
       backgroundColor: 'rgba(255,255,255,0)',
-      penColor: '#5A4A50', minWidth: 1.5, maxWidth: 4
+      penColor: '#2B3A4A', minWidth: 1.5, maxWidth: 4
     });
     signaturePad.addEventListener('beginStroke', () => {
       placeholder.style.display = 'none';
@@ -688,11 +689,13 @@
   }
   function updateNumpadPreview() {
     numpadPreview.textContent = phoneDraft || '010-0000-0000';
-    numpadPreview.style.color = phoneDraft ? 'var(--text)' : '#c9a8b0';
+    numpadPreview.style.color = phoneDraft ? 'var(--text)' : '#9FB0C4';
   }
 
   phoneNumpad.querySelectorAll('.numpad-key').forEach(btn => {
-    btn.addEventListener('click', () => {
+    // click 대신 pointerdown을 써서 손을 대는 즉시 반응하게 함 (탭당 300ms 지연 없이 빠른 연타 입력 지원)
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
       const key = btn.dataset.key;
       if (key === 'del') {
         phoneDraft = phoneDraft.slice(0, -1);
