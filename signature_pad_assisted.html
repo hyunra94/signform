@@ -590,10 +590,10 @@
       text = `${namePrefix}소속을 선택해주세요`;
     } else if (needsAffilName && !affilNameDone) {
       if (data.재직자여부 === '재직자') {
-        text = '재직 중이신 회사명을 담당자에게 말씀해주세요 (예: 전주MBC)';
+        text = `${namePrefix}재직 중이신 회사명을 담당자에게 말씀해주세요 (예: 전주MBC)`;
       } else {
         const ex = selectedCatButton === '대학생' ? 'OO대' : 'OO고';
-        text = `다니시는 학교명을 담당자에게 말씀해주세요 (예: ${ex})`;
+        text = `${namePrefix}다니시는 학교명을 담당자에게 말씀해주세요 (예: ${ex})`;
       }
     } else if (!data.동의) {
       text = `${namePrefix}아래 개인정보 동의 내용을 확인해주세요`;
