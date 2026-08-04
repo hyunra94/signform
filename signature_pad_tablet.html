@@ -54,6 +54,21 @@
     max-width: 320px; line-height: 1.5;
   }
 
+  /* ---- 모드 선택 (혼자 다 입력 / PC 코드로 참가) ---- */
+  .mode-choice-list { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 340px; }
+  .mode-choice-btn {
+    width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px;
+    border: 1.5px solid var(--lavender); border-radius: 16px; background: #F7F9FC;
+    cursor: pointer; text-align: left; font-family: inherit;
+  }
+  .mode-choice-btn:active { border-color: var(--accent); background: #EDF2F8; }
+  .mode-choice-btn .mci { font-size: 26px; flex-shrink: 0; }
+  .mode-choice-btn .mct { font-size: 14.5px; color: var(--text); }
+  .mode-choice-btn .mcs { font-size: 12px; color: #7C8FA3; font-weight: 400; }
+
+  .join-panel { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 340px; }
+  .back-btn { align-self: flex-start; }
+
   /* ---- 서명 화면 (풀스크린) ---- */
   .sign-screen { display: none; flex-direction: column; height: 100%; padding: 16px; }
   .sign-screen.active { display: flex; }
@@ -108,6 +123,78 @@
 
   .hidden { display: none !important; }
 
+  /* ---- 태블릿 단독모드 입력 폼 ---- */
+  .standalone-scroll { flex: 1; overflow-y: auto; padding-bottom: 4px; }
+  .kb-global-toggle {
+    display: block; margin: 0 auto 12px; padding: 7px 14px; border-radius: 20px;
+    border: 1.5px solid var(--lavender); background: #F7F9FC; color: var(--text);
+    font-family: inherit; font-size: 11.5px; cursor: pointer;
+  }
+  .kb-global-toggle.on { border-color: var(--accent-dark); background: #EDF2F8; color: var(--accent-dark); }
+
+  .standalone-scroll label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; color: var(--text); }
+  .standalone-scroll input[type="text"], .standalone-scroll input[type="tel"] {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--lavender); border-radius: 12px;
+    font-family: inherit; font-size: 15px; background: #F7F9FC; outline: none; transition: border-color 0.2s;
+  }
+  .standalone-scroll input:focus { border-color: var(--accent); }
+
+  .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .radio-pill {
+    display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 20px;
+    border: 1.5px solid var(--lavender); font-size: 12.5px; font-weight: 500; color: var(--text);
+    cursor: pointer; background: #F7F9FC; transition: all 0.15s;
+  }
+  .radio-pill:has(input:checked) { border-color: var(--accent-dark); background: #EDF2F8; color: var(--accent-dark); }
+  .radio-pill input { accent-color: var(--accent-dark); }
+
+  .hidden-field { overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.25s ease, opacity 0.25s ease, margin 0.25s ease; }
+  .hidden-field.show { max-height: 100px; opacity: 1; }
+
+  .phone-input-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 6px; }
+  .phone-input-row input { flex: 1; min-width: 0; }
+  .numpad-open-btn {
+    flex-shrink: 0; width: 46px; border-radius: 12px; border: 1.5px solid var(--lavender);
+    background: #F7F9FC; font-size: 19px; cursor: pointer;
+  }
+  .numpad-open-btn:active { background: #EDF2F8; border-color: var(--accent); }
+
+  .numpad-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(43, 58, 74, 0.5);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 25;
+  }
+  .numpad-modal-backdrop.open { display: flex; }
+  .numpad-modal-card { background: var(--white); border-radius: 22px; padding: 20px; width: 100%; max-width: 320px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+  .numpad-modal-head { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 700; color: var(--accent-dark); margin-bottom: 10px; }
+  .numpad-modal-close { background: none; border: none; font-size: 18px; color: var(--text); cursor: pointer; line-height: 1; }
+  .numpad-preview { text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; color: var(--text); background: #EDF2F8; border-radius: 12px; padding: 12px; margin-bottom: 14px; min-height: 26px; }
+  .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .numpad-key {
+    padding: 16px 0; border-radius: 12px; border: 1.5px solid var(--lavender);
+    background: #F7F9FC; color: var(--text); font-family: inherit; font-size: 19px;
+    font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none; touch-action: manipulation;
+  }
+  .numpad-key:active { background: #EDF2F8; border-color: var(--accent); }
+  .numpad-del { color: var(--accent-dark); }
+  .numpad-done-btn {
+    width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+    font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
+  .consent-box { margin-top: 16px; border: 1px solid var(--lavender); border-radius: 12px; overflow: hidden; font-size: 11.5px; }
+  .consent-section { padding: 10px 12px; }
+  .consent-section + .consent-section { border-top: 1px solid var(--lavender); }
+  .consent-title { font-weight: 700; color: var(--accent-dark); margin-bottom: 5px; }
+  .consent-box ul { margin: 0; padding-left: 16px; color: var(--text); line-height: 1.6; }
+  .consent-box li { margin: 0; }
+
+  .agree-row { margin-top: 16px; padding: 10px 12px; background: #EDF2F8; border-radius: 10px; font-size: 12.5px; color: var(--text); }
+
+  .sa-pad-wrap { flex: 0 0 auto; height: clamp(160px, 28vh, 260px); margin-top: 8px; }
+  .sa-pad-wrap .pad-placeholder { font-size: 14px; }
+  #sa-signature-pad { display: block; width: 100%; height: 100%; touch-action: none; }
+
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
     width: 38px; height: 38px; border-radius: 50%;
@@ -123,13 +210,127 @@
 
 <!-- 세션 참가 화면 -->
 <div class="session-screen" id="sessionScreen">
-  <h1>🌸 서명 코드 입력</h1>
-  <div class="join-row">
-    <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="none">
-    <button class="kb-toggle-btn" onclick="showKeyboard()" title="화면 키보드 띄우기">⌨️</button>
-    <button class="join-btn" onclick="joinSession()">참가</button>
+  <h1>🌸 참석 확인서</h1>
+  <div class="mode-choice-list" id="modeChoiceList">
+    <button class="mode-choice-btn" onclick="startStandalone()">
+      <span class="mci">📝</span>
+      <span class="mct"><b>혼자 다 입력하기</b><br><span class="mcs">이 태블릿에서 이름부터 서명까지 전부 받아요</span></span>
+    </button>
+    <button class="mode-choice-btn" onclick="showJoinForm()">
+      <span class="mci">🔗</span>
+      <span class="mct"><b>PC 코드로 참가</b><br><span class="mcs">PC에서 입력하고, 이 태블릿은 서명만 크게</span></span>
+    </button>
   </div>
-  <p class="kb-hint">블루투스 키보드로 바로 입력하거나, ⌨️ 버튼을 누르면 화면 키보드가 떠요.</p>
+  <div class="join-panel hidden" id="joinPanel">
+    <button class="btn-plain back-btn" onclick="hideJoinForm()">‹ 뒤로</button>
+    <div class="join-row">
+      <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="none">
+      <button class="kb-toggle-btn" onclick="showKeyboard()" title="화면 키보드 띄우기">⌨️</button>
+      <button class="join-btn" onclick="joinSession()">참가</button>
+    </div>
+    <p class="kb-hint">블루투스 키보드로 바로 입력하거나, ⌨️ 버튼을 누르면 화면 키보드가 떠요.</p>
+  </div>
+</div>
+
+<!-- 태블릿 단독 입력 화면 -->
+<div class="sign-screen" id="standaloneScreen">
+  <div class="top-bar">
+    <div class="who"><span>📝 참석 확인서</span></div>
+    <div class="conn-status">
+      <button class="btn-plain" onclick="resetStandalone()">모드 변경</button>
+    </div>
+  </div>
+
+  <div class="standalone-scroll">
+    <button class="kb-global-toggle" id="saKbToggleBtn" onclick="toggleSaKeyboard()">⌨️ 화면 키보드 켜기</button>
+
+    <label for="saName">성명</label>
+    <input type="text" id="saName" placeholder="이름을 입력하세요" inputmode="none">
+
+    <label for="saPhone">연락처</label>
+    <div class="phone-input-row">
+      <input type="tel" id="saPhone" placeholder="010-0000-0000" readonly onclick="openSaPhoneNumpad()">
+      <button type="button" class="numpad-open-btn" onclick="openSaPhoneNumpad()" title="숫자 키패드 열기">🔢</button>
+    </div>
+
+    <label>재직자 여부</label>
+    <div class="radio-group">
+      <label class="radio-pill"><input type="radio" name="saStatus" value="재직자"> 재직자</label>
+      <label class="radio-pill"><input type="radio" name="saStatus" value="직업계고"> 직업계고</label>
+      <label class="radio-pill"><input type="radio" name="saStatus" value="대학생"> 대학생</label>
+      <label class="radio-pill"><input type="radio" name="saStatus" value="일반시민"> 일반 시민</label>
+    </div>
+    <div id="saCompanyField" class="hidden-field">
+      <label for="saCompany">회사명</label>
+      <input type="text" id="saCompany" placeholder="재직 중인 회사명을 입력하세요" inputmode="none">
+    </div>
+    <div id="saSchoolField" class="hidden-field">
+      <label for="saSchool">학교명</label>
+      <input type="text" id="saSchool" placeholder="재학 중인 학교명을 입력하세요" inputmode="none">
+    </div>
+
+    <div class="consent-box">
+      <div class="consent-section">
+        <div class="consent-title">개인정보 수집·이용 동의</div>
+        <ul>
+          <li>수집·이용 목적: 사업 운영 안내 및</li>
+          <li>수집·이용하는 개인정보 항목: 소속, 성명, 연락처</li>
+          <li>개인정보 보유 및 이용기간: 3년</li>
+        </ul>
+      </div>
+      <div class="consent-section">
+        <div class="consent-title">개인정보 제 3자 제공 동의</div>
+        <ul>
+          <li>개인정보를 제공받는 자: 산업인력공단, 고용노동부</li>
+          <li>개인정보를 제공받는 자의 이용 목적: 만족도 조사 요청</li>
+          <li>제공하는 개인정보 항목: 소속, 성명, 연락처</li>
+          <li>개인정보 보유 및 이용기간: 3년</li>
+        </ul>
+      </div>
+    </div>
+    <div class="agree-row">
+      <input type="checkbox" id="saAgree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
+      <label for="saAgree" style="display:inline;margin:0;font-weight:400;">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
+    </div>
+
+    <label>서명</label>
+    <div class="pad-wrap sa-pad-wrap">
+      <canvas id="sa-signature-pad"></canvas>
+      <span class="pad-placeholder" id="sa-pad-placeholder">여기에 서명해주세요 ✍️</span>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn-clear" onclick="clearSaSignature()">다시 서명</button>
+    <button class="btn-submit" id="saSubmitBtn" onclick="submitStandalone()">제출하기</button>
+  </div>
+  <div class="status" id="saStatus"></div>
+</div>
+
+<!-- 연락처 숫자패드 팝업 (단독모드용) -->
+<div class="numpad-modal-backdrop" id="saNumpadBackdrop" onclick="if(event.target===this) closeSaPhoneNumpad()">
+  <div class="numpad-modal-card">
+    <div class="numpad-modal-head">
+      <span>연락처 입력</span>
+      <button type="button" class="numpad-modal-close" onclick="closeSaPhoneNumpad()">✕</button>
+    </div>
+    <div class="numpad-preview" id="saNumpadPreview">010-0000-0000</div>
+    <div class="numpad" id="saPhoneNumpad">
+      <button type="button" class="numpad-key" data-key="1">1</button>
+      <button type="button" class="numpad-key" data-key="2">2</button>
+      <button type="button" class="numpad-key" data-key="3">3</button>
+      <button type="button" class="numpad-key" data-key="4">4</button>
+      <button type="button" class="numpad-key" data-key="5">5</button>
+      <button type="button" class="numpad-key" data-key="6">6</button>
+      <button type="button" class="numpad-key" data-key="7">7</button>
+      <button type="button" class="numpad-key" data-key="8">8</button>
+      <button type="button" class="numpad-key" data-key="9">9</button>
+      <button type="button" class="numpad-key" data-key="-">－</button>
+      <button type="button" class="numpad-key" data-key="0">0</button>
+      <button type="button" class="numpad-key numpad-del" data-key="del">⌫</button>
+    </div>
+    <button type="button" class="numpad-done-btn" onclick="closeSaPhoneNumpad()">완료</button>
+  </div>
 </div>
 
 <!-- 서명 전용 화면 -->
@@ -368,6 +569,229 @@
 
   function showStatus(text, cls) {
     const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  // ==================== 태블릿 단독모드 ====================
+  // PC 세션 없이 이 태블릿 한 대로 이름부터 서명까지 다 받고, 서버에 바로 제출함 (웹소켓 없음)
+
+  const SETTINGS_KEY = 'signform_settings';
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function loadFormSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { date: todayStr(), place: '전주MBC' };
+  }
+
+  const modeChoiceList = document.getElementById('modeChoiceList');
+  const joinPanel = document.getElementById('joinPanel');
+  function showJoinForm() {
+    modeChoiceList.classList.add('hidden');
+    joinPanel.classList.remove('hidden');
+  }
+  function hideJoinForm() {
+    joinPanel.classList.add('hidden');
+    modeChoiceList.classList.remove('hidden');
+  }
+
+  // ---------- 단독모드 서명패드 ----------
+  const saCanvas = document.getElementById('sa-signature-pad');
+  const saPlaceholder = document.getElementById('sa-pad-placeholder');
+  let saSignaturePad;
+
+  function resizeSaCanvas() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const saved = saSignaturePad && !saSignaturePad.isEmpty() ? saSignaturePad.toData() : null;
+    saCanvas.width = saCanvas.offsetWidth * ratio;
+    saCanvas.height = saCanvas.offsetHeight * ratio;
+    saCanvas.getContext('2d').scale(ratio, ratio);
+    if (saSignaturePad) {
+      saSignaturePad.clear();
+      if (saved && saved.length) saSignaturePad.fromData(saved);
+    }
+  }
+  window.addEventListener('resize', () => { if (saSignaturePad) resizeSaCanvas(); });
+
+  function initSaSignaturePad() {
+    if (saSignaturePad) return; // 이미 만들어져 있으면 다시 만들지 않음
+    resizeSaCanvas();
+    saSignaturePad = new SignaturePad(saCanvas, {
+      backgroundColor: 'rgba(255,255,255,0)',
+      penColor: '#2B3A4A', minWidth: 1.5, maxWidth: 4
+    });
+    saSignaturePad.addEventListener('beginStroke', () => { saPlaceholder.style.display = 'none'; });
+  }
+  function clearSaSignature() {
+    if (saSignaturePad) saSignaturePad.clear();
+    saPlaceholder.style.display = 'block';
+  }
+
+  // ---------- 단독모드 화면 전환 ----------
+  function startStandalone() {
+    document.getElementById('sessionScreen').classList.add('hidden');
+    document.getElementById('standaloneScreen').classList.add('active');
+    initSaSignaturePad();
+    requestAnimationFrame(resizeSaCanvas); // 화면 전환 직후 캔버스 크기를 다시 맞춤
+  }
+
+  function resetStandalone() {
+    if (!confirm('입력 중인 내용이 사라져요. 처음으로 돌아갈까요?')) return;
+    document.getElementById('standaloneScreen').classList.remove('active');
+    document.getElementById('sessionScreen').classList.remove('hidden');
+    hideJoinForm();
+    clearStandaloneFields();
+    showSaStatus('', '');
+    document.getElementById('saSubmitBtn').disabled = false;
+  }
+
+  function clearStandaloneFields() {
+    document.getElementById('saName').value = '';
+    document.getElementById('saPhone').value = '';
+    saPhoneDraft = '';
+    document.querySelectorAll('input[name="saStatus"]').forEach(r => r.checked = false);
+    document.getElementById('saCompany').value = '';
+    document.getElementById('saSchool').value = '';
+    document.getElementById('saCompanyField').classList.remove('show');
+    document.getElementById('saSchoolField').classList.remove('show');
+    document.getElementById('saAgree').checked = false;
+    clearSaSignature();
+  }
+
+  // ---------- 재직자여부 -> 회사명/학교명 ----------
+  const isFutureTalentSa = (v) => v === '직업계고' || v === '대학생';
+  document.querySelectorAll('input[name="saStatus"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      document.getElementById('saCompanyField').classList.toggle('show', radio.value === '재직자');
+      document.getElementById('saSchoolField').classList.toggle('show', isFutureTalentSa(radio.value));
+      if (radio.value !== '재직자') document.getElementById('saCompany').value = '';
+      if (!isFutureTalentSa(radio.value)) document.getElementById('saSchool').value = '';
+    });
+  });
+
+  // ---------- 화면 키보드 토글 (이름/회사명/학교명만 — 연락처는 전용 숫자패드) ----------
+  let saKeyboardEnabled = false;
+  const SA_KB_FIELDS = ['saName', 'saCompany', 'saSchool'];
+  function toggleSaKeyboard() {
+    saKeyboardEnabled = !saKeyboardEnabled;
+    SA_KB_FIELDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute('inputmode', saKeyboardEnabled ? 'text' : 'none');
+    });
+    const btn = document.getElementById('saKbToggleBtn');
+    btn.textContent = saKeyboardEnabled ? '⌨️ 화면 키보드 끄기' : '⌨️ 화면 키보드 켜기';
+    btn.classList.toggle('on', saKeyboardEnabled);
+  }
+
+  // ---------- 연락처 전용 숫자패드 (단독모드) ----------
+  let saPhoneDraft = '';
+  const saNumpadBackdrop = document.getElementById('saNumpadBackdrop');
+  const saNumpadPreview = document.getElementById('saNumpadPreview');
+  const saPhoneNumpad = document.getElementById('saPhoneNumpad');
+
+  function openSaPhoneNumpad() {
+    saPhoneDraft = document.getElementById('saPhone').value || '';
+    updateSaNumpadPreview();
+    saNumpadBackdrop.classList.add('open');
+  }
+  function closeSaPhoneNumpad() {
+    document.getElementById('saPhone').value = saPhoneDraft;
+    saNumpadBackdrop.classList.remove('open');
+  }
+  function saPhoneDigitCount() {
+    return saPhoneDraft.replace(/[^0-9]/g, '').length;
+  }
+  function updateSaNumpadPreview() {
+    saNumpadPreview.textContent = saPhoneDraft || '010-0000-0000';
+    saNumpadPreview.style.color = saPhoneDraft ? 'var(--text)' : '#9FB0C4';
+  }
+  saPhoneNumpad.querySelectorAll('.numpad-key').forEach(btn => {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const key = btn.dataset.key;
+      if (key === 'del') {
+        saPhoneDraft = saPhoneDraft.slice(0, -1);
+      } else if (key !== '-' && saPhoneDigitCount() >= 11) {
+        // 010 포함 11자리 넘으면 더 안 받음
+      } else {
+        saPhoneDraft += key;
+      }
+      updateSaNumpadPreview();
+    });
+  });
+
+  document.getElementById('saName').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    openSaPhoneNumpad();
+  });
+
+  // ---------- 단독모드 제출 (세션/웹소켓 없이 서버로 바로 전송) ----------
+  async function submitStandalone() {
+    const settings = loadFormSettings();
+    const programId = settings.date || todayStr();
+    const name = document.getElementById('saName').value.trim();
+    const phone = document.getElementById('saPhone').value.trim();
+    const agree = document.getElementById('saAgree').checked;
+    const statusRadio = document.querySelector('input[name="saStatus"]:checked');
+    const statusRaw = statusRadio ? statusRadio.value : '';
+    const 재직자여부 = isFutureTalentSa(statusRaw) ? '미래인재' : statusRaw;
+    const company = document.getElementById('saCompany').value.trim();
+    const school = document.getElementById('saSchool').value.trim();
+
+    if (!name) { showSaStatus('성명을 입력해주세요.', 'err'); return; }
+    if (!재직자여부) { showSaStatus('재직자 여부를 선택해주세요.', 'err'); return; }
+    if (재직자여부 === '재직자' && !company) { showSaStatus('회사명을 입력해주세요.', 'err'); return; }
+    if (재직자여부 === '미래인재' && !school) { showSaStatus('학교명을 입력해주세요.', 'err'); return; }
+    if (!agree) { showSaStatus('개인정보 수집·이용에 동의해주세요.', 'err'); return; }
+    if (!saSignaturePad || saSignaturePad.isEmpty()) { showSaStatus('서명을 완료해주세요.', 'err'); return; }
+
+    const payload = {
+      programId, 장소: settings.place || '전주MBC',
+      연락처: phone, 성명: name, 재직자여부,
+      회사명: 재직자여부 === '재직자' ? company : '',
+      학교명: 재직자여부 === '미래인재' ? school : '',
+      signature: saSignaturePad.toDataURL('image/png'), 동의: agree,
+    };
+
+    const btn = document.getElementById('saSubmitBtn');
+    btn.disabled = true;
+    showSaStatus('제출 중...', '');
+
+    let res, result;
+    try {
+      res = await fetch(`${WORKER_HTTP_URL}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      result = await res.json().catch(() => ({}));
+    } catch (networkErr) {
+      showSaStatus('네트워크 오류로 제출하지 못했어요. 다시 시도해주세요.', 'err');
+      btn.disabled = false;
+      return;
+    }
+
+    if (!res.ok) {
+      showSaStatus(result.error || '제출이 거부되었습니다.', 'err');
+      btn.disabled = false;
+      return;
+    }
+
+    showSaStatus(`제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸 다음 분 차례예요.`, 'ok');
+    clearStandaloneFields();
+    btn.disabled = false;
+    document.getElementById('saName').focus();
+  }
+
+  function showSaStatus(text, cls) {
+    const el = document.getElementById('saStatus');
     el.textContent = text;
     el.className = 'status' + (cls ? ' ' + cls : '');
   }
