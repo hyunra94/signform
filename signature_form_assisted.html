@@ -534,6 +534,11 @@
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); requestPhoneEntry(); }
   });
 
+  // 연락처 칸을 잘못 눌러 태블릿에 키패드가 열렸을 때, 성명으로 다시 돌아오면 키패드를 닫아줌
+  document.getElementById('name').addEventListener('focus', () => {
+    send({ type: 'hint', kind: 'closePhoneNumpad' });
+  });
+
   function applySubCatHint(value) {
     subCatLocal = value;
     renderSubCatHint();
@@ -710,6 +715,7 @@
     placeholder.style.display = 'block';
     remoteBadge.style.display = 'none';
     renderConfirmSummary();
+    document.getElementById('name').focus();
   }
 
   function showStatus(text, cls) {

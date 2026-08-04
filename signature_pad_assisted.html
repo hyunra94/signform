@@ -539,6 +539,9 @@
         document.getElementById('tabletSubmitBtn').disabled = false;
       }
       else if (msg.type === 'hint' && msg.kind === 'openPhoneNumpad') openPhoneNumpad();
+      else if (msg.type === 'hint' && msg.kind === 'closePhoneNumpad') {
+        if (numpadModalBackdrop.classList.contains('open')) closePhoneNumpad();
+      }
     };
   }
 
