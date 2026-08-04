@@ -88,6 +88,10 @@
     margin: -16px -16px 12px; padding: 16px 16px 4px;
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
   }
+  /* 화면 확대 버튼을 누르면 안내 영역 고정을 풀어서 스크롤하면 같이 넘어가게 함(입력 공간을 더 크게 씀) */
+  .sticky-top.expanded {
+    position: static; top: auto; z-index: auto; margin: 0 0 12px; padding: 0; background: none;
+  }
 
   /* ---- 안내 패널 ---- */
   .guide-panel {
@@ -207,6 +211,8 @@
     font-size: 17px; text-decoration: none; color: inherit; border: none; cursor: pointer;
   }
   .home-fab:active { transform: scale(0.94); }
+  .expand-fab { left: 58px; font-size: 16px; }
+  .expand-fab.active { background: var(--accent-dark); color: white; }
 
   /* ---- 연락처 숫자패드 팝업 ---- */
   .numpad-modal-backdrop {
@@ -245,6 +251,7 @@
 </head>
 <body>
 <a href="./index.html" class="home-fab" title="메인으로">🏠</a>
+<button class="home-fab expand-fab" id="expandFab" onclick="toggleStickyGuide()" title="화면 확대 (안내 고정 해제)">⛶</button>
 
 <!-- 연락처 숫자패드 팝업 -->
 <div class="numpad-modal-backdrop" id="numpadModalBackdrop" onclick="if(event.target===this) closePhoneNumpad()">
@@ -285,7 +292,7 @@
 
 <!-- 입력 화면 -->
 <div class="sign-screen" id="signScreen">
-  <div class="sticky-top">
+  <div class="sticky-top" id="stickyTop">
     <div class="top-bar">
       <div class="conn-status">
         <span class="dot" id="connDot"></span><span id="connText">연결 중</span>
@@ -739,6 +746,16 @@
     const el = document.getElementById('status');
     el.textContent = text;
     el.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  // ---------- 화면 확대 (안내 영역 고정 해제) ----------
+  let stickyGuideExpanded = false;
+  function toggleStickyGuide() {
+    stickyGuideExpanded = !stickyGuideExpanded;
+    document.getElementById('stickyTop').classList.toggle('expanded', stickyGuideExpanded);
+    const btn = document.getElementById('expandFab');
+    btn.classList.toggle('active', stickyGuideExpanded);
+    btn.title = stickyGuideExpanded ? '안내 다시 고정하기' : '화면 확대 (안내 고정 해제)';
   }
 
   // ---------- 소속 구분 선택 ----------
