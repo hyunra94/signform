@@ -299,6 +299,22 @@
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
+  // 연락처는 010 포함 최대 11자리(숫자만 셈) — 그 이상 입력되면 잘라냄
+  const phoneInputEl = document.getElementById('phone');
+  function truncatePhoneValue(value) {
+    let digits = 0, result = '';
+    for (const ch of (value || '')) {
+      if (digits >= 11) break;
+      if (/[0-9]/.test(ch)) digits++;
+      result += ch;
+    }
+    return result;
+  }
+  phoneInputEl.addEventListener('input', () => {
+    const truncated = truncatePhoneValue(phoneInputEl.value);
+    if (truncated !== phoneInputEl.value) phoneInputEl.value = truncated;
+  });
+
   // 재직자여부 선택에 따라 회사명/학교명 필드 조건부 표시
   // (직업계고/대학생은 UI에서만 구분하고, 실제 저장되는 값은 '미래인재'로 합쳐짐)
   const isFutureTalent = (value) => value === '직업계고' || value === '대학생';

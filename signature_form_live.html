@@ -1011,15 +1011,37 @@
     numpadPreview.textContent = phoneInput.value || '010-0000-0000';
     numpadPreview.style.color = phoneInput.value ? 'var(--text)' : '#c9a8b0';
   }
+  // 연락처는 010 포함 최대 11자리(숫자만 셈) — 그 이상은 어떤 경로로 들어와도(숫자패드/블루투스 키보드/붙여넣기) 잘라냄
+  function phoneDigitCount(value) {
+    return (value || '').replace(/[^0-9]/g, '').length;
+  }
+  function truncatePhoneValue(value) {
+    let digits = 0, result = '';
+    for (const ch of (value || '')) {
+      if (digits >= 11) break;
+      if (/[0-9]/.test(ch)) digits++;
+      result += ch;
+    }
+    return result;
+  }
   // ⚠️ 'focus'가 아니라 'click'을 씀 — Enter로 넘어오거나 자동 포커스되는 경우(프로그램이
   // .focus()를 호출하는 경우)엔 안 뜨고, 사용자가 실제로 손가락/마우스로 눌렀을 때만 팝업이 뜸
   phoneInput.addEventListener('click', openPhoneNumpad);
+  // 블루투스 키보드 직접 타이핑이나 붙여넣기로 들어오는 경우까지 포함해 11자리 초과를 잘라냄
+  phoneInput.addEventListener('input', () => {
+    const truncated = truncatePhoneValue(phoneInput.value);
+    if (truncated !== phoneInput.value) phoneInput.value = truncated;
+    updateNumpadPreview();
+  });
 
   phoneNumpad.querySelectorAll('.numpad-key').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.key;
       const start = phoneInput.selectionStart ?? phoneInput.value.length;
       const end = phoneInput.selectionEnd ?? phoneInput.value.length;
+      if (key !== 'del' && key !== '-' && phoneDigitCount(phoneInput.value) >= 11) {
+        return; // 010 포함 11자리 넘으면 더 안 받음
+      }
       if (key === 'del') {
         if (start === end && start > 0) {
           phoneInput.value = phoneInput.value.slice(0, start - 1) + phoneInput.value.slice(end);
@@ -1079,6 +1101,7 @@
     e.preventDefault();
     const phoneInput = document.getElementById('phone');
     phoneInput.focus();
+    if (phoneDigitCount(phoneInput.value) >= 11) return; // 010 포함 11자리 넘으면 더 안 받음
     phoneInput.value += e.key;
     phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
   });
