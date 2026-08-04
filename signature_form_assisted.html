@@ -152,6 +152,11 @@
   .consent-box li { margin: 0; }
 
   .signature-section { margin-top: 22px; }
+  .pen-only-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 12px; color: var(--text);
+  }
+  .pen-only-row input { width: 15px; height: 15px; accent-color: var(--accent-dark); cursor: pointer; }
+  .pen-only-label { cursor: pointer; }
   .pad-wrap {
     position: relative; border: 2px dashed var(--accent); border-radius: 14px;
     background: #FBFCFE; overflow: hidden;
@@ -305,6 +310,10 @@
       <div class="form-col-right">
         <div class="signature-section">
           <label>서명 미리보기 (태블릿에서 서명)</label>
+          <div class="pen-only-row">
+            <input type="checkbox" id="penOnlyToggle" onchange="togglePenOnly(this.checked)">
+            <label for="penOnlyToggle" class="pen-only-label">✒️ 펜으로만 서명 받기 (손가락 터치 차단)</label>
+          </div>
           <div class="pad-wrap">
             <canvas id="live-preview-canvas"></canvas>
             <span class="pad-placeholder" id="pad-placeholder">참석자가 태블릿에 서명하면 여기 보여요 ✍️</span>
@@ -466,6 +475,16 @@
     } else if (ws && ws.readyState === WebSocket.OPEN) {
       setConnStatus(true, count >= 2 ? `실시간 연결됨 · 태블릿 ${count - 1}대 참가 중` : '실시간 연결됨 · 태블릿 연결 대기 중');
     }
+    // 태블릿이 (재)연결될 때마다 현재 펜 전용 설정을 다시 알려줘서 항상 동기화되게 함
+    if (count >= 2) send({ type: 'hint', kind: 'penOnly', value: penOnlyEnabled });
+  }
+
+  // ---------- 펜 전용 서명 설정 ----------
+  let penOnlyEnabled = false;
+  function togglePenOnly(checked) {
+    penOnlyEnabled = checked;
+    send({ type: 'hint', kind: 'penOnly', value: checked });
+    showStatus(checked ? '펜 전용 모드로 전환했어요. 태블릿에서 손가락 터치가 차단돼요.' : '펜 전용 모드를 껐어요.', '');
   }
 
   function changeSession() {

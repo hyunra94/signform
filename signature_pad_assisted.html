@@ -398,6 +398,23 @@
   let signaturePad;
   let saveTimer = null;
 
+  // ---------- 펜 전용 서명 (담당자 PC에서 설정) ----------
+  // signature_pad보다 먼저 등록해둬야 같은 캔버스에서 signature_pad의 리스너보다 먼저 실행되어
+  // stopImmediatePropagation으로 손가락/마우스 입력을 완전히 막을 수 있음
+  let penOnlyMode = false;
+  function blockNonPenPointer(e) {
+    if (penOnlyMode && e.pointerType !== 'pen') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }
+  canvas.addEventListener('pointerdown', blockNonPenPointer);
+  canvas.addEventListener('pointermove', blockNonPenPointer);
+  function setPenOnlyMode(on) {
+    penOnlyMode = on;
+    placeholder.textContent = on ? '펜으로 서명해주세요 ✍️' : '여기에 크게 서명해주세요 ✍️';
+  }
+
   function resizeCanvas() {
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     const saved = signaturePad ? signaturePad.toData() : null;
@@ -542,6 +559,7 @@
       else if (msg.type === 'hint' && msg.kind === 'closePhoneNumpad') {
         if (numpadModalBackdrop.classList.contains('open')) closePhoneNumpad();
       }
+      else if (msg.type === 'hint' && msg.kind === 'penOnly') setPenOnlyMode(!!msg.value);
     };
   }
 
