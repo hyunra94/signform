@@ -12,10 +12,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root {
-    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
-    --accent: #F7B8C4; --accent-dark: #E88FA2;
-    --lavender: #E6E0F8; --text: #5A4A50; --white: #FFFFFF;
-    --shadow: rgba(232, 143, 162, 0.25);
+    --bg-1: #EEF2F8; --bg-2: #E4ECF7;
+    --accent: #4A6FA5; --accent-dark: #2F4C7A;
+    --lavender: #D7E0F0; --text: #2B3A4A; --white: #FFFFFF;
+    --shadow: rgba(74, 111, 165, 0.25);
   }
   * { box-sizing: border-box; }
   html { height: 100%; }
@@ -47,13 +47,13 @@
     .form-col-right { position: sticky; top: 20px; }
   }
   h1 { font-size: 19px; font-weight: 700; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
-  .subtitle { text-align: center; font-size: 12.5px; color: #a98a92; margin-bottom: 20px; }
+  .subtitle { text-align: center; font-size: 12.5px; color: #7C8FA3; margin-bottom: 20px; }
   .kb-global-toggle {
     display: block; margin: -10px auto 16px; padding: 7px 14px; border-radius: 20px;
-    border: 1.5px solid var(--lavender); background: #FDFBFF; color: var(--text);
+    border: 1.5px solid var(--lavender); background: #F7F9FC; color: var(--text);
     font-family: inherit; font-size: 11.5px; cursor: pointer;
   }
-  .kb-global-toggle.on { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
+  .kb-global-toggle.on { border-color: var(--accent-dark); background: #EDF2F8; color: var(--accent-dark); }
 
   /* ---- 세션 선택 화면 ---- */
   .session-choice { display: flex; flex-direction: column; gap: 14px; }
@@ -67,16 +67,16 @@
     box-shadow: 0 20px 50px rgba(0,0,0,0.2);
   }
   .mode-modal-card h2 { font-size: 17px; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
-  .mode-modal-sub { text-align: center; font-size: 12px; color: #a98a92; margin: 0 0 18px; }
+  .mode-modal-sub { text-align: center; font-size: 12px; color: #7C8FA3; margin: 0 0 18px; }
   .mode-modal-btn {
     width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px;
-    border: 1.5px solid var(--lavender); border-radius: 14px; background: #FDFBFF;
+    border: 1.5px solid var(--lavender); border-radius: 14px; background: #F7F9FC;
     cursor: pointer; text-align: left; margin-bottom: 10px; font-family: inherit;
   }
-  .mode-modal-btn:hover { border-color: var(--accent); background: #FDF3F6; }
+  .mode-modal-btn:hover { border-color: var(--accent); background: #EDF2F8; }
   .mode-modal-btn .mmi { font-size: 26px; }
   .mode-modal-btn .mmt { font-size: 14px; color: var(--text); }
-  .mode-modal-btn .mms { font-size: 11.5px; color: #a98a92; font-weight: 400; }
+  .mode-modal-btn .mms { font-size: 11.5px; color: #7C8FA3; font-weight: 400; }
 
   .mode-current-row {
     display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -90,7 +90,7 @@
     background: linear-gradient(135deg, var(--accent), var(--accent-dark));
     color: white; box-shadow: 0 4px 12px var(--shadow);
   }
-  .choice-btn.secondary { background: #FDF3F6; color: var(--accent-dark); border: 1.5px solid var(--accent); }
+  .choice-btn.secondary { background: #EDF2F8; color: var(--accent-dark); border: 1.5px solid var(--accent); }
   .join-row { display: flex; gap: 8px; }
   .join-row input {
     flex: 1; min-width: 0; padding: 12px; border-radius: 12px; border: 1.5px solid var(--lavender);
@@ -99,7 +99,7 @@
   }
 
   .code-display {
-    position: relative; text-align: center; padding: clamp(14px, 5vw, 22px); background: #FDF3F6;
+    position: relative; text-align: center; padding: clamp(14px, 5vw, 22px); background: #EDF2F8;
     border-radius: 16px; margin-bottom: 18px; overflow: hidden;
   }
   .code-display .code {
@@ -107,7 +107,7 @@
     letter-spacing: clamp(3px, 3vw, 8px); color: var(--accent-dark);
     white-space: nowrap;
   }
-  .code-display .label { font-size: clamp(10px, 3vw, 12px); color: #a98a92; margin-top: 4px; }
+  .code-display .label { font-size: clamp(10px, 3vw, 12px); color: #7C8FA3; margin-top: 4px; }
   .code-display-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
   .code-display-text { flex: 1; }
   .qr-box {
@@ -130,7 +130,7 @@
   /* ---- 상태 표시 ---- */
   .conn-status {
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    font-size: 12px; color: #a98a92; margin-bottom: 14px;
+    font-size: 12px; color: #7C8FA3; margin-bottom: 14px;
   }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
   .btn-plain {
@@ -143,12 +143,12 @@
   label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; color: var(--text); }
   input[type="text"], input[type="tel"] {
     width: 100%; padding: 11px 14px; border: 1.5px solid var(--lavender); border-radius: 12px;
-    font-family: inherit; font-size: 14px; background: #FDFBFF; outline: none; transition: border-color 0.2s;
+    font-family: inherit; font-size: 14px; background: #F7F9FC; outline: none; transition: border-color 0.2s;
   }
   input:focus { border-color: var(--accent); }
 
   .agree-row {
-    margin-top: 16px; padding: 10px 12px; background: #FFF8FA; border-radius: 10px;
+    margin-top: 16px; padding: 10px 12px; background: #EDF2F8; border-radius: 10px;
     font-size: 12.5px; color: var(--text);
   }
 
@@ -156,9 +156,9 @@
   .radio-pill {
     display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 20px;
     border: 1.5px solid var(--lavender); font-size: 12.5px; font-weight: 500; color: var(--text);
-    cursor: pointer; background: #FDFBFF; transition: all 0.15s;
+    cursor: pointer; background: #F7F9FC; transition: all 0.15s;
   }
-  .radio-pill:has(input:checked) { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
+  .radio-pill:has(input:checked) { border-color: var(--accent-dark); background: #EDF2F8; color: var(--accent-dark); }
   .radio-pill input { accent-color: var(--accent-dark); }
 
   .hidden-field {
@@ -175,9 +175,9 @@
   .phone-input-row input { flex: 1; min-width: 0; }
   .numpad-open-btn {
     flex-shrink: 0; width: 46px; border-radius: 12px; border: 1.5px solid var(--lavender);
-    background: #FDFBFF; font-size: 19px; cursor: pointer;
+    background: #F7F9FC; font-size: 19px; cursor: pointer;
   }
-  .numpad-open-btn:active { background: #FDF3F6; border-color: var(--accent); }
+  .numpad-open-btn:active { background: #EDF2F8; border-color: var(--accent); }
 
   #phoneField { margin-bottom: 14px; }
 
@@ -197,15 +197,15 @@
   .numpad-modal-close { background: none; border: none; font-size: 18px; color: var(--text); cursor: pointer; line-height: 1; }
   .numpad-preview {
     text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 1px; color: var(--text);
-    background: #FDF3F6; border-radius: 12px; padding: 12px; margin-bottom: 14px; min-height: 26px;
+    background: #EDF2F8; border-radius: 12px; padding: 12px; margin-bottom: 14px; min-height: 26px;
   }
   .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .numpad-key {
     padding: 16px 0; border-radius: 12px; border: 1.5px solid var(--lavender);
-    background: #FDFBFF; color: var(--text); font-family: inherit; font-size: 19px;
+    background: #F7F9FC; color: var(--text); font-family: inherit; font-size: 19px;
     font-weight: 700; cursor: pointer; -webkit-user-select: none; user-select: none;
   }
-  .numpad-key:active { background: #FDF3F6; border-color: var(--accent); }
+  .numpad-key:active { background: #EDF2F8; border-color: var(--accent); }
   .numpad-del { color: var(--accent-dark); }
   .numpad-done-btn {
     width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 12px;
@@ -227,28 +227,28 @@
   .vr-slot-nav { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
   .vr-slot-row { display: flex; flex-wrap: nowrap; gap: 8px; flex: 1; }
   .vr-nav-arrow {
-    width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--lavender); background: #FDFBFF;
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--lavender); background: #F7F9FC;
     color: var(--accent-dark); font-size: 16px; cursor: pointer; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
   .vr-nav-arrow:disabled { opacity: 0.35; cursor: not-allowed; }
   .vr-slot-btn {
     flex: 1; min-width: 78px; padding: 10px 6px; border-radius: 12px;
-    border: 1.5px solid var(--lavender); background: #FDFBFF; cursor: pointer;
+    border: 1.5px solid var(--lavender); background: #F7F9FC; cursor: pointer;
     font-family: inherit; text-align: center; transition: all 0.15s;
   }
   .vr-slot-btn .t { font-size: 14px; font-weight: 700; color: var(--text); }
-  .vr-slot-btn .a { font-size: 10.5px; color: #a98a92; margin-top: 2px; }
+  .vr-slot-btn .a { font-size: 10.5px; color: #7C8FA3; margin-top: 2px; }
   .vr-slot-btn.now { border-color: var(--accent-dark); }
   .vr-slot-btn.selected { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); }
   .vr-slot-btn.selected .t, .vr-slot-btn.selected .a { color: white; }
   .vr-slot-btn.full { opacity: 0.5; cursor: not-allowed; }
-  .vr-slot-empty { font-size: 12px; color: #c9a8b0; margin-top: 8px; }
+  .vr-slot-empty { font-size: 12px; color: #9FB0C4; margin-top: 8px; }
 
   .signature-section { margin-top: 22px; }
   .pad-wrap {
     position: relative; border: 2px dashed var(--accent); border-radius: 14px;
-    background: #FFFDFE; overflow: hidden;
+    background: #FBFCFE; overflow: hidden;
   }
   #signature-pad { display: block; width: 100%; height: clamp(120px, 28vh, 180px); touch-action: none; cursor: crosshair; }
   #live-preview-canvas {
@@ -269,7 +269,7 @@
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
   .pad-placeholder {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    color: #d8b8c0; font-size: 13px; pointer-events: none; text-align: center;
+    color: #B7C4D3; font-size: 13px; pointer-events: none; text-align: center;
   }
   .remote-sig-badge {
     display: none; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px;
@@ -299,7 +299,7 @@
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
     width: 38px; height: 38px; border-radius: 50%;
-    background: white; box-shadow: 0 4px 12px rgba(232,143,162,0.35);
+    background: white; box-shadow: 0 4px 12px rgba(74,111,165,0.35);
     display: flex; align-items: center; justify-content: center;
     font-size: 17px; text-decoration: none; color: inherit; border: none; cursor: pointer;
   }
@@ -557,7 +557,7 @@
 
   function drawLiveStrokes(strokes) {
     const { ctx, w, h } = prepareLiveCanvas();
-    ctx.strokeStyle = '#5A4A50';
+    ctx.strokeStyle = '#2B3A4A';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -613,7 +613,7 @@
     resizeCanvas();
     signaturePad = new SignaturePad(canvas, {
       backgroundColor: 'rgba(255,255,255,0)',
-      penColor: '#5A4A50', minWidth: 1, maxWidth: 3
+      penColor: '#2B3A4A', minWidth: 1, maxWidth: 3
     });
     signaturePad.addEventListener('beginStroke', () => {
       placeholder.style.display = 'none';
@@ -718,7 +718,7 @@
   }
 
   // 태블릿 페이지 주소에 ?code=세션코드 를 붙여서 QR로 만듦 (스캔하면 코드 자동입력+자동참가)
-  // 색상은 순수 검정 대신 앱 톤에 맞춰 진한 로즈 계열로 넣되, 스캔 인식률을 위해 충분히 어둡게 유지함
+  // 색상은 순수 검정 대신 앱 톤에 맞춰 진한 네이비 계열로 넣되, 스캔 인식률을 위해 충분히 어둡게 유지함
   function generateJoinQr(code) {
     const box = document.getElementById('qrBox');
     box.innerHTML = '';
@@ -727,7 +727,7 @@
       new QRCode(box, {
         text: tabletUrl,
         width: 76, height: 76,
-        colorDark: '#7A3348', // 팔레트에 맞춘 진한 로즈 (순수 검정보다 부드럽지만 스캔 인식률 위해 충분히 어둡게)
+        colorDark: '#2F4C7A', // 팔레트에 맞춘 진한 네이비 (순수 검정보다 부드럽지만 스캔 인식률 위해 충분히 어둡게)
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M,
       });
@@ -1009,7 +1009,7 @@
   }
   function updateNumpadPreview() {
     numpadPreview.textContent = phoneInput.value || '010-0000-0000';
-    numpadPreview.style.color = phoneInput.value ? 'var(--text)' : '#c9a8b0';
+    numpadPreview.style.color = phoneInput.value ? 'var(--text)' : '#9FB0C4';
   }
   // 연락처는 010 포함 최대 11자리(숫자만 셈) — 그 이상은 어떤 경로로 들어와도(숫자패드/블루투스 키보드/붙여넣기) 잘라냄
   function phoneDigitCount(value) {
