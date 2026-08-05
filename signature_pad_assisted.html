@@ -843,7 +843,8 @@
   }
 
   function onSubmitted(result) {
-    showStatus(`제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸`, 'ok');
+    const submittedName = remoteState.성명 ? `${remoteState.성명}님 ` : '';
+    showStatus(`${submittedName}제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸`, 'ok');
     signaturePad.clear();
     placeholder.style.display = 'block';
     savedBadge.style.display = 'none';

@@ -776,7 +776,9 @@
   }
 
   function onSubmitted(result) {
-    showStatus(`제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸`, 'ok');
+    const submittedName = document.getElementById('name').value.trim();
+    const namePrefix = submittedName ? `${submittedName}님 ` : '';
+    showStatus(`${namePrefix}제출 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🌸`, 'ok');
     document.getElementById('submitBtn').disabled = false;
     document.getElementById('name').value = '';
     document.getElementById('company').value = '';
