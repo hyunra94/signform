@@ -795,6 +795,10 @@
     if (wasHidden && shouldShow) {
       // 그동안 display:none이라 캔버스 크기가 0이었으므로, 보이게 된 시점에 다시 계산
       requestAnimationFrame(resizeCanvas);
+    } else if (!wasHidden && !shouldShow) {
+      // 서명판 → 입력 묶음으로 되돌아갈 때(제출 후 초기화 등): 서명판을 보려고 아래로 스크롤해둔 상태 그대로면
+      // 맨 위 성함 칸이 화면 밖으로 밀려나 안 보이는 것처럼 느껴지므로 맨 위로 스크롤을 되돌림
+      document.getElementById('signScreen').scrollTo({ top: 0, behavior: 'auto' });
     }
   }
 
