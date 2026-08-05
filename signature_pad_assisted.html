@@ -310,6 +310,7 @@
     <div class="top-bar">
       <div class="conn-status">
         <span class="dot" id="connDot"></span><span id="connText">연결 중</span>
+        <button class="btn-plain hidden" id="editInfoBtn" onclick="backToEdit()">‹ 정보 수정</button>
         <button class="btn-plain" onclick="resetSession()">코드 변경</button>
       </div>
     </div>
@@ -643,6 +644,14 @@
     };
   }
 
+  // 서명 화면으로 넘어간 뒤 정보가 잘못된 걸 발견했을 때 입력 화면으로 되돌아감
+  // (동의 체크를 다시 풀기만 하고, 그 외 입력값·서명은 그대로 남아있음)
+  function backToEdit() {
+    document.getElementById('agree').checked = false;
+    send({ type: 'update', field: '동의', value: false });
+    renderGuide();
+  }
+
   function resetSession() {
     if (!confirm('다른 세션 코드로 바꿀까요? 지금 화면의 입력 내용은 사라져요.')) return;
     intentionalDisconnect = true;
@@ -783,6 +792,7 @@
     const shouldShow = !!data.동의;
     document.getElementById('inputBundle').classList.toggle('hidden', shouldShow);
     signArea.classList.toggle('hidden', !shouldShow);
+    document.getElementById('editInfoBtn').classList.toggle('hidden', !shouldShow);
 
     if (wasHidden && shouldShow) {
       // 그동안 display:none이라 캔버스 크기가 0이었으므로, 보이게 된 시점에 다시 계산
