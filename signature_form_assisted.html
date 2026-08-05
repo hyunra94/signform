@@ -149,6 +149,7 @@
     background: #EDF2F8; color: #9FB0C4;
   }
   .agree-status-row.done { background: #F0FAF2; color: #4a7d52; }
+  .agree-status-row .btn-plain { margin-left: auto; }
   .consent-box {
     margin-top: 16px; border: 1px solid var(--lavender); border-radius: 12px;
     overflow: hidden; font-size: 11.5px;
@@ -321,6 +322,7 @@
         <div class="agree-status-row" id="agreeStatusRow">
           <span id="agreeStatusIcon">⬜</span>
           <span id="agreeStatusText">참석자가 태블릿에서 직접 동의해야 해요</span>
+          <button type="button" class="btn-plain hidden" id="backToEditBtn" onclick="requestBackToEdit()">↩️ 다시 입력받기</button>
         </div>
       </div>
 
@@ -499,6 +501,12 @@
       send({ type: 'hint', kind: 'penOnly', value: penOnlyEnabled });
       send({ type: 'hint', kind: 'affilMode', value: affilMode });
     }
+  }
+
+  // ---------- 서명 화면으로 넘어간 뒤 정보가 잘못된 걸 발견했을 때, 담당자가 태블릿을 다시 입력 화면으로 되돌림 ----------
+  function requestBackToEdit() {
+    send({ type: 'update', field: '동의', value: false });
+    showStatus('참석자를 다시 입력 화면으로 돌려보냈어요.', '');
   }
 
   // ---------- 펜 전용 서명 설정 ----------
@@ -689,6 +697,7 @@
       ? '개인정보 동의 완료'
       : '참석자가 태블릿에서 직접 동의해야 해요';
     agreeRow.classList.toggle('done', latestAgree);
+    document.getElementById('backToEditBtn').classList.toggle('hidden', !latestAgree);
 
     const phoneValEl = document.getElementById('phoneVal');
     if (data.연락처) {
