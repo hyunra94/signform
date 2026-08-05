@@ -597,7 +597,17 @@
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
   }
 
+  // 참석자가 이미 서명 화면으로 넘어간 상태에서 연락처를 열면, 입력 화면 자체가 숨겨져 있어서
+  // 숫자패드만 맥락 없이 뜸 — 그럴 땐 먼저 입력 화면으로 되돌린 뒤(동의 취소), 그게 실제로
+  // 반영된 걸 확인하고 나서 숫자패드를 열어줌 (순서가 바뀌면 다시 같은 문제가 생기므로 중요)
+  let pendingPhoneEntryAfterBack = false;
   function requestPhoneEntry() {
+    if (latestAgree) {
+      send({ type: 'update', field: '동의', value: false });
+      pendingPhoneEntryAfterBack = true;
+      showStatus('참석자를 입력 화면으로 되돌리고 있어요...', '');
+      return;
+    }
     send({ type: 'hint', kind: 'openPhoneNumpad' });
     showStatus('태블릿에 숫자 키패드를 열었어요. 참석자에게 입력을 안내해주세요.', '');
   }
@@ -691,6 +701,13 @@
 
     latestAgree = !!data.동의;
     latestAffilImage = data.소속이미지 || '';
+
+    // 위 requestPhoneEntry()에서 걸어둔 예약: 동의가 실제로 풀린 게 확인되면 그제서야 숫자패드를 염
+    if (pendingPhoneEntryAfterBack && !latestAgree) {
+      pendingPhoneEntryAfterBack = false;
+      send({ type: 'hint', kind: 'openPhoneNumpad' });
+      showStatus('태블릿에 숫자 키패드를 열었어요. 참석자에게 입력을 안내해주세요.', '');
+    }
     const agreeRow = document.getElementById('agreeStatusRow');
     document.getElementById('agreeStatusIcon').textContent = latestAgree ? '✅' : '⬜';
     document.getElementById('agreeStatusText').textContent = latestAgree
