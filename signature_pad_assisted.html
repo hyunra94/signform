@@ -105,6 +105,15 @@
   /* ---- 아직 차례가 아닌 구간 ---- */
   .locked { opacity: 0.4; pointer-events: none; filter: grayscale(55%); transition: opacity 0.25s ease; }
 
+  /* ---- 성함 (담당자가 PC에 입력, 여기는 안내문구만 표시) ---- */
+  .name-section { margin-bottom: 14px; }
+  .name-display-box {
+    width: 100%; padding: 16px 18px; border-radius: 14px; border: 2px dashed var(--accent);
+    background: #F7F9FC;
+  }
+  .name-display-box .val { font-size: 18px; font-weight: 700; color: var(--text); }
+  .name-display-box .val.empty { font-size: 14px; font-weight: 400; color: #9FB0C4; line-height: 1.5; }
+
   /* ---- 연락처 ---- */
   .phone-section { margin-bottom: 14px; }
   .phone-display-btn {
@@ -320,6 +329,13 @@
   </div>
 
   <div class="input-bundle" id="inputBundle">
+    <div class="name-section">
+      <div class="section-label">🙋 성함</div>
+      <div class="name-display-box">
+        <span class="val empty" id="nameVal">담당자가 성함을 입력합니다. 담당자에게 성함을 말씀해주세요</span>
+      </div>
+    </div>
+
     <div class="phone-section">
       <div class="section-label">📱 연락처</div>
       <button type="button" class="phone-display-btn" id="phoneDisplayBtn" onclick="openPhoneNumpad()">
@@ -681,6 +697,16 @@
 
   function applyRemoteState(data) {
     remoteState = data;
+
+    // 성함 표시 (담당자가 PC에 입력 중이면 안내문구, 입력 완료되면 그 이름을 그대로 보여줌)
+    const nameValEl = document.getElementById('nameVal');
+    if (data.성명) {
+      nameValEl.textContent = data.성명;
+      nameValEl.classList.remove('empty');
+    } else {
+      nameValEl.textContent = '담당자가 성함을 입력합니다. 담당자에게 성함을 말씀해주세요';
+      nameValEl.classList.add('empty');
+    }
 
     // 연락처 표시 (팝업이 열려있는 동안엔 미리보기가 따로 갱신되므로 덮어쓰지 않음)
     const phoneValEl = document.getElementById('phoneVal');
