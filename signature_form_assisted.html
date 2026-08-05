@@ -105,6 +105,15 @@
 
   .field-hint { font-size: 11.5px; color: #8494A8; margin: -3px 0 8px; line-height: 1.5; }
 
+  /* ---- 회사명/학교명 입력 방식: 타이핑 / 직접 필기(태블릿) 전환 (프로토타입) ---- */
+  .affil-mode-row { display: flex; align-items: center; gap: 8px; margin: 10px 0 12px; }
+  .affil-mode-label { font-size: 12px; color: #8494A8; }
+  .affil-mode-btn {
+    padding: 6px 10px; border-radius: 16px; border: 1.5px solid var(--lavender);
+    background: #F7F9FC; color: var(--text); font-family: inherit; font-size: 12px; cursor: pointer;
+  }
+  .affil-mode-btn.active { border-color: var(--accent-dark); background: var(--accent-dark); color: white; }
+
   /* ---- 연락처: 읽기전용 표시 + 태블릿에 입력요청 버튼 ---- */
   .phone-mirror-row {
     display: flex; align-items: center; gap: 10px; padding: 12px 14px;
@@ -273,13 +282,21 @@
         </div>
         <div class="sub-cat-hint" id="subCatHint"></div>
 
+        <div class="affil-mode-row">
+          <span class="affil-mode-label">입력 방식</span>
+          <button type="button" class="affil-mode-btn active" id="affilModeBtn-typing" onclick="setAffilMode('typing')">⌨️ 타이핑</button>
+          <button type="button" class="affil-mode-btn" id="affilModeBtn-handwrite" onclick="setAffilMode('handwrite')">✍️ 직접 필기(태블릿)</button>
+        </div>
+
         <div id="companyField" class="hidden-field">
           <label for="company">회사명</label>
           <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요">
+          <p class="field-hint hidden" id="companyHandwriteNote">참석자가 태블릿에 직접 적어요.</p>
         </div>
         <div id="schoolField" class="hidden-field">
           <label for="school">학교명</label>
           <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요">
+          <p class="field-hint hidden" id="schoolHandwriteNote">참석자가 태블릿에 직접 적어요.</p>
         </div>
 
         <div class="consent-box">
@@ -370,6 +387,8 @@
   let subCatLocal = ''; // 원격 힌트로 받은 직업계고/대학생 표시(비영속)
   let latestAgree = false; // 참석자가 태블릿에서 체크한 개인정보 동의 상태(읽기전용 미러)
   let lastCatSeen = ''; // 소속 구분이 새로 바뀐 순간을 감지해서 자동 포커스 이동에 씀
+  let affilMode = 'typing'; // 'typing' | 'handwrite' — 회사명/학교명을 타이핑으로 받을지 태블릿 손글씨로 받을지 (프로토타입)
+  let latestAffilImage = ''; // 태블릿에서 손글씨로 받은 회사명/학교명 이미지(base64 PNG)
 
   const liveCanvas = document.getElementById('live-preview-canvas');
   const placeholder = document.getElementById('pad-placeholder');
@@ -475,8 +494,11 @@
     } else if (ws && ws.readyState === WebSocket.OPEN) {
       setConnStatus(true, count >= 2 ? `실시간 연결됨 · 태블릿 ${count - 1}대 참가 중` : '실시간 연결됨 · 태블릿 연결 대기 중');
     }
-    // 태블릿이 (재)연결될 때마다 현재 펜 전용 설정을 다시 알려줘서 항상 동기화되게 함
-    if (count >= 2) send({ type: 'hint', kind: 'penOnly', value: penOnlyEnabled });
+    // 태블릿이 (재)연결될 때마다 현재 펜 전용/입력방식 설정을 다시 알려줘서 항상 동기화되게 함
+    if (count >= 2) {
+      send({ type: 'hint', kind: 'penOnly', value: penOnlyEnabled });
+      send({ type: 'hint', kind: 'affilMode', value: affilMode });
+    }
   }
 
   // ---------- 펜 전용 서명 설정 ----------
@@ -485,6 +507,31 @@
     penOnlyEnabled = checked;
     send({ type: 'hint', kind: 'penOnly', value: checked });
     showStatus(checked ? '펜 전용 모드로 전환했어요. 태블릿에서 손가락 터치가 차단돼요.' : '펜 전용 모드를 껐어요.', '');
+  }
+
+  // ---------- 회사명/학교명 입력 방식: 타이핑 / 직접 필기(태블릿) (프로토타입) ----------
+  function setAffilMode(mode) {
+    affilMode = mode;
+    document.getElementById('affilModeBtn-typing').classList.toggle('active', mode === 'typing');
+    document.getElementById('affilModeBtn-handwrite').classList.toggle('active', mode === 'handwrite');
+    const isHandwrite = mode === 'handwrite';
+    const companyInput = document.getElementById('company');
+    const schoolInput = document.getElementById('school');
+    companyInput.disabled = isHandwrite;
+    schoolInput.disabled = isHandwrite;
+    document.getElementById('companyHandwriteNote').classList.toggle('hidden', !isHandwrite);
+    document.getElementById('schoolHandwriteNote').classList.toggle('hidden', !isHandwrite);
+    if (isHandwrite) {
+      // 담당자가 이미 타이핑해둔 값이 있으면 참석자 손글씨와 혼동되지 않게 비워둠
+      if (companyInput.value) { companyInput.value = ''; send({ type: 'update', field: '회사명', value: '' }); }
+      if (schoolInput.value) { schoolInput.value = ''; send({ type: 'update', field: '학교명', value: '' }); }
+    } else {
+      latestAffilImage = '';
+      send({ type: 'update', field: '소속이미지', value: '' });
+    }
+    send({ type: 'hint', kind: 'affilMode', value: mode });
+    showStatus(isHandwrite ? '태블릿에서 회사명/학교명을 직접 쓰도록 바꿨어요.' : '타이핑 입력으로 되돌렸어요.', '');
+    renderConfirmSummary();
   }
 
   function changeSession() {
@@ -585,12 +632,20 @@
     ) || '';
     let affil = '';
     if (cat === '재직자') {
-      const company = document.getElementById('company').value.trim();
-      affil = company ? `재직자 · ${company}` : '재직자 (회사명 입력 필요)';
+      if (affilMode === 'handwrite') {
+        affil = latestAffilImage ? '재직자 · [손글씨로 회사명 입력됨]' : '재직자 (태블릿에 회사명 손글씨 필요)';
+      } else {
+        const company = document.getElementById('company').value.trim();
+        affil = company ? `재직자 · ${company}` : '재직자 (회사명 입력 필요)';
+      }
     } else if (cat === '미래인재') {
       const label = subCatLocal || '미래인재';
-      const school = document.getElementById('school').value.trim();
-      affil = school ? `${label} · ${school}` : `${label} (학교명 입력 필요)`;
+      if (affilMode === 'handwrite') {
+        affil = latestAffilImage ? `${label} · [손글씨로 학교명 입력됨]` : `${label} (태블릿에 학교명 손글씨 필요)`;
+      } else {
+        const school = document.getElementById('school').value.trim();
+        affil = school ? `${label} · ${school}` : `${label} (학교명 입력 필요)`;
+      }
     } else if (cat === '일반시민') {
       affil = '일반 시민';
     }
@@ -627,6 +682,7 @@
     if (document.activeElement !== schoolEl) schoolEl.value = data.학교명 || '';
 
     latestAgree = !!data.동의;
+    latestAffilImage = data.소속이미지 || '';
     const agreeRow = document.getElementById('agreeStatusRow');
     document.getElementById('agreeStatusIcon').textContent = latestAgree ? '✅' : '⬜';
     document.getElementById('agreeStatusText').textContent = latestAgree
@@ -709,8 +765,8 @@
 
     if (!name) { showStatus('성명을 입력해주세요.', 'err'); return; }
     if (!재직자여부) { showStatus('참석자가 태블릿에서 소속 구분을 먼저 선택해야 해요.', 'err'); return; }
-    if (재직자여부 === '재직자' && !company) { showStatus('회사명을 입력해주세요.', 'err'); return; }
-    if (재직자여부 === '미래인재' && !school) { showStatus('학교명을 입력해주세요.', 'err'); return; }
+    if (재직자여부 === '재직자' && !company && !latestAffilImage) { showStatus('회사명을 입력해주세요.', 'err'); return; }
+    if (재직자여부 === '미래인재' && !school && !latestAffilImage) { showStatus('학교명을 입력해주세요.', 'err'); return; }
     if (!agree) { showStatus('참석자가 태블릿에서 개인정보 동의를 체크해야 해요.', 'err'); return; }
     if (!hasSignature) { showStatus('참석자가 태블릿에서 서명을 완료해야 해요.', 'err'); return; }
 
@@ -727,6 +783,7 @@
     document.getElementById('school').value = '';
     document.getElementById('companyField').classList.remove('show');
     document.getElementById('schoolField').classList.remove('show');
+    latestAffilImage = '';
     subCatLocal = '';
     renderSubCatHint();
     lastRemoteSignature = '';
