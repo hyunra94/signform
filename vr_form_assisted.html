@@ -182,6 +182,58 @@
 
   .hidden { display: none !important; }
 
+  /* ---- 가족/단체 등록: 인원수+명단 설정 버튼, 진행현황 ---- */
+  .roster-trigger-row { display: flex; align-items: center; gap: 8px; margin: -6px 0 12px; }
+  .roster-trigger-btn {
+    padding: 8px 12px; border-radius: 20px; border: 1.5px solid var(--lavender);
+    background: #F7F9FC; color: var(--accent-dark); font-family: inherit; font-size: 12px;
+    font-weight: 700; cursor: pointer;
+  }
+  .roster-progress {
+    font-size: 12.5px; font-weight: 700; color: var(--accent-dark);
+    background: #EDF2F8; border-radius: 20px; padding: 6px 12px;
+  }
+
+  /* ---- 슬라이드 패널: 명단 설정/관리 (한 화면 안에서 오버레이로 뜸) ---- */
+  .roster-panel-backdrop {
+    position: fixed; inset: 0; background: rgba(43, 58, 74, 0.45);
+    display: flex; justify-content: flex-end; z-index: 30;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+  }
+  .roster-panel-backdrop.open { opacity: 1; pointer-events: auto; }
+  .roster-panel {
+    width: min(380px, 92vw); height: 100%; background: var(--white);
+    padding: 24px 20px; overflow-y: auto; box-shadow: -8px 0 24px rgba(0,0,0,0.18);
+    transform: translateX(100%); transition: transform 0.25s ease;
+  }
+  .roster-panel-backdrop.open .roster-panel { transform: translateX(0); }
+  .roster-panel-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;
+  }
+  .roster-panel-head h2 { font-size: 17px; margin: 0; color: var(--accent-dark); }
+  .roster-panel-close { background: none; border: none; font-size: 20px; color: var(--text); cursor: pointer; line-height: 1; }
+  .roster-count-row {
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    margin: 14px 0 20px; padding: 14px; background: #F7F9FC; border-radius: 14px;
+  }
+  .roster-count-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--lavender);
+    background: white; color: var(--accent-dark); font-size: 18px; font-weight: 700; cursor: pointer;
+  }
+  .roster-count-val { font-size: 22px; font-weight: 700; min-width: 60px; text-align: center; }
+  .roster-name-list label { font-size: 12.5px; margin: 12px 0 5px; }
+  .roster-name-input {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--lavender); border-radius: 10px;
+    font-family: inherit; font-size: 14px; background: #F7F9FC; outline: none;
+  }
+  .roster-name-input:disabled { background: #F0FAF2; color: #4a7d52; border-color: #cfe9d3; }
+  .roster-name-input:focus { border-color: var(--accent); }
+  .roster-panel-btn {
+    width: 100%; margin-top: 20px; padding: 13px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+    font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
     width: 38px; height: 38px; border-radius: 50%;
@@ -194,6 +246,27 @@
 </head>
 <body>
 <a href="./index.html" class="home-fab" title="메인으로">🏠</a>
+
+<!-- 단체·가족 등록: 인원수/명단 설정 슬라이드 패널 -->
+<div class="roster-panel-backdrop" id="rosterPanelBackdrop" onclick="if(event.target===this) closeRosterPanel()">
+  <div class="roster-panel">
+    <div class="roster-panel-head">
+      <h2>👥 몇 분이세요?</h2>
+      <button type="button" class="roster-panel-close" onclick="closeRosterPanel()">✕</button>
+    </div>
+    <p class="field-hint">가족·단체로 오신 경우 인원수와 이름을 미리 입력해두면, 한 분씩 제출될 때마다 자동으로 다음 분 이름으로 넘어가요.</p>
+
+    <div class="roster-count-row">
+      <button type="button" class="roster-count-btn" onclick="adjustRosterCount(-1)">−</button>
+      <span class="roster-count-val" id="rosterCountVal">1</span>
+      <button type="button" class="roster-count-btn" onclick="adjustRosterCount(1)">+</button>
+    </div>
+
+    <div class="roster-name-list" id="rosterNameList"></div>
+
+    <button type="button" class="roster-panel-btn" id="rosterPanelBtn" onclick="handleRosterPanelBtn()">시작하기</button>
+  </div>
+</div>
 
 <div id="fitWrap">
 <div class="card">
@@ -226,6 +299,11 @@
     <div class="conn-status">
       <span class="dot" id="connDot"></span><span id="connText">연결 중...</span>
       <button class="btn-plain" onclick="changeSession()">코드 변경</button>
+    </div>
+
+    <div class="roster-trigger-row">
+      <button type="button" class="roster-trigger-btn" onclick="openRosterPanel()">👥 몇 분이세요? (단체·가족 등록)</button>
+      <span class="roster-progress hidden" id="rosterProgress">-</span>
     </div>
 
     <div class="form-grid">
@@ -320,6 +398,85 @@
   let suppressEcho = false;
   let subCatLocal = ''; // 원격 힌트로 받은 직업계고/대학생 표시(비영속)
   let lastCatSeen = ''; // 소속 구분이 새로 바뀐 순간을 감지해서 자동 포커스 이동에 씀
+
+  // ---------- 단체·가족 등록: 인원수/명단 ----------
+  let roster = []; // [{ name, done }]
+  let rosterIndex = -1; // -1이면 단체 등록 모드 아님(한 분씩 그때그때 입력하는 기본 모드)
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function openRosterPanel() {
+    if (roster.length === 0) roster.push({ name: '', done: false });
+    document.getElementById('rosterCountVal').textContent = roster.length;
+    renderRosterNameInputs();
+    document.getElementById('rosterPanelBtn').textContent = rosterIndex === -1 ? '시작하기' : '확인';
+    document.getElementById('rosterPanelBackdrop').classList.add('open');
+  }
+  function closeRosterPanel() {
+    document.getElementById('rosterPanelBackdrop').classList.remove('open');
+  }
+
+  function adjustRosterCount(delta) {
+    const doneCount = roster.filter(p => p.done).length;
+    const minCount = rosterIndex >= 0 ? Math.max(rosterIndex + 1, doneCount, 1) : 1;
+    const nextCount = Math.max(minCount, Math.min(20, roster.length + delta));
+    while (roster.length < nextCount) roster.push({ name: '', done: false });
+    while (roster.length > nextCount) roster.pop();
+    document.getElementById('rosterCountVal').textContent = roster.length;
+    renderRosterNameInputs();
+  }
+
+  function renderRosterNameInputs() {
+    const wrap = document.getElementById('rosterNameList');
+    wrap.innerHTML = roster.map((p, i) => {
+      const tag = p.done ? ' ✅ 제출완료' : (i === rosterIndex ? ' (지금 이 분)' : '');
+      return `
+        <label>참석자 ${i + 1}${tag}</label>
+        <input type="text" class="roster-name-input" data-idx="${i}" value="${escapeHtml(p.name)}" placeholder="이름을 입력하세요" ${p.done ? 'disabled' : ''}>
+      `;
+    }).join('');
+    wrap.querySelectorAll('.roster-name-input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const idx = Number(inp.dataset.idx);
+        roster[idx].name = inp.value;
+        if (idx === rosterIndex) {
+          document.getElementById('name').value = inp.value;
+          document.getElementById('name').dispatchEvent(new Event('input'));
+          send({ type: 'update', field: '성명', value: inp.value });
+        }
+      });
+    });
+  }
+
+  function handleRosterPanelBtn() {
+    if (rosterIndex === -1) {
+      // 처음 시작: 빈 이름은 제외하고 순서대로 정리
+      roster = roster.filter(p => p.name.trim()).map(p => ({ name: p.name.trim(), done: false }));
+      if (roster.length === 0) { alert('최소 한 분의 이름을 입력해주세요.'); return; }
+      rosterIndex = 0;
+      applyRosterCurrent();
+    }
+    closeRosterPanel();
+  }
+
+  function applyRosterCurrent() {
+    if (rosterIndex < 0 || rosterIndex >= roster.length) return;
+    const person = roster[rosterIndex];
+    document.getElementById('name').value = person.name;
+    document.getElementById('name').dispatchEvent(new Event('input'));
+    send({ type: 'update', field: '성명', value: person.name });
+    updateRosterProgressUI();
+  }
+
+  function updateRosterProgressUI() {
+    const el = document.getElementById('rosterProgress');
+    if (rosterIndex === -1 || roster.length === 0) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    const current = Math.min(rosterIndex + 1, roster.length);
+    el.textContent = rosterIndex >= roster.length ? `${roster.length}명 전원 등록 완료 🎉` : `${current} / ${roster.length}명`;
+  }
 
   const liveCanvas = document.getElementById('live-preview-canvas');
   const placeholder = document.getElementById('pad-placeholder');
@@ -447,6 +604,9 @@
     sessionCode = null;
     autoCollapsedOnce = false;
     document.getElementById('codeDisplay').classList.remove('collapsed');
+    roster = [];
+    rosterIndex = -1;
+    updateRosterProgressUI();
   }
 
   function openWebSocket() {
@@ -637,7 +797,20 @@
     placeholder.style.display = 'block';
     remoteBadge.style.display = 'none';
     renderConfirmSummary();
-    document.getElementById('name').focus();
+
+    // 단체·가족 등록 중이면 다음 분 이름으로 자동으로 넘어감
+    if (rosterIndex >= 0 && rosterIndex < roster.length) {
+      roster[rosterIndex].done = true;
+      rosterIndex += 1;
+      if (rosterIndex < roster.length) {
+        applyRosterCurrent();
+      } else {
+        updateRosterProgressUI();
+      }
+      renderRosterNameInputs();
+    } else {
+      document.getElementById('name').focus();
+    }
   }
 
   function showStatus(text, cls) {
