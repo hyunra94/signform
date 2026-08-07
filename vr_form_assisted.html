@@ -105,11 +105,12 @@
 
   .field-hint { font-size: 11.5px; color: #8494A8; margin: -3px 0 8px; line-height: 1.5; }
 
-  /* ---- 소속 구분: 참석자가 키오스크에서 직접 선택, 여기는 읽기전용 배지 ---- */
+  /* ---- 소속 구분: 담당자 PC나 키오스크 어느 쪽에서든 누를 수 있음(쌍방향) ---- */
   .cat-badge-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .cat-badge {
     padding: 9px 12px; border-radius: 20px; border: 1.5px solid var(--lavender);
-    font-size: 12.5px; font-weight: 500; color: #8494A8; background: #F7F9FC;
+    font-family: inherit; font-size: 12.5px; font-weight: 500; color: #8494A8; background: #F7F9FC;
+    cursor: pointer;
   }
   .cat-badge.active { border-color: var(--accent-dark); background: #EDF2F8; color: var(--accent-dark); font-weight: 700; }
   .sub-cat-hint {
@@ -239,7 +240,12 @@
   .conn-row { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; color: #8494A8; margin: 14px 0 10px; }
   .summary-row { display: flex; justify-content: center; gap: 20px; margin-bottom: 14px; font-size: 12.5px; color: #8494A8; }
   .summary-row b { color: var(--accent-dark); font-size: 20px; }
-  .live-list { display: flex; flex-direction: column-reverse; gap: 8px; }
+  .live-list { display: flex; flex-direction: column; gap: 8px; }
+  .live-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+  .live-group-head {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; font-weight: 700; color: var(--accent-dark); padding: 0 2px;
+  }
   .live-row {
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 12px; border-radius: 12px; background: #F7F9FC; border: 1px solid var(--lavender);
@@ -250,7 +256,11 @@
   .live-row .badge {
     font-size: 10px; background: #EDF2F8; color: var(--accent-dark); border-radius: 8px; padding: 1px 6px; margin-left: 6px;
   }
-  .live-row .time { font-size: 11px; color: #9FB0C4; }
+  .live-row .time { font-size: 11px; color: #9FB0C4; flex-shrink: 0; }
+  .live-row .del-btn {
+    background: none; border: none; color: #D97070; font-size: 11px; cursor: pointer;
+    text-decoration: underline; padding: 0; flex-shrink: 0; font-family: inherit;
+  }
   @keyframes fadein { from { opacity: 0; transform: translateY(-6px);} to { opacity: 1; transform: translateY(0);} }
   .empty-msg { text-align: center; color: #9FB0C4; font-size: 13px; padding: 24px 0; }
 
@@ -318,7 +328,7 @@
       <h2>⚙️ 시간대 설정</h2>
       <button type="button" class="roster-panel-close" onclick="closeSlotConfigPanel()">✕</button>
     </div>
-    <p class="field-hint">오늘 VR체험버스 시간대를 만들거나 다시 설정해요. 이미 만들어진 시간대가 있으면 다시 만들 때 등록된 명단이 전부 초기화돼요.</p>
+    <p class="field-hint">오늘 VR체험버스 시간대를 만들거나 다시 설정해요. 같은 시간이 겹치면 그 명단은 유지되고, 새 범위 밖으로 벗어난 시간대만 명단이 사라져요.</p>
 
     <div class="slot-config-row">
       <div><label for="slotStartTime">시작 시간</label><input type="time" id="slotStartTime" value="09:00"></div>
@@ -365,7 +375,7 @@
       <h2>📋 실시간 접수 현황</h2>
       <button type="button" class="roster-panel-close" onclick="closeLivePanel()">✕</button>
     </div>
-    <p class="field-hint">오늘 VR체험버스 접수 현황을 실시간으로 볼 수 있어요.</p>
+    <p class="field-hint">오늘 VR체험버스 접수 현황을 시간대별로 실시간으로 보고, 잘못 등록된 분은 바로 삭제할 수 있어요.</p>
 
     <div id="liveLoginArea">
       <div class="join-row">
@@ -432,11 +442,11 @@
         <input type="text" id="name" placeholder="참석자에게 성함을 여쭤보고 입력하세요">
 
         <label>소속 구분</label>
-        <p class="field-hint">참석자가 키오스크에서 직접 골라요. 고른 내용이 여기 그대로 보여요.</p>
+        <p class="field-hint">담당자나 참석자(키오스크) 어느 쪽에서 눌러도 돼요. 누른 내용이 양쪽에 그대로 반영돼요.</p>
         <div class="cat-badge-row">
-          <span class="cat-badge" id="catBadge-재직자">재직자</span>
-          <span class="cat-badge" id="catBadge-미래인재">미래인재(직업계·대학)</span>
-          <span class="cat-badge" id="catBadge-일반시민">일반 시민</span>
+          <button type="button" class="cat-badge" id="catBadge-재직자" onclick="selectCat('재직자')">재직자</button>
+          <button type="button" class="cat-badge" id="catBadge-미래인재" onclick="selectCat('미래인재')">미래인재(직업계·대학)</button>
+          <button type="button" class="cat-badge" id="catBadge-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
         </div>
         <div class="sub-cat-hint" id="subCatHint"></div>
 
@@ -571,6 +581,11 @@
   }
 
   function handleRosterPanelBtn() {
+    // 방금 입력한 값이 아직 배열에 안 반영됐을 수 있으니, 시작 직전에 화면 입력값으로 한 번 더 확실히 동기화
+    document.querySelectorAll('.roster-name-input').forEach(inp => {
+      const idx = Number(inp.dataset.idx);
+      if (roster[idx]) roster[idx].name = inp.value;
+    });
     if (rosterIndex === -1) {
       // 처음 시작: 빈 이름은 제외하고 순서대로 정리
       roster = roster.filter(p => p.name.trim()).map(p => ({ name: p.name.trim(), done: false }));
@@ -578,6 +593,7 @@
       rosterIndex = 0;
       applyRosterCurrent();
     }
+    sendRosterHint();
     closeRosterPanel();
   }
 
@@ -596,6 +612,14 @@
     el.classList.remove('hidden');
     const current = Math.min(rosterIndex + 1, roster.length);
     el.textContent = rosterIndex >= roster.length ? `${roster.length}명 전원 등록 완료 🎉` : `${current} / ${roster.length}명`;
+  }
+
+  // 참석자 1,2,3... 이름 목록을 키오스크에도 보여주기 위해 힌트로 전달 (비영속 relay)
+  function sendRosterHint() {
+    send({
+      type: 'hint', kind: 'roster',
+      value: { names: roster.map(p => p.name), done: roster.map(p => p.done), index: rosterIndex },
+    });
   }
 
   // ---------- 실시간 접수 현황 (관리자 키 필요, 같은 화면 안 슬라이드 패널) ----------
@@ -678,6 +702,16 @@
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   }
 
+  // 서명록(DayLedger)에는 시간대 정보가 없어서, 같은 이름+소속으로 시간대 대기열(QueueSession) 명단과 매칭해서 묶음
+  function findSlotTimeFor(item) {
+    const slots = queueData.slots || [];
+    for (const s of slots) {
+      const found = (s.entries || []).some(e => e.성명 === item.성명 && e.재직자여부 === item.재직자여부);
+      if (found) return s.time;
+    }
+    return null;
+  }
+
   function renderLiveList(items, isFirstLoad) {
     const list = document.getElementById('liveList');
     const emptyMsg = document.getElementById('liveEmptyMsg');
@@ -694,7 +728,7 @@
     emptyMsg.classList.add('hidden');
 
     const isNewBatch = !isFirstLoad && items.length > liveLastKnownCount;
-    list.innerHTML = items.map((it) => {
+    const rowHtml = (it) => {
       const time = formatTime5(it.submittedAt);
       const isNew = isNewBatch && it.index >= liveLastKnownCount;
       const badge = it.재직자여부 ? `<span class="badge">${it.재직자여부}</span>` : '';
@@ -702,10 +736,51 @@
         <div class="live-row ${isNew ? 'new' : ''}">
           <div><span class="name">${it.index + 1}. ${escapeHtml(it.성명 || '')}</span>${badge}</div>
           <div class="time">${time}</div>
+          <button type="button" class="del-btn" onclick="deleteLiveRow(${it.index})">삭제</button>
         </div>
       `;
-    }).join('');
+    };
+
+    // 시간대 순서대로 그룹 묶기 (queueData.slots 순서 기준), 매칭 안 되는 사람은 맨 아래 "시간대 미확인"으로
+    const bySlot = new Map();
+    const unmatched = [];
+    items.forEach(it => {
+      const t = findSlotTimeFor(it);
+      if (t) { if (!bySlot.has(t)) bySlot.set(t, []); bySlot.get(t).push(it); }
+      else unmatched.push(it);
+    });
+
+    const slotOrder = (queueData.slots || []).map(s => s.time).filter(t => bySlot.has(t));
+    let html = slotOrder.map(t => `
+      <div class="live-group">
+        <div class="live-group-head">🕐 ${t} 시간대 · ${bySlot.get(t).length}명</div>
+        ${bySlot.get(t).map(rowHtml).join('')}
+      </div>
+    `).join('');
+    if (unmatched.length) {
+      html += `
+        <div class="live-group">
+          <div class="live-group-head">❔ 시간대 미확인 · ${unmatched.length}명</div>
+          ${unmatched.map(rowHtml).join('')}
+        </div>
+      `;
+    }
+    list.innerHTML = html;
     liveLastKnownCount = items.length;
+  }
+
+  async function deleteLiveRow(index) {
+    if (!confirm(`${index + 1}번째 참석자를 삭제할까요? 되돌릴 수 없어요.`)) return;
+    try {
+      const res = await fetch(
+        `${WORKER_HTTP_URL}/admin/delete-row?programId=${encodeURIComponent(currentVrProgramId())}&index=${index}&key=${encodeURIComponent(liveAdminKey)}`,
+        { method: 'DELETE' }
+      );
+      if (!res.ok) throw new Error('삭제 실패');
+      fetchAndRenderLive(false);
+    } catch (err) {
+      alert('삭제 중 오류: ' + err.message);
+    }
   }
 
   const liveCanvas = document.getElementById('live-preview-canvas');
@@ -813,7 +888,10 @@
     } else if (ws && ws.readyState === WebSocket.OPEN) {
       setConnStatus(true, count >= 2 ? `실시간 연결됨 · 키오스크 ${count - 1}대 참가 중` : '실시간 연결됨 · 키오스크 연결 대기 중');
     }
-    if (count >= 2) send({ type: 'hint', kind: 'penOnly', value: penOnlyEnabled });
+    if (count >= 2) {
+      send({ type: 'hint', kind: 'penOnly', value: penOnlyEnabled });
+      sendRosterHint();
+    }
   }
 
   // ---------- 펜 전용 서명 설정 ----------
@@ -869,10 +947,10 @@
     const lunchStart = document.getElementById('slotLunchStart').value || null;
     const lunchEnd = document.getElementById('slotLunchEnd').value || null;
 
-    if ((queueData.slots || []).length > 0 && !confirm('시간대를 다시 만들면 지금까지 등록된 명단이 모두 초기화돼요. 계속할까요?')) return;
+    if ((queueData.slots || []).length > 0 && !confirm('시간대를 다시 만들까요? 같은 시간(예: 09:00)이 겹치면 그 명단은 그대로 유지되고, 새 범위 밖으로 벗어난 시간대의 명단만 사라져요.')) return;
 
     queueWs.send(JSON.stringify({ type: 'configure', startTime, endTime, intervalMinutes, capacity, lunchStart, lunchEnd }));
-    showStatus('시간대를 새로 만들었어요.', 'ok');
+    showStatus('시간대를 다시 만들었어요. (겹치는 시간대 명단은 유지됨)', 'ok');
     closeSlotConfigPanel();
   }
 
@@ -932,6 +1010,20 @@
 
   function send(payload) {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+  }
+
+  // ---------- 소속 구분: 담당자 PC에서도 직접 선택 가능(쌍방향) ----------
+  function selectCat(cat) {
+    send({ type: 'update', field: '재직자여부', value: cat });
+    ['재직자', '미래인재', '일반시민'].forEach(c => {
+      document.getElementById(`catBadge-${c}`).classList.toggle('active', c === cat);
+    });
+    if (cat !== '미래인재') { subCatLocal = ''; renderSubCatHint(); }
+    document.getElementById('companyField').classList.toggle('show', cat === '재직자');
+    document.getElementById('schoolField').classList.toggle('show', cat === '미래인재');
+    if (cat === '재직자') setTimeout(() => document.getElementById('company').focus(), 120);
+    else if (cat === '미래인재') setTimeout(() => document.getElementById('school').focus(), 120);
+    renderConfirmSummary();
   }
 
   // ---------- 소속 구분: 키오스크에서 참석자가 고른 걸 힌트로 받아 표시 ----------
@@ -1082,6 +1174,10 @@
     remoteBadge.style.display = 'none';
     renderConfirmSummary();
 
+    // 서버가 제출 성공 후 동의를 포함해 상태를 전부 초기화하므로, VR버스는 동의 문구가 없는 서식이라
+    // 다음 분 제출을 위해 자동으로 다시 동의 처리해줘야 함 (안 하면 두 번째 분부터 "동의가 필요합니다" 에러남)
+    send({ type: 'update', field: '동의', value: true });
+
     // 단체·가족 등록 중이면 다음 분 이름으로 자동으로 넘어감
     if (rosterIndex >= 0 && rosterIndex < roster.length) {
       roster[rosterIndex].done = true;
@@ -1092,6 +1188,7 @@
         updateRosterProgressUI();
       }
       renderRosterNameInputs();
+      sendRosterHint();
     } else {
       document.getElementById('name').focus();
     }

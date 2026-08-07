@@ -125,11 +125,12 @@
   .phone-mirror-row .req-icon { font-size: 17px; }
   .phone-mirror-row:active { background: #EDF2F8; }
 
-  /* ---- 소속 구분: 읽기전용 배지 ---- */
+  /* ---- 소속 구분: 담당자 PC나 태블릿 어느 쪽에서든 누를 수 있음(쌍방향) ---- */
   .cat-badge-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .cat-badge {
     padding: 9px 12px; border-radius: 20px; border: 1.5px solid var(--lavender);
-    font-size: 12.5px; font-weight: 500; color: #8494A8; background: #F7F9FC;
+    font-family: inherit; font-size: 12.5px; font-weight: 500; color: #8494A8; background: #F7F9FC;
+    cursor: pointer;
   }
   .cat-badge.active { border-color: var(--accent-dark); background: #EDF2F8; color: var(--accent-dark); font-weight: 700; }
   .sub-cat-hint {
@@ -354,11 +355,11 @@
         <p class="field-hint">참석자가 태블릿에서 직접 입력해요. 다시 입력받고 싶으면 이 칸을 다시 탭하세요.</p>
 
         <label>소속 구분</label>
-        <p class="field-hint">참석자가 태블릿에서 직접 골라요. 고른 내용이 여기 그대로 보여요.</p>
+        <p class="field-hint">담당자나 참석자(태블릿) 어느 쪽에서 눌러도 돼요. 누른 내용이 양쪽에 그대로 반영돼요.</p>
         <div class="cat-badge-row">
-          <span class="cat-badge" id="catBadge-재직자">재직자</span>
-          <span class="cat-badge" id="catBadge-미래인재">미래인재(직업계·대학)</span>
-          <span class="cat-badge" id="catBadge-일반시민">일반 시민</span>
+          <button type="button" class="cat-badge" id="catBadge-재직자" onclick="selectCat('재직자')">재직자</button>
+          <button type="button" class="cat-badge" id="catBadge-미래인재" onclick="selectCat('미래인재')">미래인재(직업계·대학)</button>
+          <button type="button" class="cat-badge" id="catBadge-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
         </div>
         <div class="sub-cat-hint" id="subCatHint"></div>
 
@@ -830,6 +831,20 @@
   document.getElementById('name').addEventListener('focus', () => {
     send({ type: 'hint', kind: 'closePhoneNumpad' });
   });
+
+  // ---------- 소속 구분: 담당자 PC에서도 직접 선택 가능(쌍방향) ----------
+  function selectCat(cat) {
+    send({ type: 'update', field: '재직자여부', value: cat });
+    ['재직자', '미래인재', '일반시민'].forEach(c => {
+      document.getElementById(`catBadge-${c}`).classList.toggle('active', c === cat);
+    });
+    if (cat !== '미래인재') { subCatLocal = ''; renderSubCatHint(); }
+    document.getElementById('companyField').classList.toggle('show', cat === '재직자');
+    document.getElementById('schoolField').classList.toggle('show', cat === '미래인재');
+    if (cat === '재직자') setTimeout(() => document.getElementById('company').focus(), 120);
+    else if (cat === '미래인재') setTimeout(() => document.getElementById('school').focus(), 120);
+    renderConfirmSummary();
+  }
 
   function applySubCatHint(value) {
     subCatLocal = value;

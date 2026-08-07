@@ -92,7 +92,18 @@
   .locked { opacity: 0.4; pointer-events: none; filter: grayscale(55%); transition: opacity 0.25s ease; }
 
   /* ---- 성함/소속 (담당자가 PC에 입력, 여기는 안내문구만 표시) ---- */
-  .name-section, .affil-mirror-section { margin-bottom: 14px; }
+  .name-section, .affil-mirror-section, .roster-list-section { margin-bottom: 14px; }
+  .roster-list-box {
+    display: flex; flex-direction: column; gap: 6px; padding: 12px 14px;
+    border-radius: 14px; border: 2px dashed var(--accent); background: #F7F9FC;
+  }
+  .roster-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .roster-item .idx { color: #7C8FA3; font-size: 12px; flex-shrink: 0; width: 18px; }
+  .roster-item .rname { font-weight: 700; color: var(--text); flex: 1; }
+  .roster-item.current .rname { color: var(--accent-dark); }
+  .roster-item .rstatus { font-size: 11px; color: #9FB0C4; flex-shrink: 0; }
+  .roster-item.done .rstatus { color: #4a7d52; }
+  .roster-item.current .rstatus { color: var(--accent-dark); font-weight: 700; }
   .name-display-box, .affil-mirror-box {
     width: 100%; padding: 16px 18px; border-radius: 14px; border: 2px dashed var(--accent);
     background: #F7F9FC;
@@ -211,6 +222,11 @@
       <div class="name-display-box">
         <span class="val empty" id="nameVal">담당자가 성함을 입력합니다</span>
       </div>
+    </div>
+
+    <div class="roster-list-section hidden" id="rosterListSection">
+      <div class="section-label">👥 참석자 명단</div>
+      <div class="roster-list-box" id="rosterListBox"></div>
     </div>
 
     <div class="cat-section locked" id="catSection">
@@ -367,6 +383,7 @@
         document.getElementById('kioskSubmitBtn').disabled = false;
       }
       else if (msg.type === 'hint' && msg.kind === 'penOnly') setPenOnlyMode(!!msg.value);
+      else if (msg.type === 'hint' && msg.kind === 'roster') applyRosterHint(msg.value);
     };
   }
 
@@ -522,6 +539,33 @@
     if (data.재직자여부 === '재직자') return !!data.회사명;
     if (data.재직자여부 === '미래인재') return !!data.학교명;
     return true;
+  }
+
+  // 담당자 PC에서 단체·가족 등록 중이면 참석자 1,2,3... 명단을 여기에도 보여줌
+  function applyRosterHint(value) {
+    const section = document.getElementById('rosterListSection');
+    const box = document.getElementById('rosterListBox');
+    const names = (value && value.names) || [];
+    if (names.length <= 1) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
+    const doneFlags = value.done || [];
+    const idx = typeof value.index === 'number' ? value.index : -1;
+    box.innerHTML = names.map((n, i) => {
+      const isDone = !!doneFlags[i];
+      const isCurrent = i === idx;
+      const status = isDone ? '✓ 완료' : (isCurrent ? '지금' : '대기');
+      return `
+        <div class="roster-item ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}">
+          <span class="idx">${i + 1}.</span>
+          <span class="rname">${escapeHtml(n || '(이름 입력 중)')}</span>
+          <span class="rstatus">${status}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   function applyRemoteState(data) {
