@@ -100,6 +100,16 @@
   .name-display-box .val, .affil-mirror-box .val { font-size: 18px; font-weight: 700; color: var(--text); }
   .name-display-box .val.empty, .affil-mirror-box .val.empty { font-size: 14px; font-weight: 400; color: #9FB0C4; line-height: 1.5; }
 
+  /* ---- 소속 구분: 참석자가 직접 선택 (세미나 서식과 동일) ---- */
+  .cat-section { margin-bottom: 14px; }
+  .cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .cat-btn {
+    padding: 14px 4px; border-radius: 14px; border: 2px solid var(--lavender);
+    background: #F7F9FC; color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 700;
+    cursor: pointer;
+  }
+  .cat-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); color: white; }
+
   /* ---- 시간대 선택 ---- */
   .slot-section { margin-bottom: 14px; }
   .slot-grid {
@@ -203,8 +213,18 @@
       </div>
     </div>
 
-    <div class="affil-mirror-section">
-      <div class="section-label">🏢 소속</div>
+    <div class="cat-section locked" id="catSection">
+      <div class="section-label">🙋 소속을 골라주세요</div>
+      <div class="cat-grid">
+        <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
+        <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
+        <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
+        <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+      </div>
+    </div>
+
+    <div class="affil-mirror-section hidden" id="affilMirrorSection">
+      <div class="section-label">🏢 소속 상세</div>
       <div class="affil-mirror-box">
         <span class="val empty" id="affilVal">담당자가 소속을 확인합니다</span>
       </div>
@@ -369,6 +389,7 @@
   let queueWs = null;
   let queueData = { slots: [] };
   let pendingSlotIndex = null;
+  let selectedCatButton = ''; // 이 기기에서 직접 고른 버튼(재직자/직업계고/대학생/일반시민) — 하이라이트 표시용
 
   function openQueueWebSocket() {
     queueWs = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${todayStr()}`);
@@ -440,6 +461,19 @@
     renderGuide();
   }
 
+  // ---------- 소속 구분 선택 (참석자가 직접, 세미나 서식과 동일) ----------
+  const isFutureTalent = (v) => v === '직업계고' || v === '대학생';
+  function selectCat(cat) {
+    selectedCatButton = cat;
+    ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
+      document.getElementById(`catBtn-${c}`).classList.toggle('active', c === cat);
+    });
+    const stored = isFutureTalent(cat) ? '미래인재' : cat;
+    send({ type: 'update', field: '재직자여부', value: stored });
+    if (stored === '미래인재') send({ type: 'hint', kind: 'subCategory', value: cat });
+    renderGuide();
+  }
+
   function resetSession() {
     if (!confirm('다른 세션 코드로 바꿀까요? 지금 화면의 입력 내용은 사라져요.')) return;
     intentionalDisconnect = true;
@@ -452,6 +486,10 @@
     sessionCode = null;
     remoteState = { 성명: '', 재직자여부: '', 회사명: '', 학교명: '', 시간대: '', signature: '', 동의: false };
     pendingSlotIndex = null;
+    selectedCatButton = '';
+    ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
+      document.getElementById(`catBtn-${c}`).classList.remove('active');
+    });
 
     if (signaturePad) signaturePad.clear();
     placeholder.style.display = 'block';
@@ -472,13 +510,15 @@
 
   function computeAffilLabel(data) {
     if (data.재직자여부 === '재직자') return data.회사명 ? `재직자 · ${data.회사명}` : '';
-    if (data.재직자여부 === '미래인재') return data.학교명 ? `미래인재 · ${data.학교명}` : '';
-    if (data.재직자여부 === '일반시민') return '일반 시민';
+    if (data.재직자여부 === '미래인재') {
+      const label = selectedCatButton || '미래인재';
+      return data.학교명 ? `${label} · ${data.학교명}` : '';
+    }
     return '';
   }
 
-  function intakeDone(data) {
-    if (!data.성명 || !data.재직자여부) return false;
+  // 재직자/직업계고/대학생은 회사명·학교명을 담당자가 PC에 받아 적어야 다음 단계로 넘어감 (일반시민은 해당 없음)
+  function affilNameDone(data) {
     if (data.재직자여부 === '재직자') return !!data.회사명;
     if (data.재직자여부 === '미래인재') return !!data.학교명;
     return true;
@@ -496,39 +536,60 @@
       nameValEl.classList.add('empty');
     }
 
+    // 소속 하이라이트: 이 기기에서 직접 고른 버튼 기준(로컬), 없으면 카테고리 대분류만 반영
+    if (!selectedCatButton && data.재직자여부) {
+      ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
+        const matches = data.재직자여부 === '일반시민' ? c === '일반시민'
+          : data.재직자여부 === '재직자' ? c === '재직자'
+          : false; // 미래인재는 직업계고/대학생 중 어느쪽인지 원격 state만으로 알 수 없음
+        document.getElementById(`catBtn-${c}`).classList.toggle('active', matches);
+      });
+    }
+
+    const needsAffilName = data.재직자여부 === '재직자' || data.재직자여부 === '미래인재';
+    document.getElementById('affilMirrorSection').classList.toggle('hidden', !needsAffilName);
     const affilValEl = document.getElementById('affilVal');
     const affilLabel = computeAffilLabel(data);
     if (affilLabel) {
       affilValEl.textContent = affilLabel;
       affilValEl.classList.remove('empty');
-    } else {
-      affilValEl.textContent = '담당자가 소속을 확인합니다';
+    } else if (needsAffilName) {
+      affilValEl.textContent = '담당자가 소속 상세를 확인합니다';
       affilValEl.classList.add('empty');
     }
 
     renderGuide();
   }
 
-  // 담당자 접수 완료 → 시간대 선택 → 서명 순서로 한 단계씩 열어주는 안내 패널
+  // 소속 선택 → (회사명/학교명 담당자 입력) → 시간대 선택 → 서명 순서로 한 단계씩 열어주는 안내 패널
   function renderGuide() {
     const data = remoteState;
     const namePrefix = data.성명 ? `${data.성명}님, ` : '';
-    const done = intakeDone(data);
+    const needsAffilName = data.재직자여부 === '재직자' || data.재직자여부 === '미래인재';
+    const nameDone = affilNameDone(data);
+    const affilDone = !!data.재직자여부 && nameDone;
 
     let text;
-    if (!done) {
-      text = data.성명 ? `${namePrefix}담당자가 접수를 마무리하고 있어요...` : '담당자가 접수 중이에요...';
+    if (!data.성명) {
+      text = '담당자가 성함을 입력하는 중이에요...';
+    } else if (!data.재직자여부) {
+      text = `${namePrefix}소속을 선택해주세요`;
+    } else if (needsAffilName && !nameDone) {
+      text = data.재직자여부 === '재직자'
+        ? `${namePrefix}재직 중이신 회사명을 담당자에게 말씀해주세요 (예: 전주MBC)`
+        : `${namePrefix}다니시는 학교명을 담당자에게 말씀해주세요`;
     } else if (pendingSlotIndex === null) {
       text = `${namePrefix}참여하실 시간대를 선택해주세요`;
     } else {
       text = `${namePrefix}서명해주세요`;
     }
     document.getElementById('guideText').textContent = text;
-    document.getElementById('slotSection').classList.toggle('locked', !done);
+    document.getElementById('catSection').classList.toggle('locked', !data.성명);
+    document.getElementById('slotSection').classList.toggle('locked', !affilDone);
 
     const signArea = document.getElementById('signArea');
     const wasHidden = signArea.classList.contains('hidden');
-    const shouldShow = done && pendingSlotIndex !== null;
+    const shouldShow = affilDone && pendingSlotIndex !== null;
     document.getElementById('inputBundle').classList.toggle('hidden', shouldShow);
     signArea.classList.toggle('hidden', !shouldShow);
 
@@ -540,7 +601,9 @@
   }
 
   function submitFromKiosk() {
-    if (!intakeDone(remoteState)) { showStatus('담당자가 접수를 완료해야 해요.', 'err'); return; }
+    if (!remoteState.성명) { showStatus('담당자가 성함을 먼저 입력해야 해요.', 'err'); return; }
+    if (!remoteState.재직자여부) { showStatus('소속을 선택해주세요.', 'err'); return; }
+    if (!affilNameDone(remoteState)) { showStatus('담당자가 회사명/학교명을 입력해야 해요.', 'err'); return; }
     if (pendingSlotIndex === null) { showStatus('시간대를 선택해주세요.', 'err'); return; }
     if (signaturePad.isEmpty() && !remoteState.signature) { showStatus('서명을 완료해주세요.', 'err'); return; }
     const slot = queueData.slots[pendingSlotIndex];
@@ -559,10 +622,13 @@
   }
 
   function onSubmitted(result) {
+    const submittedSlotIndex = pendingSlotIndex;
+    const submittedSlot = submittedSlotIndex !== null ? queueData.slots[submittedSlotIndex] : null;
+
     // 서명록 등록 성공 → 시간대 대기열에도 등록
-    if (pendingSlotIndex !== null && queueWs && queueWs.readyState === WebSocket.OPEN) {
+    if (submittedSlotIndex !== null && queueWs && queueWs.readyState === WebSocket.OPEN) {
       queueWs.send(JSON.stringify({
-        type: 'checkin', slotIndex: pendingSlotIndex,
+        type: 'checkin', slotIndex: submittedSlotIndex,
         성명: remoteState.성명, 재직자여부: remoteState.재직자여부,
         회사명: remoteState.회사명, 학교명: remoteState.학교명,
       }));
@@ -570,12 +636,25 @@
     const submittedName = remoteState.성명 ? `${remoteState.성명}님 ` : '';
     showStatus(`${submittedName}등록 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🚌`, 'ok');
 
-    pendingSlotIndex = null;
     signaturePad.clear();
     placeholder.style.display = 'block';
     savedBadge.style.display = 'none';
     document.getElementById('kioskSubmitBtn').disabled = false;
-    send({ type: 'update', field: '시간대', value: '' });
+    selectedCatButton = '';
+    ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
+      document.getElementById(`catBtn-${c}`).classList.remove('active');
+    });
+
+    // 가족·단체 단위로 같은 시간대에 여러 명이 등록하는 경우가 많아서, 시간대 선택은 그대로 유지하고
+    // 다음 분 소속 선택·서명만 이어서 받을 수 있게 함 (방금 등록으로 마감됐으면 자동으로 풀어줌,
+    // 다른 시간대로 바꾸고 싶으면 '‹ 시간대 다시 선택' 사용)
+    if (submittedSlot && submittedSlot.entries.length + 1 >= submittedSlot.capacity) {
+      pendingSlotIndex = null;
+      send({ type: 'update', field: '시간대', value: '' });
+    } else if (submittedSlot) {
+      // 서버가 이 세션의 다른 필드와 함께 시간대도 초기화했으므로, 담당자 PC 화면 표시를 위해 다시 알려줌
+      send({ type: 'update', field: '시간대', value: submittedSlot.time });
+    }
     renderSlots();
     renderGuide();
   }

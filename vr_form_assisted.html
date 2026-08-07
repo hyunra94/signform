@@ -105,14 +105,17 @@
 
   .field-hint { font-size: 11.5px; color: #8494A8; margin: -3px 0 8px; line-height: 1.5; }
 
-  /* ---- 재직자 여부: 담당자가 직접 선택 ---- */
-  .cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .cat-btn {
-    padding: 12px 4px; border-radius: 14px; border: 2px solid var(--lavender);
-    background: #F7F9FC; color: var(--text); font-family: inherit; font-size: 12.5px; font-weight: 700;
-    cursor: pointer;
+  /* ---- 소속 구분: 참석자가 키오스크에서 직접 선택, 여기는 읽기전용 배지 ---- */
+  .cat-badge-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cat-badge {
+    padding: 9px 12px; border-radius: 20px; border: 1.5px solid var(--lavender);
+    font-size: 12.5px; font-weight: 500; color: #8494A8; background: #F7F9FC;
   }
-  .cat-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); color: white; }
+  .cat-badge.active { border-color: var(--accent-dark); background: #EDF2F8; color: var(--accent-dark); font-weight: 700; }
+  .sub-cat-hint {
+    margin-top: 8px; font-size: 12.5px; color: var(--accent-dark); font-weight: 500;
+    min-height: 16px;
+  }
 
   .hidden-field {
     overflow: hidden; max-height: 0; opacity: 0;
@@ -230,13 +233,14 @@
         <label for="name">성명</label>
         <input type="text" id="name" placeholder="참석자에게 성함을 여쭤보고 입력하세요">
 
-        <label>재직자 여부</label>
-        <div class="cat-grid">
-          <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
-          <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
-          <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
-          <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+        <label>소속 구분</label>
+        <p class="field-hint">참석자가 키오스크에서 직접 골라요. 고른 내용이 여기 그대로 보여요.</p>
+        <div class="cat-badge-row">
+          <span class="cat-badge" id="catBadge-재직자">재직자</span>
+          <span class="cat-badge" id="catBadge-미래인재">미래인재(직업계·대학)</span>
+          <span class="cat-badge" id="catBadge-일반시민">일반 시민</span>
         </div>
+        <div class="sub-cat-hint" id="subCatHint"></div>
 
         <div id="companyField" class="hidden-field">
           <label for="company">회사명</label>
@@ -314,7 +318,8 @@
   let intentionalDisconnect = false;
   let sessionCode = null;
   let suppressEcho = false;
-  let subCatLocal = ''; // 직업계고/대학생 중 어느 쪽인지(로컬 표시용, 서버엔 '미래인재'로만 전송)
+  let subCatLocal = ''; // 원격 힌트로 받은 직업계고/대학생 표시(비영속)
+  let lastCatSeen = ''; // 소속 구분이 새로 바뀐 순간을 감지해서 자동 포커스 이동에 씀
 
   const liveCanvas = document.getElementById('live-preview-canvas');
   const placeholder = document.getElementById('pad-placeholder');
@@ -472,6 +477,7 @@
       else if (msg.type === 'strokeLive') handleLiveStroke(msg);
       else if (msg.type === 'peers') handlePeers(msg.count);
       else if (msg.type === 'hint' && msg.kind === 'padAspect') liveCanvas.style.aspectRatio = msg.value;
+      else if (msg.type === 'hint' && msg.kind === 'subCategory') applySubCatHint(msg.value);
     };
   }
 
@@ -484,20 +490,15 @@
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
   }
 
-  // ---------- 재직자 여부 선택 (담당자가 직접) ----------
-  const isFutureTalent = (v) => v === '직업계고' || v === '대학생';
-  function selectCat(cat) {
-    ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
-      document.getElementById(`catBtn-${c}`).classList.toggle('active', c === cat);
-    });
-    subCatLocal = isFutureTalent(cat) ? cat : '';
-    const stored = isFutureTalent(cat) ? '미래인재' : cat;
-    send({ type: 'update', field: '재직자여부', value: stored });
-    document.getElementById('companyField').classList.toggle('show', stored === '재직자');
-    document.getElementById('schoolField').classList.toggle('show', stored === '미래인재');
-    if (stored === '재직자') setTimeout(() => document.getElementById('company').focus(), 120);
-    else if (stored === '미래인재') setTimeout(() => document.getElementById('school').focus(), 120);
+  // ---------- 소속 구분: 키오스크에서 참석자가 고른 걸 힌트로 받아 표시 ----------
+  function applySubCatHint(value) {
+    subCatLocal = value;
+    renderSubCatHint();
     renderConfirmSummary();
+  }
+  function renderSubCatHint() {
+    const el = document.getElementById('subCatHint');
+    el.textContent = subCatLocal ? `🎓 ${subCatLocal} 선택됨` : '';
   }
 
   function setCf(id, text) {
@@ -509,16 +510,17 @@
   function renderConfirmSummary() {
     setCf('cfName', document.getElementById('name').value.trim());
 
-    const cat = ['재직자', '직업계고', '대학생', '일반시민'].find(
-      c => document.getElementById(`catBtn-${c}`).classList.contains('active')
+    const cat = ['재직자', '미래인재', '일반시민'].find(
+      c => document.getElementById(`catBadge-${c}`).classList.contains('active')
     ) || '';
     let affil = '';
     if (cat === '재직자') {
       const company = document.getElementById('company').value.trim();
       affil = company ? `재직자 · ${company}` : '재직자 (회사명 입력 필요)';
-    } else if (isFutureTalent(cat)) {
+    } else if (cat === '미래인재') {
+      const label = subCatLocal || '미래인재';
       const school = document.getElementById('school').value.trim();
-      affil = school ? `${cat} · ${school}` : `${cat} (학교명 입력 필요)`;
+      affil = school ? `${label} · ${school}` : `${label} (학교명 입력 필요)`;
     } else if (cat === '일반시민') {
       affil = '일반 시민';
     }
@@ -555,14 +557,20 @@
     if (document.activeElement !== companyEl) companyEl.value = data.회사명 || '';
     if (document.activeElement !== schoolEl) schoolEl.value = data.학교명 || '';
 
-    ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
-      const matches = data.재직자여부 === '일반시민' ? c === '일반시민'
-        : data.재직자여부 === '재직자' ? c === '재직자'
-        : isFutureTalent(c) && subCatLocal === c;
-      document.getElementById(`catBtn-${c}`).classList.toggle('active', matches);
+    ['재직자', '미래인재', '일반시민'].forEach(c => {
+      document.getElementById(`catBadge-${c}`).classList.toggle('active', data.재직자여부 === c);
     });
+    if (data.재직자여부 !== '미래인재') { subCatLocal = ''; }
+    renderSubCatHint();
+
     document.getElementById('companyField').classList.toggle('show', data.재직자여부 === '재직자');
     document.getElementById('schoolField').classList.toggle('show', data.재직자여부 === '미래인재');
+
+    if (data.재직자여부 !== lastCatSeen) {
+      if (data.재직자여부 === '재직자') companyEl.focus();
+      else if (data.재직자여부 === '미래인재') schoolEl.focus();
+      lastCatSeen = data.재직자여부;
+    }
 
     const slotValEl = document.getElementById('slotVal');
     if (data.시간대) {
@@ -620,8 +628,10 @@
     document.getElementById('school').value = '';
     document.getElementById('companyField').classList.remove('show');
     document.getElementById('schoolField').classList.remove('show');
-    ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
+    ['재직자', '미래인재', '일반시민'].forEach(c => document.getElementById(`catBadge-${c}`).classList.remove('active'));
     subCatLocal = '';
+    renderSubCatHint();
+    lastCatSeen = '';
     lastRemoteSignature = '';
     clearLiveCanvas();
     placeholder.style.display = 'block';
