@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>VR체험버스 - 참석자 키오스크</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
+<meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
+<style>
+  :root {
+    --bg-1: #EEF2F8; --bg-2: #E4ECF7;
+    --accent: #4A6FA5; --accent-dark: #2F4C7A;
+    --lavender: #D7E0F0; --text: #2B3A4A; --white: #FFFFFF;
+    --shadow: rgba(74, 111, 165, 0.25);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; margin: 0; font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2)); color: var(--text);
+    overscroll-behavior: none;
+    -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input, textarea {
+    -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text;
+  }
+
+  /* ---- 세션 참가 화면 ---- */
+  .session-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; padding: 24px; gap: 16px;
+  }
+  .session-screen h1 { font-size: 22px; color: var(--accent-dark); margin: 0 0 8px; text-align: center; }
+  .join-row { display: flex; gap: 10px; width: 100%; max-width: 320px; }
+  .join-row input {
+    flex: 1; min-width: 0; padding: clamp(12px, 4vw, 18px); border-radius: 14px; border: 2px solid var(--lavender);
+    font-family: inherit; font-size: clamp(20px, 8vw, 26px); text-align: center;
+    letter-spacing: clamp(3px, 3vw, 8px);
+  }
+  .join-btn {
+    padding: 18px 22px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .kb-toggle-btn {
+    padding: 18px 16px; border: 1.5px solid var(--lavender); border-radius: 14px;
+    background: #F7F9FC; font-size: 18px; cursor: pointer;
+  }
+  .kb-hint {
+    font-size: 11.5px; color: #7C8FA3; text-align: center; margin-top: 10px;
+    max-width: 320px; line-height: 1.5;
+  }
+
+  /* ---- 입력 화면 ---- */
+  .sign-screen { display: none; flex-direction: column; height: 100%; padding: 16px; overflow-y: auto; }
+  .sign-screen.active { display: flex; }
+
+  .top-bar {
+    display: flex; justify-content: flex-end; align-items: center;
+    padding: 4px 6px 12px 54px;
+  }
+  .conn-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #7C8FA3; }
+  .btn-plain {
+    background: none; border: none; color: var(--accent-dark); font-size: 11px;
+    text-decoration: underline; cursor: pointer; padding: 0; margin-left: 2px; font-family: inherit;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
+  .dot.on { background: #6FA875; }
+  .dot.off { background: #D97070; }
+
+  .section-label {
+    font-size: 12.5px; font-weight: 700; color: var(--accent-dark); margin: 6px 0 8px;
+  }
+
+  .sticky-top {
+    position: sticky; top: -16px; z-index: 10;
+    margin: -16px -16px 12px; padding: 16px 16px 4px;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+  }
+
+  .guide-panel {
+    display: flex; align-items: center; gap: 12px; padding: 16px 18px; margin-bottom: 4px;
+    border-radius: 16px; background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white; box-shadow: 0 6px 18px var(--shadow);
+  }
+  .guide-panel .guide-icon { font-size: 22px; flex-shrink: 0; }
+  .guide-panel .guide-text { font-size: 16.5px; font-weight: 700; line-height: 1.4; }
+
+  .locked { opacity: 0.4; pointer-events: none; filter: grayscale(55%); transition: opacity 0.25s ease; }
+
+  /* ---- 성함/소속 (담당자가 PC에 입력, 여기는 안내문구만 표시) ---- */
+  .name-section, .affil-mirror-section { margin-bottom: 14px; }
+  .name-display-box, .affil-mirror-box {
+    width: 100%; padding: 16px 18px; border-radius: 14px; border: 2px dashed var(--accent);
+    background: #F7F9FC;
+  }
+  .name-display-box .val, .affil-mirror-box .val { font-size: 18px; font-weight: 700; color: var(--text); }
+  .name-display-box .val.empty, .affil-mirror-box .val.empty { font-size: 14px; font-weight: 400; color: #9FB0C4; line-height: 1.5; }
+
+  /* ---- 시간대 선택 ---- */
+  .slot-section { margin-bottom: 14px; }
+  .slot-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+  .slot-btn {
+    border: 2px solid var(--lavender); border-radius: 14px; background: #F7F9FC;
+    padding: 12px 6px; cursor: pointer; font-family: inherit; text-align: center;
+  }
+  .slot-btn.now { border-color: var(--accent-dark); }
+  .slot-btn.selected { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); }
+  .slot-btn.selected .t, .slot-btn.selected .a { color: white; }
+  .slot-btn.full, .slot-btn.past { opacity: 0.45; cursor: not-allowed; }
+  .slot-btn .t { font-size: 15px; font-weight: 700; color: var(--text); }
+  .slot-btn .a { font-size: 10.5px; color: #7C8FA3; margin-top: 3px; }
+  .slot-empty-note { font-size: 12.5px; color: #9FB0C4; text-align: center; padding: 12px 0; }
+
+  /* ---- 서명 ---- */
+  .sign-area { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .pad-wrap {
+    width: 100%; flex: 1; min-height: 180px; position: relative; border: 3px dashed var(--accent); border-radius: 20px;
+    background: var(--white); overflow: hidden; box-shadow: 0 8px 24px var(--shadow);
+  }
+  #signature-pad { display: block; width: 100%; height: 100%; touch-action: none; }
+  .pad-placeholder {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #B7C4D3; font-size: 24px; font-weight: 700; pointer-events: none; text-align: center; padding: 0 20px;
+  }
+  .saved-badge {
+    position: absolute; top: 14px; right: 14px; background: #F0FAF2; color: #4a7d52;
+    padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    display: none; align-items: center; gap: 4px;
+  }
+
+  .bottom-bar { display: flex; gap: 10px; margin-top: 14px; }
+  .bottom-bar button {
+    flex: 1; padding: 15px; border-radius: 16px; border: none; font-family: inherit;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .btn-clear { background: #EDF2F8; color: var(--accent-dark); border: 2px solid var(--accent) !important; }
+  .btn-submit {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+  }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .wait-note {
+    text-align: center; font-size: 12px; color: #7C8FA3; margin-top: 10px; line-height: 1.5;
+  }
+  .status { text-align: center; font-size: 13px; margin-top: 8px; min-height: 18px; }
+  .status.ok { color: #6FA875; }
+  .status.err { color: #D97070; }
+
+  .hidden { display: none !important; }
+
+  .home-fab {
+    position: fixed; top: 12px; left: 12px; z-index: 15;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: white; box-shadow: 0 4px 12px rgba(74,111,165,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; text-decoration: none; color: inherit; border: none; cursor: pointer;
+  }
+  .home-fab:active { transform: scale(0.94); }
+</style>
+</head>
+<body>
+<a href="./index.html" class="home-fab" title="메인으로">🏠</a>
+
+<!-- 세션 참가 화면 -->
+<div class="session-screen" id="sessionScreen">
+  <h1>🚌 VR체험버스<br>참가 코드 입력</h1>
+  <div class="join-row">
+    <input type="text" id="joinCodeInput" placeholder="0000" maxlength="4" inputmode="none">
+    <button class="kb-toggle-btn" onclick="showKeyboard()" title="화면 키보드 띄우기">⌨️</button>
+    <button class="join-btn" onclick="joinSession()">참가</button>
+  </div>
+  <p class="kb-hint">담당자 화면에 뜬 4자리 코드를 입력하거나, QR코드를 스캔하면 자동으로 참가돼요.</p>
+</div>
+
+<!-- 입력 화면 -->
+<div class="sign-screen" id="signScreen">
+  <div class="sticky-top" id="stickyTop">
+    <div class="top-bar">
+      <div class="conn-status">
+        <span class="dot" id="connDot"></span><span id="connText">연결 중</span>
+        <button class="btn-plain" onclick="resetSession()">코드 변경</button>
+      </div>
+    </div>
+
+    <div class="guide-panel" id="guidePanel">
+      <span class="guide-icon">🔵</span>
+      <span class="guide-text" id="guideText">담당자가 접수 중이에요...</span>
+    </div>
+  </div>
+
+  <div class="input-bundle" id="inputBundle">
+    <div class="name-section">
+      <div class="section-label">🙋 성함</div>
+      <div class="name-display-box">
+        <span class="val empty" id="nameVal">담당자가 성함을 입력합니다</span>
+      </div>
+    </div>
+
+    <div class="affil-mirror-section">
+      <div class="section-label">🏢 소속</div>
+      <div class="affil-mirror-box">
+        <span class="val empty" id="affilVal">담당자가 소속을 확인합니다</span>
+      </div>
+    </div>
+
+    <div class="slot-section locked" id="slotSection">
+      <div class="section-label">🕐 참여하실 시간대를 선택해주세요</div>
+      <div class="slot-grid" id="slotGrid"></div>
+      <div class="slot-empty-note hidden" id="slotEmptyNote">아직 시간대가 설정되지 않았어요. 스태프에게 문의해주세요.</div>
+    </div>
+  </div>
+
+  <div class="sign-area hidden" id="signArea">
+    <div class="pad-wrap">
+      <canvas id="signature-pad"></canvas>
+      <span class="pad-placeholder" id="pad-placeholder">여기에 크게 서명해주세요 ✍️</span>
+      <div class="saved-badge" id="savedBadge">✓ 저장됨</div>
+    </div>
+
+    <div class="bottom-bar">
+      <button class="btn-clear" onclick="clearSignature()">다시 서명</button>
+      <button class="btn-submit" id="kioskSubmitBtn" onclick="submitFromKiosk()">제출하기</button>
+    </div>
+    <p class="wait-note">
+      <button class="btn-plain" onclick="reselectSlot()">‹ 시간대 다시 선택</button> · 서명을 마치고 제출하기를 누르면 바로 등록돼요.
+    </p>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+  // ⚠️ 배포된 Worker 주소로 교체하세요
+  const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
+  const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
+
+  document.addEventListener('dragstart', (e) => e.preventDefault());
+  document.addEventListener('selectstart', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+  });
+
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  let ws = null;
+  let sessionCode = null;
+  let intentionalDisconnect = false;
+  let remoteState = { 성명: '', 재직자여부: '', 회사명: '', 학교명: '', 시간대: '', signature: '', 동의: false };
+
+  const canvas = document.getElementById('signature-pad');
+  const placeholder = document.getElementById('pad-placeholder');
+  const savedBadge = document.getElementById('savedBadge');
+  let signaturePad;
+  let saveTimer = null;
+
+  function resizeCanvas() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const saved = signaturePad ? signaturePad.toData() : null;
+    canvas.width = canvas.offsetWidth * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    canvas.getContext('2d').scale(ratio, ratio);
+    if (signaturePad) {
+      signaturePad.clear();
+      if (saved && saved.length) signaturePad.fromData(saved);
+    }
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  function initSignaturePad() {
+    resizeCanvas();
+    signaturePad = new SignaturePad(canvas, {
+      backgroundColor: 'rgba(255,255,255,0)',
+      penColor: '#2B3A4A', minWidth: 1.5, maxWidth: 4
+    });
+    signaturePad.addEventListener('beginStroke', () => {
+      placeholder.style.display = 'none';
+      savedBadge.style.display = 'none';
+    });
+  }
+
+  function clearSignature() {
+    if (signaturePad) signaturePad.clear();
+    placeholder.style.display = 'block';
+    savedBadge.style.display = 'none';
+  }
+
+  function showKeyboard() {
+    const input = document.getElementById('joinCodeInput');
+    input.setAttribute('inputmode', 'numeric');
+    input.focus();
+  }
+
+  function joinSession() {
+    const code = document.getElementById('joinCodeInput').value.trim();
+    if (!/^\d{4}$/.test(code)) {
+      alert('담당자 화면에 표시된 4자리 코드를 입력해주세요.');
+      return;
+    }
+    sessionCode = code;
+    document.getElementById('sessionScreen').classList.add('hidden');
+    document.getElementById('signScreen').classList.add('active');
+    initSignaturePad();
+    openWebSocket();
+    openQueueWebSocket();
+  }
+  document.getElementById('joinCodeInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); joinSession(); }
+  });
+
+  // QR코드로 스캔해서 들어오면 ?code=1234 형태로 붙어있어서 자동 참가시킴
+  (function autoJoinFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const codeFromUrl = params.get('code');
+    if (codeFromUrl && /^\d{4}$/.test(codeFromUrl)) {
+      document.getElementById('joinCodeInput').value = codeFromUrl;
+      joinSession();
+    }
+  })();
+
+  function openWebSocket() {
+    setConnStatus(false, '연결 중');
+    ws = new WebSocket(`${WS_URL_BASE}/ws?session=${sessionCode}`);
+
+    ws.onopen = () => setConnStatus(true, '연결됨');
+    ws.onclose = () => {
+      if (intentionalDisconnect) { intentionalDisconnect = false; return; }
+      setConnStatus(false, '재연결 중');
+      setTimeout(openWebSocket, 2000);
+    };
+    ws.onerror = () => setConnStatus(false, '오류');
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'state') applyRemoteState(msg.data);
+      else if (msg.type === 'submitted') onSubmitted(msg.result);
+      else if (msg.type === 'error') {
+        showStatus(msg.message, 'err');
+        document.getElementById('kioskSubmitBtn').disabled = false;
+      }
+      else if (msg.type === 'hint' && msg.kind === 'penOnly') setPenOnlyMode(!!msg.value);
+    };
+  }
+
+  // ---------- 펜 전용 서명 (담당자 PC에서 설정) ----------
+  let penOnlyMode = false;
+  function blockNonPenPointer(e) {
+    if (penOnlyMode && e.pointerType !== 'pen') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }
+  canvas.addEventListener('pointerdown', blockNonPenPointer);
+  canvas.addEventListener('pointermove', blockNonPenPointer);
+  function setPenOnlyMode(on) {
+    penOnlyMode = on;
+    placeholder.textContent = on ? '펜으로 서명해주세요 ✍️' : '여기에 크게 서명해주세요 ✍️';
+  }
+
+  // ---------- 시간대 대기열 (날짜 단위, QueueSession) ----------
+  let queueWs = null;
+  let queueData = { slots: [] };
+  let pendingSlotIndex = null;
+
+  function openQueueWebSocket() {
+    queueWs = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${todayStr()}`);
+    queueWs.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'state') { queueData = msg.data; renderSlots(); }
+    };
+    queueWs.onclose = () => { setTimeout(openQueueWebSocket, 2000); };
+  }
+  setInterval(renderSlots, 15000);
+
+  function minutesNow() {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+  function currentSlotIndex(slots) {
+    const nowMin = minutesNow();
+    let best = -1;
+    slots.forEach((s, i) => {
+      const [h, m] = s.time.split(':').map(Number);
+      if (h * 60 + m <= nowMin) best = i;
+    });
+    return best;
+  }
+
+  function renderSlots() {
+    const grid = document.getElementById('slotGrid');
+    const emptyNote = document.getElementById('slotEmptyNote');
+    const slots = queueData.slots || [];
+
+    if (slots.length === 0) {
+      grid.innerHTML = '';
+      emptyNote.classList.remove('hidden');
+      return;
+    }
+    emptyNote.classList.add('hidden');
+
+    const nowIdx = currentSlotIndex(slots);
+    grid.innerHTML = slots.map((s, i) => {
+      const isFull = s.entries.length >= s.capacity;
+      const isCurrent = i === nowIdx;
+      const isPast = nowIdx >= 0 && i < nowIdx;
+      const isSelected = i === pendingSlotIndex;
+      const disabled = isFull || isPast;
+      const remain = Math.max(s.capacity - s.entries.length, 0);
+      return `
+        <button type="button" class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isPast ? 'past' : ''} ${isSelected ? 'selected' : ''}"
+                ${disabled ? 'disabled' : ''} onclick="selectSlot(${i})">
+          <div class="t">${s.time}</div>
+          <div class="a">${isPast ? '종료' : isFull ? '마감' : `${remain}자리 남음`}</div>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function selectSlot(index) {
+    const slot = queueData.slots[index];
+    if (!slot) return;
+    pendingSlotIndex = index;
+    send({ type: 'update', field: '시간대', value: slot.time });
+    renderSlots();
+    renderGuide();
+  }
+
+  function reselectSlot() {
+    pendingSlotIndex = null;
+    send({ type: 'update', field: '시간대', value: '' });
+    renderSlots();
+    renderGuide();
+  }
+
+  function resetSession() {
+    if (!confirm('다른 세션 코드로 바꿀까요? 지금 화면의 입력 내용은 사라져요.')) return;
+    intentionalDisconnect = true;
+    if (ws) ws.close();
+    if (queueWs) queueWs.close();
+
+    document.getElementById('signScreen').classList.remove('active');
+    document.getElementById('sessionScreen').classList.remove('hidden');
+    document.getElementById('joinCodeInput').value = '';
+    sessionCode = null;
+    remoteState = { 성명: '', 재직자여부: '', 회사명: '', 학교명: '', 시간대: '', signature: '', 동의: false };
+    pendingSlotIndex = null;
+
+    if (signaturePad) signaturePad.clear();
+    placeholder.style.display = 'block';
+    savedBadge.style.display = 'none';
+    document.getElementById('kioskSubmitBtn').disabled = false;
+    renderGuide();
+    showStatus('', '');
+  }
+
+  function setConnStatus(on, text) {
+    document.getElementById('connDot').className = 'dot ' + (on ? 'on' : 'off');
+    document.getElementById('connText').textContent = text;
+  }
+
+  function send(payload) {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+  }
+
+  function computeAffilLabel(data) {
+    if (data.재직자여부 === '재직자') return data.회사명 ? `재직자 · ${data.회사명}` : '';
+    if (data.재직자여부 === '미래인재') return data.학교명 ? `미래인재 · ${data.학교명}` : '';
+    if (data.재직자여부 === '일반시민') return '일반 시민';
+    return '';
+  }
+
+  function intakeDone(data) {
+    if (!data.성명 || !data.재직자여부) return false;
+    if (data.재직자여부 === '재직자') return !!data.회사명;
+    if (data.재직자여부 === '미래인재') return !!data.학교명;
+    return true;
+  }
+
+  function applyRemoteState(data) {
+    remoteState = data;
+
+    const nameValEl = document.getElementById('nameVal');
+    if (data.성명) {
+      nameValEl.textContent = data.성명;
+      nameValEl.classList.remove('empty');
+    } else {
+      nameValEl.textContent = '담당자가 성함을 입력합니다';
+      nameValEl.classList.add('empty');
+    }
+
+    const affilValEl = document.getElementById('affilVal');
+    const affilLabel = computeAffilLabel(data);
+    if (affilLabel) {
+      affilValEl.textContent = affilLabel;
+      affilValEl.classList.remove('empty');
+    } else {
+      affilValEl.textContent = '담당자가 소속을 확인합니다';
+      affilValEl.classList.add('empty');
+    }
+
+    renderGuide();
+  }
+
+  // 담당자 접수 완료 → 시간대 선택 → 서명 순서로 한 단계씩 열어주는 안내 패널
+  function renderGuide() {
+    const data = remoteState;
+    const namePrefix = data.성명 ? `${data.성명}님, ` : '';
+    const done = intakeDone(data);
+
+    let text;
+    if (!done) {
+      text = data.성명 ? `${namePrefix}담당자가 접수를 마무리하고 있어요...` : '담당자가 접수 중이에요...';
+    } else if (pendingSlotIndex === null) {
+      text = `${namePrefix}참여하실 시간대를 선택해주세요`;
+    } else {
+      text = `${namePrefix}서명해주세요`;
+    }
+    document.getElementById('guideText').textContent = text;
+    document.getElementById('slotSection').classList.toggle('locked', !done);
+
+    const signArea = document.getElementById('signArea');
+    const wasHidden = signArea.classList.contains('hidden');
+    const shouldShow = done && pendingSlotIndex !== null;
+    document.getElementById('inputBundle').classList.toggle('hidden', shouldShow);
+    signArea.classList.toggle('hidden', !shouldShow);
+
+    if (wasHidden && shouldShow) {
+      requestAnimationFrame(resizeCanvas);
+    } else if (!wasHidden && !shouldShow) {
+      document.getElementById('signScreen').scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }
+
+  function submitFromKiosk() {
+    if (!intakeDone(remoteState)) { showStatus('담당자가 접수를 완료해야 해요.', 'err'); return; }
+    if (pendingSlotIndex === null) { showStatus('시간대를 선택해주세요.', 'err'); return; }
+    if (signaturePad.isEmpty() && !remoteState.signature) { showStatus('서명을 완료해주세요.', 'err'); return; }
+    const slot = queueData.slots[pendingSlotIndex];
+    if (slot && slot.entries.length >= slot.capacity) {
+      showStatus('선택한 시간대가 방금 마감됐어요. 다른 시간대를 골라주세요.', 'err');
+      reselectSlot();
+      return;
+    }
+
+    if (!signaturePad.isEmpty()) {
+      send({ type: 'signature', dataUrl: signaturePad.toDataURL('image/png') });
+    }
+    document.getElementById('kioskSubmitBtn').disabled = true;
+    showStatus('제출 중...', '');
+    send({ type: 'submit' });
+  }
+
+  function onSubmitted(result) {
+    // 서명록 등록 성공 → 시간대 대기열에도 등록
+    if (pendingSlotIndex !== null && queueWs && queueWs.readyState === WebSocket.OPEN) {
+      queueWs.send(JSON.stringify({
+        type: 'checkin', slotIndex: pendingSlotIndex,
+        성명: remoteState.성명, 재직자여부: remoteState.재직자여부,
+        회사명: remoteState.회사명, 학교명: remoteState.학교명,
+      }));
+    }
+    const submittedName = remoteState.성명 ? `${remoteState.성명}님 ` : '';
+    showStatus(`${submittedName}등록 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🚌`, 'ok');
+
+    pendingSlotIndex = null;
+    signaturePad.clear();
+    placeholder.style.display = 'block';
+    savedBadge.style.display = 'none';
+    document.getElementById('kioskSubmitBtn').disabled = false;
+    send({ type: 'update', field: '시간대', value: '' });
+    renderSlots();
+    renderGuide();
+  }
+
+  function showStatus(text, cls) {
+    const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = 'status' + (cls ? ' ' + cls : '');
+  }
+</script>
+
+</body>
+</html>
