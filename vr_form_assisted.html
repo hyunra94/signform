@@ -262,10 +262,80 @@
     font-size: 17px; text-decoration: none; color: inherit; border: none; cursor: pointer;
   }
   .home-fab:active { transform: scale(0.94); }
+
+  /* ---- 하단 플로팅 버튼: 실시간 현황 / 시간대 설정 ---- */
+  .bottom-fab-row {
+    position: fixed; bottom: 16px; right: 16px; z-index: 20;
+    display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+  }
+  .bottom-fab-btn {
+    display: flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 30px; border: none;
+    background: white; color: var(--accent-dark); font-family: inherit; font-size: 13px; font-weight: 700;
+    box-shadow: 0 4px 14px rgba(74,111,165,0.3); cursor: pointer;
+  }
+  .bottom-fab-btn:active { transform: scale(0.96); }
+
+  /* ---- 시간대 설정 슬라이드 패널 ---- */
+  .slot-config-backdrop {
+    position: fixed; inset: 0; background: rgba(43, 58, 74, 0.45);
+    display: flex; justify-content: flex-end; z-index: 30;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+  }
+  .slot-config-backdrop.open { opacity: 1; pointer-events: auto; }
+  .slot-config-panel {
+    width: min(380px, 92vw); height: 100%; background: var(--white);
+    padding: 24px 20px; overflow-y: auto; box-shadow: -8px 0 24px rgba(0,0,0,0.18);
+    transform: translateX(100%); transition: transform 0.25s ease;
+  }
+  .slot-config-backdrop.open .slot-config-panel { transform: translateX(0); }
+  .slot-config-row { display: flex; gap: 10px; }
+  .slot-config-row > div { flex: 1; }
+  .slot-config-panel label { display: block; font-size: 12px; font-weight: 500; margin: 14px 0 5px; color: var(--text); }
+  .slot-config-panel label:first-child { margin-top: 0; }
+  .slot-config-panel input {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--lavender); border-radius: 10px;
+    font-family: inherit; font-size: 13px; background: #F7F9FC; outline: none;
+  }
+  .slot-config-panel input:focus { border-color: var(--accent); }
+  .slot-config-current {
+    margin-top: 14px; padding: 10px 12px; background: #EDF2F8; border-radius: 10px;
+    font-size: 12.5px; color: var(--accent-dark); font-weight: 700; text-align: center;
+  }
 </style>
 </head>
 <body>
 <a href="./index.html" class="home-fab" title="메인으로">🏠</a>
+
+<div class="bottom-fab-row">
+  <button type="button" class="bottom-fab-btn" onclick="openSlotConfigPanel()">⚙️ 시간대 설정</button>
+  <button type="button" class="bottom-fab-btn" onclick="openLivePanel()">📋 실시간 현황</button>
+</div>
+
+<!-- 시간대 설정 슬라이드 패널 -->
+<div class="slot-config-backdrop" id="slotConfigBackdrop" onclick="if(event.target===this) closeSlotConfigPanel()">
+  <div class="slot-config-panel">
+    <div class="roster-panel-head">
+      <h2>⚙️ 시간대 설정</h2>
+      <button type="button" class="roster-panel-close" onclick="closeSlotConfigPanel()">✕</button>
+    </div>
+    <p class="field-hint">오늘 VR체험버스 시간대를 만들거나 다시 설정해요. 이미 만들어진 시간대가 있으면 다시 만들 때 등록된 명단이 전부 초기화돼요.</p>
+
+    <div class="slot-config-row">
+      <div><label for="slotStartTime">시작 시간</label><input type="time" id="slotStartTime" value="09:00"></div>
+      <div><label for="slotEndTime">종료 시간</label><input type="time" id="slotEndTime" value="17:00"></div>
+    </div>
+    <div class="slot-config-row">
+      <div><label for="slotInterval">회차 간격(분)</label><input type="number" id="slotInterval" value="20" min="5" step="5"></div>
+      <div><label for="slotCapacity">회차당 정원</label><input type="number" id="slotCapacity" value="10" min="1"></div>
+    </div>
+    <div class="slot-config-row">
+      <div><label for="slotLunchStart">점심시간 시작 (선택)</label><input type="time" id="slotLunchStart"></div>
+      <div><label for="slotLunchEnd">점심시간 종료 (선택)</label><input type="time" id="slotLunchEnd"></div>
+    </div>
+    <button type="button" class="roster-panel-btn" onclick="applySlotConfig()">시간대 생성 / 다시 만들기</button>
+    <div class="slot-config-current" id="slotConfigCurrent">시간대 아직 없음</div>
+  </div>
+</div>
 
 <!-- 단체·가족 등록: 인원수/명단 설정 슬라이드 패널 -->
 <div class="roster-panel-backdrop" id="rosterPanelBackdrop" onclick="if(event.target===this) closeRosterPanel()">
@@ -354,7 +424,6 @@
     <div class="roster-trigger-row">
       <button type="button" class="roster-trigger-btn" onclick="openRosterPanel()">👥 몇 분이세요? (단체·가족 등록)</button>
       <span class="roster-progress hidden" id="rosterProgress">-</span>
-      <button type="button" class="roster-trigger-btn" onclick="openLivePanel()">📋 실시간 현황</button>
     </div>
 
     <div class="form-grid">
@@ -711,6 +780,7 @@
     document.getElementById('subtitleText').textContent = '세션에 연결되었습니다';
     clearLiveCanvas();
     openWebSocket();
+    openQueueWebSocket();
     generateJoinQr(code);
     document.getElementById('codeDisplay').classList.add('collapsed');
     setTimeout(() => document.getElementById('name').focus(), 100);
@@ -754,10 +824,63 @@
     showStatus(checked ? '펜 전용 모드로 전환했어요. 키오스크에서 손가락 터치가 차단돼요.' : '펜 전용 모드를 껐어요.', '');
   }
 
+  // ---------- 시간대 설정 (QueueSession, 날짜 단위) ----------
+  let queueWs = null;
+  let queueData = { slots: [] };
+
+  function openQueueWebSocket() {
+    queueWs = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${todayStr()}`);
+    queueWs.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'state') { queueData = msg.data; updateSlotConfigCurrent(); }
+    };
+    queueWs.onclose = () => {
+      if (intentionalDisconnect) return;
+      setTimeout(openQueueWebSocket, 2000);
+    };
+  }
+
+  function openSlotConfigPanel() {
+    document.getElementById('slotConfigBackdrop').classList.add('open');
+    updateSlotConfigCurrent();
+  }
+  function closeSlotConfigPanel() {
+    document.getElementById('slotConfigBackdrop').classList.remove('open');
+  }
+
+  function updateSlotConfigCurrent() {
+    const el = document.getElementById('slotConfigCurrent');
+    const slots = queueData.slots || [];
+    if (slots.length === 0) { el.textContent = '시간대 아직 없음'; return; }
+    const totalCount = slots.reduce((s, x) => s + x.entries.length, 0);
+    const totalCapacity = slots.reduce((s, x) => s + x.capacity, 0);
+    el.textContent = `${slots[0].time} ~ ${slots[slots.length - 1].time} · ${slots.length}개 시간대 · 누적 ${totalCount}/${totalCapacity}명`;
+  }
+
+  function applySlotConfig() {
+    if (!queueWs || queueWs.readyState !== WebSocket.OPEN) {
+      alert('세션에 먼저 연결해주세요.');
+      return;
+    }
+    const startTime = document.getElementById('slotStartTime').value || '09:00';
+    const endTime = document.getElementById('slotEndTime').value || '17:00';
+    const intervalMinutes = Number(document.getElementById('slotInterval').value) || 20;
+    const capacity = Number(document.getElementById('slotCapacity').value) || 10;
+    const lunchStart = document.getElementById('slotLunchStart').value || null;
+    const lunchEnd = document.getElementById('slotLunchEnd').value || null;
+
+    if ((queueData.slots || []).length > 0 && !confirm('시간대를 다시 만들면 지금까지 등록된 명단이 모두 초기화돼요. 계속할까요?')) return;
+
+    queueWs.send(JSON.stringify({ type: 'configure', startTime, endTime, intervalMinutes, capacity, lunchStart, lunchEnd }));
+    showStatus('시간대를 새로 만들었어요.', 'ok');
+    closeSlotConfigPanel();
+  }
+
   function changeSession() {
     if (!confirm('다른 세션 코드로 바꿀까요? 지금 입력 중인 내용은 사라져요.')) return;
     intentionalDisconnect = true;
     if (ws) ws.close();
+    if (queueWs) queueWs.close();
     document.getElementById('formArea').classList.add('hidden');
     document.getElementById('sessionChoice').classList.remove('hidden');
     document.getElementById('subtitleText').textContent = '담당자가 이름·소속을 입력하고, 참석자는 키오스크에서 시간대 선택·서명만 해요';
