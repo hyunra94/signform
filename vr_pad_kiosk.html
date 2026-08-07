@@ -139,6 +139,40 @@
   .slot-btn .a { font-size: 10.5px; color: #7C8FA3; margin-top: 3px; }
   .slot-empty-note { font-size: 12.5px; color: #9FB0C4; text-align: center; padding: 12px 0; }
 
+  /* ---- 그룹(단체·가족) 모드: 인원수만큼 소속+서명 칸이 동시에 펼쳐짐 ---- */
+  .group-section { margin-bottom: 14px; }
+  .group-block {
+    border: 1.5px solid var(--lavender); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px;
+    background: #FBFCFE;
+  }
+  .group-block.done { border-color: #6FA875; background: #F0FAF2; }
+  .gb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .gb-name { font-size: 15px; font-weight: 700; color: var(--text); }
+  .gb-status { font-size: 11.5px; color: #9FB0C4; font-weight: 700; }
+  .group-block.done .gb-status { color: #4a7d52; }
+  .gb-cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .gb-cat-btn {
+    padding: 9px 2px; border-radius: 10px; border: 1.5px solid var(--lavender);
+    background: #F7F9FC; color: var(--text); font-family: inherit; font-size: 11.5px; font-weight: 700;
+    cursor: pointer;
+  }
+  .gb-cat-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); color: white; }
+  .gb-sub-field { margin-top: 8px; }
+  .gb-sub-field input {
+    width: 100%; padding: 9px 12px; border: 1.5px solid var(--lavender); border-radius: 10px;
+    font-family: inherit; font-size: 13px; background: var(--white); outline: none;
+  }
+  .gb-pad-wrap {
+    position: relative; height: 100px; margin-top: 8px; border: 2px dashed var(--accent); border-radius: 14px;
+    background: var(--white); overflow: hidden;
+  }
+  .gb-pad-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .gb-pad-placeholder {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #B7C4D3; font-size: 13px; pointer-events: none;
+  }
+  .gb-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+
   /* ---- 서명 ---- */
   .sign-area { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .pad-wrap {
@@ -217,11 +251,10 @@
   </div>
 
   <div class="input-bundle" id="inputBundle">
-    <div class="name-section">
-      <div class="section-label">🙋 성함</div>
-      <div class="name-display-box">
-        <span class="val empty" id="nameVal">담당자가 성함을 입력합니다</span>
-      </div>
+    <div class="slot-section" id="slotSection">
+      <div class="section-label">🕐 참여하실 시간대를 먼저 골라주세요</div>
+      <div class="slot-grid" id="slotGrid"></div>
+      <div class="slot-empty-note hidden" id="slotEmptyNote">아직 시간대가 설정되지 않았어요. 스태프에게 문의해주세요.</div>
     </div>
 
     <div class="roster-list-section hidden" id="rosterListSection">
@@ -229,27 +262,39 @@
       <div class="roster-list-box" id="rosterListBox"></div>
     </div>
 
-    <div class="cat-section locked" id="catSection">
-      <div class="section-label">🙋 소속을 골라주세요</div>
-      <div class="cat-grid">
-        <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
-        <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
-        <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
-        <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+    <!-- 1인 모드: 담당자가 인원수를 지정하지 않았을 때의 기본 흐름 -->
+    <div id="singleModeSection">
+      <div class="name-section">
+        <div class="section-label">🙋 성함</div>
+        <div class="name-display-box">
+          <span class="val empty" id="nameVal">담당자가 성함을 입력합니다</span>
+        </div>
+      </div>
+
+      <div class="cat-section locked" id="catSection">
+        <div class="section-label">🙋 소속을 골라주세요</div>
+        <div class="cat-grid">
+          <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
+          <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
+          <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
+          <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+        </div>
+      </div>
+
+      <div class="affil-mirror-section hidden" id="affilMirrorSection">
+        <div class="section-label">🏢 소속 상세</div>
+        <div class="affil-mirror-box">
+          <span class="val empty" id="affilVal">담당자가 소속을 확인합니다</span>
+        </div>
       </div>
     </div>
 
-    <div class="affil-mirror-section hidden" id="affilMirrorSection">
-      <div class="section-label">🏢 소속 상세</div>
-      <div class="affil-mirror-box">
-        <span class="val empty" id="affilVal">담당자가 소속을 확인합니다</span>
-      </div>
-    </div>
-
-    <div class="slot-section locked" id="slotSection">
-      <div class="section-label">🕐 참여하실 시간대를 선택해주세요</div>
-      <div class="slot-grid" id="slotGrid"></div>
-      <div class="slot-empty-note hidden" id="slotEmptyNote">아직 시간대가 설정되지 않았어요. 스태프에게 문의해주세요.</div>
+    <!-- 그룹(단체·가족) 모드: 인원수가 지정되면 그 인원수만큼 소속+서명 칸이 한 번에 펼쳐짐 -->
+    <div class="group-section hidden" id="groupSection">
+      <div class="section-label">👥 참석자별 소속·서명 (전부 입력 후 한 번에 제출)</div>
+      <div id="groupBlocks"></div>
+      <button type="button" class="btn-submit" id="groupSubmitBtn" onclick="submitGroupBatch()">전체 일괄 제출</button>
+      <div class="status" id="groupStatus"></div>
     </div>
   </div>
 
@@ -377,10 +422,17 @@
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
       if (msg.type === 'state') applyRemoteState(msg.data);
-      else if (msg.type === 'submitted') onSubmitted(msg.result);
+      else if (msg.type === 'submitted') {
+        // 그룹(단체) 모드에서 한 명씩 순서대로 제출 중이면, 그 대기 중인 제출만 완료 처리하고
+        // 1인 모드용 onSubmitted()는 건너뜀 (그룹 UI는 submitGroupBatch()가 직접 관리함)
+        if (pendingSubmitResolve) { const r = pendingSubmitResolve; pendingSubmitResolve = null; r(msg.result); }
+        else onSubmitted(msg.result);
+      }
       else if (msg.type === 'error') {
         showStatus(msg.message, 'err');
+        showGroupStatus(msg.message, 'err');
         document.getElementById('kioskSubmitBtn').disabled = false;
+        document.getElementById('groupSubmitBtn').disabled = false;
       }
       else if (msg.type === 'hint' && msg.kind === 'penOnly') setPenOnlyMode(!!msg.value);
       else if (msg.type === 'hint' && msg.kind === 'roster') applyRosterHint(msg.value);
@@ -504,6 +556,10 @@
     remoteState = { 성명: '', 재직자여부: '', 회사명: '', 학교명: '', 시간대: '', signature: '', 동의: false };
     pendingSlotIndex = null;
     selectedCatButton = '';
+    groupModeActive = false;
+    groupBlocks = [];
+    groupBlocksNamesKey = '';
+    document.getElementById('rosterListSection').classList.add('hidden');
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
       document.getElementById(`catBtn-${c}`).classList.remove('active');
     });
@@ -541,15 +597,22 @@
     return true;
   }
 
-  // 담당자 PC에서 단체·가족 등록 중이면 참석자 1,2,3... 명단을 여기에도 보여줌
+  // 담당자 PC에서 단체·가족 등록 중이면 참석자 1,2,3... 명단을 여기에도 보여주고,
+  // 2명 이상이면 그 인원수만큼 소속+서명 칸을 한 번에 펼치는 그룹 모드로 전환
+  let groupBlocksNamesKey = '';
   function applyRosterHint(value) {
     const section = document.getElementById('rosterListSection');
     const box = document.getElementById('rosterListBox');
     const names = (value && value.names) || [];
-    if (names.length <= 1) { section.classList.add('hidden'); return; }
+    const doneFlags = (value && value.done) || [];
+    const idx = value && typeof value.index === 'number' ? value.index : -1;
+
+    if (names.length <= 1) {
+      section.classList.add('hidden');
+      if (groupModeActive) { groupModeActive = false; groupBlocks = []; groupBlocksNamesKey = ''; renderGuide(); }
+      return;
+    }
     section.classList.remove('hidden');
-    const doneFlags = value.done || [];
-    const idx = typeof value.index === 'number' ? value.index : -1;
     box.innerHTML = names.map((n, i) => {
       const isDone = !!doneFlags[i];
       const isCurrent = i === idx;
@@ -562,6 +625,148 @@
         </div>
       `;
     }).join('');
+
+    const namesKey = names.join('|');
+    if (!groupModeActive || groupBlocksNamesKey !== namesKey) {
+      groupModeActive = true;
+      groupBlocksNamesKey = namesKey;
+      setupGroupBlocks(names);
+    }
+    renderGuide();
+  }
+
+  // ---------- 그룹(단체·가족) 모드: 인원수만큼 소속+서명 칸을 동시에 펼침 ----------
+  let groupModeActive = false;
+  let groupBlocks = []; // [{ name, cat, subCat, company, school, canvas, pad, done }]
+  let pendingSubmitResolve = null;
+
+  function setupGroupBlocks(names) {
+    groupBlocks = names.map(n => ({ name: n, cat: '', subCat: '', company: '', school: '', canvas: null, pad: null, done: false }));
+    const wrap = document.getElementById('groupBlocks');
+    wrap.innerHTML = groupBlocks.map((b, i) => `
+      <div class="group-block" id="groupBlock-${i}">
+        <div class="gb-head">
+          <span class="gb-name">${i + 1}. ${escapeHtml(b.name)}</span>
+          <span class="gb-status" id="gbStatus-${i}">대기</span>
+        </div>
+        <div class="gb-cat-grid">
+          <button type="button" class="gb-cat-btn" id="gbCatBtn-${i}-재직자" onclick="selectGroupCat(${i},'재직자')">재직자</button>
+          <button type="button" class="gb-cat-btn" id="gbCatBtn-${i}-대학생" onclick="selectGroupCat(${i},'대학생')">대학생</button>
+          <button type="button" class="gb-cat-btn" id="gbCatBtn-${i}-직업계고" onclick="selectGroupCat(${i},'직업계고')">직업계고</button>
+          <button type="button" class="gb-cat-btn" id="gbCatBtn-${i}-일반시민" onclick="selectGroupCat(${i},'일반시민')">일반 시민</button>
+        </div>
+        <div class="gb-sub-field hidden" id="gbCompanyField-${i}">
+          <input type="text" placeholder="회사명" oninput="groupBlocks[${i}].company = this.value">
+        </div>
+        <div class="gb-sub-field hidden" id="gbSchoolField-${i}">
+          <input type="text" placeholder="학교명" oninput="groupBlocks[${i}].school = this.value">
+        </div>
+        <div class="gb-pad-wrap">
+          <canvas id="gbCanvas-${i}"></canvas>
+          <span class="gb-pad-placeholder" id="gbPlaceholder-${i}">서명해주세요 ✍️</span>
+        </div>
+        <div class="gb-actions">
+          <button type="button" class="btn-plain" onclick="clearGroupSignature(${i})">지우기</button>
+        </div>
+      </div>
+    `).join('');
+    groupBlocks.forEach((b, i) => initGroupPad(i));
+  }
+
+  function initGroupPad(i) {
+    const canvas = document.getElementById(`gbCanvas-${i}`);
+    if (!canvas) return;
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width = canvas.offsetWidth * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    canvas.getContext('2d').scale(ratio, ratio);
+    const pad = new SignaturePad(canvas, { backgroundColor: 'rgba(255,255,255,0)', penColor: '#2B3A4A', minWidth: 1.2, maxWidth: 3 });
+    pad.addEventListener('beginStroke', () => {
+      const ph = document.getElementById(`gbPlaceholder-${i}`);
+      if (ph) ph.style.display = 'none';
+    });
+    groupBlocks[i].canvas = canvas;
+    groupBlocks[i].pad = pad;
+  }
+
+  function selectGroupCat(i, cat) {
+    const b = groupBlocks[i];
+    if (!b || b.done) return;
+    b.subCat = isFutureTalent(cat) ? cat : '';
+    b.cat = isFutureTalent(cat) ? '미래인재' : cat;
+    ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
+      const el = document.getElementById(`gbCatBtn-${i}-${c}`);
+      if (el) el.classList.toggle('active', c === cat);
+    });
+    document.getElementById(`gbCompanyField-${i}`).classList.toggle('hidden', b.cat !== '재직자');
+    document.getElementById(`gbSchoolField-${i}`).classList.toggle('hidden', b.cat !== '미래인재');
+  }
+
+  function clearGroupSignature(i) {
+    const b = groupBlocks[i];
+    if (!b || !b.pad) return;
+    b.pad.clear();
+    const ph = document.getElementById(`gbPlaceholder-${i}`);
+    if (ph) ph.style.display = 'block';
+  }
+
+  function showGroupStatus(text, cls) {
+    const el = document.getElementById('groupStatus');
+    el.textContent = text;
+    el.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  async function submitGroupBatch() {
+    if (pendingSlotIndex === null) { showGroupStatus('시간대를 먼저 선택해주세요.', 'err'); return; }
+    for (let i = 0; i < groupBlocks.length; i++) {
+      const b = groupBlocks[i];
+      if (b.done) continue;
+      if (!b.cat) { showGroupStatus(`${i + 1}. ${b.name}님의 소속을 선택해주세요.`, 'err'); return; }
+      if (b.cat === '재직자' && !b.company.trim()) { showGroupStatus(`${i + 1}. ${b.name}님의 회사명을 입력해주세요.`, 'err'); return; }
+      if (b.cat === '미래인재' && !b.school.trim()) { showGroupStatus(`${i + 1}. ${b.name}님의 학교명을 입력해주세요.`, 'err'); return; }
+      if (!b.pad || b.pad.isEmpty()) { showGroupStatus(`${i + 1}. ${b.name}님의 서명을 완료해주세요.`, 'err'); return; }
+    }
+
+    document.getElementById('groupSubmitBtn').disabled = true;
+    for (let i = 0; i < groupBlocks.length; i++) {
+      const b = groupBlocks[i];
+      if (b.done) continue;
+      showGroupStatus(`${i + 1} / ${groupBlocks.length}명 제출 중... (${b.name}님)`, '');
+
+      send({ type: 'update', field: '성명', value: b.name });
+      send({ type: 'update', field: '재직자여부', value: b.cat });
+      send({ type: 'update', field: '회사명', value: b.cat === '재직자' ? b.company.trim() : '' });
+      send({ type: 'update', field: '학교명', value: b.cat === '미래인재' ? b.school.trim() : '' });
+      send({ type: 'signature', dataUrl: b.pad.toDataURL('image/png') });
+
+      const result = await new Promise((resolve) => {
+        pendingSubmitResolve = resolve;
+        send({ type: 'submit' });
+      });
+
+      if (result && queueWs && queueWs.readyState === WebSocket.OPEN) {
+        queueWs.send(JSON.stringify({
+          type: 'checkin', slotIndex: pendingSlotIndex,
+          성명: b.name, 재직자여부: b.cat,
+          회사명: b.cat === '재직자' ? b.company.trim() : '', 학교명: b.cat === '미래인재' ? b.school.trim() : '',
+        }));
+      }
+      b.done = true;
+      const blockEl = document.getElementById(`groupBlock-${i}`);
+      if (blockEl) blockEl.classList.add('done');
+      const statusEl = document.getElementById(`gbStatus-${i}`);
+      if (statusEl) statusEl.textContent = '✓ 완료';
+      renderSlots();
+    }
+
+    showGroupStatus(`${groupBlocks.length}명 전원 제출 완료! 🚌`, 'ok');
+    document.getElementById('groupSubmitBtn').disabled = false;
+    send({ type: 'hint', kind: 'groupDone', value: true });
+    groupModeActive = false;
+    groupBlocks = [];
+    groupBlocksNamesKey = '';
+    document.getElementById('rosterListSection').classList.add('hidden');
+    renderGuide();
   }
 
   function escapeHtml(s) {
@@ -609,6 +814,26 @@
   function renderGuide() {
     const data = remoteState;
     const namePrefix = data.성명 ? `${data.성명}님, ` : '';
+
+    if (groupModeActive) {
+      let gText;
+      if (pendingSlotIndex === null) {
+        gText = '먼저 시간대를 선택해주세요';
+      } else {
+        const doneCount = groupBlocks.filter(b => b.done).length;
+        gText = `${groupBlocks.length}명의 소속과 서명을 입력해주세요 (${doneCount}/${groupBlocks.length} 완료)`;
+      }
+      document.getElementById('guideText').textContent = gText;
+      document.getElementById('singleModeSection').classList.add('hidden');
+      document.getElementById('signArea').classList.add('hidden');
+      document.getElementById('groupSection').classList.toggle('hidden', pendingSlotIndex === null);
+      document.getElementById('inputBundle').classList.remove('hidden');
+      return;
+    }
+
+    document.getElementById('groupSection').classList.add('hidden');
+    document.getElementById('singleModeSection').classList.remove('hidden');
+
     const needsAffilName = data.재직자여부 === '재직자' || data.재직자여부 === '미래인재';
     const nameDone = affilNameDone(data);
     const affilDone = !!data.재직자여부 && nameDone;
@@ -629,7 +854,6 @@
     }
     document.getElementById('guideText').textContent = text;
     document.getElementById('catSection').classList.toggle('locked', !data.성명);
-    document.getElementById('slotSection').classList.toggle('locked', !affilDone);
 
     const signArea = document.getElementById('signArea');
     const wasHidden = signArea.classList.contains('hidden');

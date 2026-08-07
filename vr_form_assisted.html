@@ -183,6 +183,28 @@
 
   .hidden { display: none !important; }
 
+  /* ---- 시간대 선택 (담당자 PC에서 먼저 고를 수 있음 — 지난 시간/마감도 강제 지정 가능) ---- */
+  .pc-slot-section { margin-bottom: 4px; }
+  .pc-slot-current {
+    padding: 10px 12px; border-radius: 12px; background: #EDF2F8; margin-bottom: 8px;
+    font-size: 13px; font-weight: 700; color: var(--accent-dark); text-align: center;
+  }
+  .pc-slot-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px;
+    max-height: 140px; overflow-y: auto; padding: 2px;
+  }
+  .pc-slot-btn {
+    border: 1.5px solid var(--lavender); border-radius: 10px; background: #F7F9FC;
+    padding: 6px 4px; cursor: pointer; font-family: inherit; text-align: center;
+  }
+  .pc-slot-btn.now { border-color: var(--accent-dark); }
+  .pc-slot-btn.selected { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); border-color: var(--accent-dark); }
+  .pc-slot-btn.selected .pt, .pc-slot-btn.selected .pa { color: white; }
+  .pc-slot-btn.full { border-color: #F0A0A8; }
+  .pc-slot-btn.past { opacity: 0.6; }
+  .pc-slot-btn .pt { font-size: 12.5px; font-weight: 700; color: var(--text); }
+  .pc-slot-btn .pa { font-size: 9.5px; color: #7C8FA3; margin-top: 2px; }
+
   /* ---- 가족/단체 등록: 인원수+명단 설정 버튼, 진행현황 ---- */
   .roster-trigger-row { display: flex; align-items: center; gap: 8px; margin: -6px 0 12px; }
   .roster-trigger-btn {
@@ -431,6 +453,13 @@
       <button class="btn-plain" onclick="changeSession()">코드 변경</button>
     </div>
 
+    <div class="pc-slot-section">
+      <label>🕐 참여 시간대 (담당자나 참석자 어느 쪽에서 골라도 돼요)</label>
+      <div class="pc-slot-current" id="pcSlotCurrent">아직 선택 안 됨</div>
+      <div class="pc-slot-grid" id="pcSlotGrid"></div>
+      <p class="field-hint">담당자 화면은 지난 시간대나 마감된 시간대도 필요하면 눌러서 지정할 수 있어요.</p>
+    </div>
+
     <div class="roster-trigger-row">
       <button type="button" class="roster-trigger-btn" onclick="openRosterPanel()">👥 몇 분이세요? (단체·가족 등록)</button>
       <span class="roster-progress hidden" id="rosterProgress">-</span>
@@ -459,11 +488,6 @@
           <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요">
         </div>
 
-        <label>선택 시간대</label>
-        <div class="slot-mirror-row">
-          <span class="val empty" id="slotVal">아직 키오스크에서 선택 전이에요</span>
-          <span class="icon">🕐</span>
-        </div>
       </div>
 
       <div class="form-col-right">
@@ -527,11 +551,13 @@
   let sessionCode = null;
   let suppressEcho = false;
   let subCatLocal = ''; // 원격 힌트로 받은 직업계고/대학생 표시(비영속)
+  let selectedSlotTime = ''; // 지금 세션에 지정된 시간대(공유 state)
   let lastCatSeen = ''; // 소속 구분이 새로 바뀐 순간을 감지해서 자동 포커스 이동에 씀
 
   // ---------- 단체·가족 등록: 인원수/명단 ----------
   let roster = []; // [{ name, done }]
   let rosterIndex = -1; // -1이면 단체 등록 모드 아님(한 분씩 그때그때 입력하는 기본 모드)
+  let groupSimultaneousMode = false; // 2명 이상이면 키오스크가 N명 동시입력을 직접 처리 — PC는 진행에 관여 안 함
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -590,8 +616,16 @@
       // 처음 시작: 빈 이름은 제외하고 순서대로 정리
       roster = roster.filter(p => p.name.trim()).map(p => ({ name: p.name.trim(), done: false }));
       if (roster.length === 0) { alert('최소 한 분의 이름을 입력해주세요.'); return; }
-      rosterIndex = 0;
-      applyRosterCurrent();
+      if (roster.length > 1) {
+        // 2명 이상: 키오스크에 N명 동시입력 화면이 뜨고 거기서 각자 소속·서명을 처리함. PC는 명단만 전달.
+        groupSimultaneousMode = true;
+        updateRosterProgressUI();
+        showStatus(`키오스크에 ${roster.length}명 동시입력 화면을 띄웠어요. 참석자들이 각자 소속을 고르고 서명하면 자동으로 등록돼요.`, 'ok');
+      } else {
+        // 1명: 기존처럼 담당자 화면에서 한 분씩 순서대로 진행
+        rosterIndex = 0;
+        applyRosterCurrent();
+      }
     }
     sendRosterHint();
     closeRosterPanel();
@@ -608,6 +642,11 @@
 
   function updateRosterProgressUI() {
     const el = document.getElementById('rosterProgress');
+    if (groupSimultaneousMode && roster.length > 0) {
+      el.classList.remove('hidden');
+      el.textContent = `👥 ${roster.length}명 동시입력 중 (키오스크 확인)`;
+      return;
+    }
     if (rosterIndex === -1 || roster.length === 0) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
     const current = Math.min(rosterIndex + 1, roster.length);
@@ -910,12 +949,52 @@
     queueWs = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${todayStr()}`);
     queueWs.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      if (msg.type === 'state') { queueData = msg.data; updateSlotConfigCurrent(); }
+      if (msg.type === 'state') { queueData = msg.data; updateSlotConfigCurrent(); renderPcSlots(); }
     };
     queueWs.onclose = () => {
       if (intentionalDisconnect) return;
       setTimeout(openQueueWebSocket, 2000);
     };
+  }
+
+  // ---------- 담당자 PC에서 시간대 직접 선택 (지난 시간/마감도 지정 가능) ----------
+  function pcCurrentSlotIndex(slots) {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    let best = -1;
+    slots.forEach((s, i) => {
+      const [h, m] = s.time.split(':').map(Number);
+      if (h * 60 + m <= nowMin) best = i;
+    });
+    return best;
+  }
+
+  function renderPcSlots() {
+    const grid = document.getElementById('pcSlotGrid');
+    const slots = queueData.slots || [];
+    if (slots.length === 0) { grid.innerHTML = '<div class="field-hint">⚙️ 시간대 설정에서 먼저 시간대를 만들어주세요.</div>'; return; }
+    const nowIdx = pcCurrentSlotIndex(slots);
+    grid.innerHTML = slots.map((s, i) => {
+      const isFull = s.entries.length >= s.capacity;
+      const isCurrent = i === nowIdx;
+      const isPast = nowIdx >= 0 && i < nowIdx;
+      const isSelected = s.time === selectedSlotTime;
+      const remain = Math.max(s.capacity - s.entries.length, 0);
+      return `
+        <button type="button" class="pc-slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isPast ? 'past' : ''} ${isSelected ? 'selected' : ''}"
+                onclick="selectPcSlot(${i})" title="필요하면 지난 시간대나 마감된 시간대도 지정할 수 있어요">
+          <div class="pt">${s.time}</div>
+          <div class="pa">${isFull ? `마감(${s.entries.length}/${s.capacity})` : `${remain}자리`}</div>
+        </button>
+      `;
+    }).join('');
+  }
+
+  // 참석자용 키오스크와 달리, 담당자 화면은 지난 시간대나 정원 초과 시간대도 혹시 모를 상황을 대비해 그냥 지정할 수 있게 둠
+  function selectPcSlot(index) {
+    const slot = queueData.slots[index];
+    if (!slot) return;
+    send({ type: 'update', field: '시간대', value: slot.time });
   }
 
   function openSlotConfigPanel() {
@@ -968,6 +1047,8 @@
     document.getElementById('codeDisplay').classList.remove('collapsed');
     roster = [];
     rosterIndex = -1;
+    groupSimultaneousMode = false;
+    selectedSlotTime = '';
     updateRosterProgressUI();
   }
 
@@ -999,6 +1080,13 @@
       else if (msg.type === 'strokeLive') handleLiveStroke(msg);
       else if (msg.type === 'peers') handlePeers(msg.count);
       else if (msg.type === 'hint' && msg.kind === 'padAspect') liveCanvas.style.aspectRatio = msg.value;
+      else if (msg.type === 'hint' && msg.kind === 'groupDone') {
+        groupSimultaneousMode = false;
+        roster = [];
+        rosterIndex = -1;
+        updateRosterProgressUI();
+        showStatus('단체 등록이 전부 완료됐어요. 🚌', 'ok');
+      }
       else if (msg.type === 'hint' && msg.kind === 'subCategory') applySubCatHint(msg.value);
     };
   }
@@ -1062,8 +1150,7 @@
     }
     setCf('cfAffil', affil);
 
-    const slotValEl = document.getElementById('slotVal');
-    setCf('cfSlot', slotValEl.classList.contains('empty') ? '' : slotValEl.textContent);
+    setCf('cfSlot', selectedSlotTime ? `${selectedSlotTime} 시간대` : '');
   }
 
   function handleLiveStroke(msg) {
@@ -1108,14 +1195,9 @@
       lastCatSeen = data.재직자여부;
     }
 
-    const slotValEl = document.getElementById('slotVal');
-    if (data.시간대) {
-      slotValEl.textContent = `${data.시간대} 시간대`;
-      slotValEl.classList.remove('empty');
-    } else {
-      slotValEl.textContent = '아직 키오스크에서 선택 전이에요';
-      slotValEl.classList.add('empty');
-    }
+    selectedSlotTime = data.시간대 || '';
+    document.getElementById('pcSlotCurrent').textContent = selectedSlotTime ? `${selectedSlotTime} 시간대 선택됨` : '아직 선택 안 됨';
+    renderPcSlots();
 
     if (data.signature) {
       lastRemoteSignature = data.signature;
@@ -1156,6 +1238,10 @@
   });
 
   function onSubmitted(result) {
+    // 키오스크가 N명 동시입력을 직접 순서대로 제출 중이면, 그 진행상황은 키오스크 화면이 보여주므로
+    // PC 쪽은 매번 조용히 지나감 (여기서 반응하면 담당자 화면에 관계없는 상태가 계속 깜빡여서 오히려 헷갈림)
+    if (groupSimultaneousMode) return;
+
     const submittedName = document.getElementById('name').value.trim();
     const namePrefix = submittedName ? `${submittedName}님 ` : '';
     showStatus(`${namePrefix}등록 완료! (${result.sheetNumber}번째 시트, ${result.rowNumberInSheet}번째 줄) 🚌`, 'ok');
