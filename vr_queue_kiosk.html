@@ -140,6 +140,21 @@
     margin-top: 14px; padding: 10px 12px; background: #FDF3F6; border-radius: 10px;
     font-size: 12.5px; color: var(--accent-dark); font-weight: 700; text-align: center;
   }
+  .settings-slot-label { font-size: 12px; font-weight: 500; margin: 16px 0 6px; color: var(--text); }
+  .settings-slot-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .settings-slot-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 9px 11px; border: 1.5px solid var(--lavender); border-radius: 10px;
+    background: #FDFBFF; font-size: 12.5px;
+  }
+  .settings-slot-row.now { border-color: var(--accent-dark); background: #FDF3F6; }
+  .settings-slot-time { font-weight: 700; }
+  .settings-slot-count { color: #a98a92; margin-left: 6px; }
+  .settings-slot-del {
+    background: none; border: 1px solid #F0A0A8; color: #D97070; border-radius: 8px;
+    padding: 4px 9px; font-size: 11px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .settings-slot-empty { text-align: center; color: #c9a8b0; font-size: 12px; padding: 8px 0; }
   .settings-lock-link {
     display: block; margin: 14px auto 0; text-align: center; font-size: 11.5px; color: #c9a8b0;
     background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit;
@@ -254,6 +269,10 @@
         <button class="btn-cancel" onclick="closeSettingsModal()">닫기</button>
         <button class="btn-confirm" onclick="applySettingsConfig()">시간대 생성 / 다시 만들기</button>
       </div>
+
+      <div class="settings-slot-label">현재 시간대 (개별 삭제 가능)</div>
+      <div class="settings-slot-list" id="settingsSlotList"></div>
+
       <button type="button" class="settings-lock-link" onclick="lockSettings()">🔒 다시 잠그기</button>
     </div>
   </div>
@@ -331,7 +350,10 @@
     }
     emptyState.classList.add('hidden');
 
-    if (!document.getElementById('settingsConfigArea').classList.contains('hidden')) updateSettingsCurrent();
+    if (!document.getElementById('settingsConfigArea').classList.contains('hidden')) {
+      updateSettingsCurrent();
+      renderSettingsSlotList();
+    }
 
     const nowIdx = currentSlotIndex(slots);
     grid.innerHTML = slots.map((s, i) => {
@@ -541,6 +563,7 @@
     document.getElementById('settingsLoginArea').classList.add('hidden');
     document.getElementById('settingsConfigArea').classList.remove('hidden');
     updateSettingsCurrent();
+    renderSettingsSlotList();
   }
   function lockSettings() {
     settingsAdminKey = '';
@@ -580,6 +603,30 @@
     const totalCount = slots.reduce((s, x) => s + x.entries.length, 0);
     const totalCapacity = slots.reduce((s, x) => s + x.capacity, 0);
     el.textContent = `${slots[0].time} ~ ${slots[slots.length - 1].time} · ${slots.length}개 시간대 · 누적 ${totalCount}/${totalCapacity}명`;
+  }
+
+  function renderSettingsSlotList() {
+    const listEl = document.getElementById('settingsSlotList');
+    const slots = currentData.slots || [];
+    if (slots.length === 0) {
+      listEl.innerHTML = '<div class="settings-slot-empty">아직 시간대가 없어요.</div>';
+      return;
+    }
+    const nowIdx = currentSlotIndex(slots);
+    listEl.innerHTML = slots.map((s, i) => `
+      <div class="settings-slot-row ${i === nowIdx ? 'now' : ''}">
+        <span><span class="settings-slot-time">${s.time}</span><span class="settings-slot-count">${s.entries.length}/${s.capacity}명</span></span>
+        <button type="button" class="settings-slot-del" onclick="removeSettingsSlot(${i}, '${s.time}')">삭제</button>
+      </div>
+    `).join('');
+  }
+
+  function removeSettingsSlot(index, time) {
+    const slot = currentData.slots[index];
+    const count = slot ? slot.entries.length : 0;
+    const warn = count > 0 ? `\n(등록된 ${count}명도 같이 삭제돼요)` : '';
+    if (!confirm(`${time} 시간대를 통째로 삭제할까요?${warn}`)) return;
+    send({ type: 'removeSlot', slotIndex: index });
   }
 
   function applySettingsConfig() {
