@@ -110,6 +110,7 @@
   }
   .btn-cancel { background: #FDF3F6; color: var(--accent-dark); }
   .btn-confirm { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; }
+  .btn-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
   .modal-status { text-align: center; font-size: 13px; margin-top: 12px; min-height: 16px; color: #D97070; }
   .success-check { display: none; text-align: center; padding: 20px 0; }
   .success-check.show { display: block; }
@@ -203,7 +204,7 @@
 
       <div class="modal-btns">
         <button class="btn-cancel" id="cancelBtn" onclick="closeModal()">취소</button>
-        <button class="btn-confirm" onclick="confirmCheckin()">등록하기</button>
+        <button class="btn-confirm" id="confirmBtn" onclick="confirmCheckin()">등록하기</button>
       </div>
       <div class="modal-status" id="modalStatus"></div>
     </div>
@@ -391,10 +392,14 @@
     sigPlaceholder.style.display = 'block';
   }
 
+  let checkinInProgress = false;
+
   function openModal(index) {
     pendingSlotIndex = index;
     selectedCat = '';
     groupCount = 0;
+    checkinInProgress = false;
+    document.getElementById('confirmBtn').disabled = false;
     document.getElementById('groupCount').classList.add('hidden');
     document.getElementById('cancelBtn').textContent = '취소';
     const slot = currentData.slots[index];
@@ -417,15 +422,20 @@
     document.getElementById('modalBackdrop').classList.remove('open');
     pendingSlotIndex = null;
     groupCount = 0;
+    checkinInProgress = false;
   }
 
   async function confirmCheckin() {
+    if (checkinInProgress) return; // 연타/중복 전송 방지 (같은 사람이 여러 번 타는 건 정상이라 서버 중복체크는 없음)
     const name = document.getElementById('mName').value.trim();
     const statusEl = document.getElementById('modalStatus');
     if (!name) { statusEl.textContent = '이름을 입력해주세요.'; return; }
     if (!selectedCat) { statusEl.textContent = '재직자 여부를 선택해주세요.'; return; }
     if (!signaturePad || signaturePad.isEmpty()) { statusEl.textContent = '서명을 완료해주세요.'; return; }
     if (pendingSlotIndex === null) return;
+
+    checkinInProgress = true;
+    document.getElementById('confirmBtn').disabled = true;
 
     // 직업계고/대학생은 화면 선택지일 뿐, 서명록에는 '미래인재'로 합쳐서 저장됨
     const 재직자여부 = isFutureTalent(selectedCat) ? '미래인재' : selectedCat;
@@ -450,11 +460,15 @@
       if (!res.ok) {
         statusEl.textContent = result.error || '등록에 실패했어요. 스태프에게 문의해주세요.';
         statusEl.style.color = '#D97070';
+        checkinInProgress = false;
+        document.getElementById('confirmBtn').disabled = false;
         return;
       }
     } catch (err) {
       statusEl.textContent = '서버 연결에 실패했어요. 스태프에게 문의해주세요.';
       statusEl.style.color = '#D97070';
+      checkinInProgress = false;
+      document.getElementById('confirmBtn').disabled = false;
       return;
     }
 
@@ -476,6 +490,8 @@
         return;
       }
       resetModalForm();
+      checkinInProgress = false;
+      document.getElementById('confirmBtn').disabled = false;
       document.getElementById('successPart').classList.remove('show');
       document.getElementById('formPart').style.display = 'block';
       const gc = document.getElementById('groupCount');
