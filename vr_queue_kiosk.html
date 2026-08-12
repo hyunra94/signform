@@ -117,10 +117,34 @@
   .success-check .msg { font-size: 17px; font-weight: 700; margin-top: 10px; }
 
   .conn-dot {
-    position: fixed; bottom: 12px; right: 14px; width: 8px; height: 8px; border-radius: 50%; background: #ccc;
+    position: fixed; top: 14px; right: 16px; width: 8px; height: 8px; border-radius: 50%; background: #ccc;
   }
   .conn-dot.on { background: var(--ok); }
   .hidden { display: none !important; }
+
+  /* ---- 우측 하단 플로팅 설정 버튼 ---- */
+  .settings-fab {
+    position: fixed; bottom: 16px; right: 16px; z-index: 20;
+    display: flex; align-items: center; gap: 6px; padding: 12px 18px; border-radius: 30px; border: none;
+    background: var(--white); color: var(--accent-dark); font-family: inherit; font-size: 13px; font-weight: 700;
+    box-shadow: 0 4px 14px var(--shadow); cursor: pointer;
+  }
+  .settings-fab:active { transform: scale(0.96); }
+
+  .settings-row { display: flex; gap: 10px; }
+  .settings-row > div { flex: 1; }
+  .settings-status { text-align: center; font-size: 13px; margin-top: 10px; min-height: 16px; color: #a98a92; }
+  .settings-status.err { color: #D97070; }
+  .settings-current {
+    margin-top: 14px; padding: 10px 12px; background: #FDF3F6; border-radius: 10px;
+    font-size: 12.5px; color: var(--accent-dark); font-weight: 700; text-align: center;
+  }
+  .settings-lock-link {
+    display: block; margin: 14px auto 0; text-align: center; font-size: 11.5px; color: #c9a8b0;
+    background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit;
+  }
+  .remember-row { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; }
+  .remember-row label { display: inline; font-size: 12px; color: #a98a92; margin: 0; }
 
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
@@ -186,6 +210,50 @@
     <div class="success-check" id="successPart">
       <div class="big">✅</div>
       <div class="msg" id="successMsg">등록 완료!</div>
+    </div>
+  </div>
+</div>
+
+<button type="button" class="settings-fab" onclick="openSettingsModal()">⚙️ 설정</button>
+
+<div class="modal-backdrop" id="settingsBackdrop" onclick="if(event.target===this) closeSettingsModal()">
+  <div class="modal-card">
+    <div id="settingsLoginArea">
+      <h2>🔐 관리자 확인</h2>
+      <div class="modal-time">시간대 설정을 바꾸려면 관리자 키가 필요해요.</div>
+      <label for="settingsKeyInput">관리자 키</label>
+      <input type="password" id="settingsKeyInput" placeholder="관리자 키 입력" onkeydown="if(event.key==='Enter') validateSettingsKey()">
+      <div class="remember-row">
+        <input type="checkbox" id="settingsRememberKey" style="width:14px;height:14px;">
+        <label for="settingsRememberKey">이 기기에 기억하기</label>
+      </div>
+      <div class="settings-status" id="settingsLoginStatus"></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeSettingsModal()">닫기</button>
+        <button class="btn-confirm" onclick="validateSettingsKey()">확인</button>
+      </div>
+    </div>
+    <div id="settingsConfigArea" class="hidden">
+      <h2>⚙️ 시간대 설정</h2>
+      <div class="modal-time">오늘 VR체험버스 시간대를 만들거나 다시 설정해요.</div>
+      <div class="settings-row">
+        <div><label for="cfgStartTime">시작 시간</label><input type="time" id="cfgStartTime" value="09:00"></div>
+        <div><label for="cfgEndTime">종료 시간</label><input type="time" id="cfgEndTime" value="17:00"></div>
+      </div>
+      <div class="settings-row">
+        <div><label for="cfgInterval">회차 간격(분)</label><input type="number" id="cfgInterval" value="20" min="5" step="5"></div>
+        <div><label for="cfgCapacity">회차당 정원</label><input type="number" id="cfgCapacity" value="10" min="1"></div>
+      </div>
+      <div class="settings-row">
+        <div><label for="cfgLunchStart">점심시간 시작 (선택)</label><input type="time" id="cfgLunchStart"></div>
+        <div><label for="cfgLunchEnd">점심시간 종료 (선택)</label><input type="time" id="cfgLunchEnd"></div>
+      </div>
+      <div class="settings-current" id="settingsCurrent">시간대 아직 없음</div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeSettingsModal()">닫기</button>
+        <button class="btn-confirm" onclick="applySettingsConfig()">시간대 생성 / 다시 만들기</button>
+      </div>
+      <button type="button" class="settings-lock-link" onclick="lockSettings()">🔒 다시 잠그기</button>
     </div>
   </div>
 </div>
@@ -261,6 +329,8 @@
       return;
     }
     emptyState.classList.add('hidden');
+
+    if (!document.getElementById('settingsConfigArea').classList.contains('hidden')) updateSettingsCurrent();
 
     const nowIdx = currentSlotIndex(slots);
     grid.innerHTML = slots.map((s, i) => {
@@ -426,6 +496,87 @@
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
     document.getElementById('modalStatus').textContent = '';
     clearSignature();
+  }
+
+  // ---------- 시간대 설정 (우측 하단 플로팅 버튼, 관리자 키 필요) ----------
+  let settingsAdminKey = '';
+
+  function openSettingsModal() {
+    document.getElementById('settingsBackdrop').classList.add('open');
+    if (settingsAdminKey) { showSettingsConfig(); return; }
+    const saved = localStorage.getItem('admin_key');
+    if (saved) {
+      document.getElementById('settingsKeyInput').value = saved;
+      document.getElementById('settingsRememberKey').checked = true;
+      validateSettingsKey();
+    } else {
+      showSettingsLogin();
+    }
+  }
+  function closeSettingsModal() {
+    document.getElementById('settingsBackdrop').classList.remove('open');
+  }
+  function showSettingsLogin() {
+    document.getElementById('settingsLoginArea').classList.remove('hidden');
+    document.getElementById('settingsConfigArea').classList.add('hidden');
+    document.getElementById('settingsKeyInput').focus();
+  }
+  function showSettingsConfig() {
+    document.getElementById('settingsLoginArea').classList.add('hidden');
+    document.getElementById('settingsConfigArea').classList.remove('hidden');
+    updateSettingsCurrent();
+  }
+  function lockSettings() {
+    settingsAdminKey = '';
+    document.getElementById('settingsLoginStatus').textContent = '';
+    showSettingsLogin();
+  }
+
+  async function validateSettingsKey() {
+    const key = document.getElementById('settingsKeyInput').value.trim();
+    const statusEl = document.getElementById('settingsLoginStatus');
+    if (!key) { statusEl.textContent = '관리자 키를 입력해주세요.'; statusEl.className = 'settings-status err'; return; }
+    statusEl.textContent = '확인 중...';
+    statusEl.className = 'settings-status';
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rows?programId=${encodeURIComponent(queueDate + '-vr')}&key=${encodeURIComponent(key)}`);
+      if (res.status === 401) {
+        statusEl.textContent = '관리자 키가 올바르지 않아요.';
+        statusEl.className = 'settings-status err';
+        return;
+      }
+      if (!res.ok) { statusEl.textContent = '확인 중 오류가 발생했어요.'; statusEl.className = 'settings-status err'; return; }
+      settingsAdminKey = key;
+      if (document.getElementById('settingsRememberKey').checked) localStorage.setItem('admin_key', key);
+      else localStorage.removeItem('admin_key');
+      statusEl.textContent = '';
+      showSettingsConfig();
+    } catch (err) {
+      statusEl.textContent = '서버 연결에 실패했어요.';
+      statusEl.className = 'settings-status err';
+    }
+  }
+
+  function updateSettingsCurrent() {
+    const el = document.getElementById('settingsCurrent');
+    const slots = currentData.slots || [];
+    if (slots.length === 0) { el.textContent = '시간대 아직 없음'; return; }
+    const totalCount = slots.reduce((s, x) => s + x.entries.length, 0);
+    const totalCapacity = slots.reduce((s, x) => s + x.capacity, 0);
+    el.textContent = `${slots[0].time} ~ ${slots[slots.length - 1].time} · ${slots.length}개 시간대 · 누적 ${totalCount}/${totalCapacity}명`;
+  }
+
+  function applySettingsConfig() {
+    const startTime = document.getElementById('cfgStartTime').value || '09:00';
+    const endTime = document.getElementById('cfgEndTime').value || '17:00';
+    const intervalMinutes = Number(document.getElementById('cfgInterval').value) || 20;
+    const capacity = Number(document.getElementById('cfgCapacity').value) || 10;
+    const lunchStart = document.getElementById('cfgLunchStart').value || null;
+    const lunchEnd = document.getElementById('cfgLunchEnd').value || null;
+    if ((currentData.slots || []).length > 0 &&
+        !confirm('시간대를 다시 만들까요? 같은 시간이 겹치면 그 명단은 유지되고, 새 범위 밖으로 벗어난 시간대의 명단만 사라져요.')) return;
+    send({ type: 'configure', startTime, endTime, intervalMinutes, capacity, lunchStart, lunchEnd });
+    closeSettingsModal();
   }
 </script>
 </body>
