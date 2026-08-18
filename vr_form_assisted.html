@@ -935,6 +935,11 @@
       const codeDisplay = document.getElementById('codeDisplay');
       if (!codeDisplay.classList.contains('collapsed')) codeDisplay.classList.add('collapsed');
       setConnStatus(true, `실시간 연결됨 · 키오스크 ${count - 1}대 참가 중`);
+    } else if (count < 2 && autoCollapsedOnce) {
+      // 연결돼 있던 키오스크가 나가서 다시 대기 상태가 되면, 재연결하기 쉽게 코드 표시를 다시 열어줌
+      autoCollapsedOnce = false;
+      document.getElementById('codeDisplay').classList.remove('collapsed');
+      setConnStatus(true, '실시간 연결됨 · 키오스크 연결 대기 중');
     } else if (ws && ws.readyState === WebSocket.OPEN) {
       setConnStatus(true, count >= 2 ? `실시간 연결됨 · 키오스크 ${count - 1}대 참가 중` : '실시간 연결됨 · 키오스크 연결 대기 중');
     }
