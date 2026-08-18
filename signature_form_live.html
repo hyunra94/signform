@@ -509,11 +509,13 @@
     return `${y}-${m}-${day}`;
   }
   function loadFormSettings() {
+    let saved = {};
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) saved = JSON.parse(raw);
     } catch (e) {}
-    return { date: todayStr(), place: '전주MBC' };
+    const today = todayStr();
+    return { date: saved.date === today ? saved.date : today, place: saved.place || '전주MBC' };
   }
 
   // ---------- (transform 기반 화면맞춤 제거함) ----------

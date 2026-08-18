@@ -582,11 +582,13 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
   function loadFormSettings() {
+    let saved = {};
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) saved = JSON.parse(raw);
     } catch (e) {}
-    return { date: todayStr(), place: '전주MBC' };
+    const today = todayStr();
+    return { date: saved.date === today ? saved.date : today, place: saved.place || '전주MBC' };
   }
 
   const modeChoiceList = document.getElementById('modeChoiceList');

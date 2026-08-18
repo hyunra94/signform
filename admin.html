@@ -328,11 +328,18 @@
   }
 
   async function rebuildPdf(programId) {
+    const newPlace = prompt('PDF를 최신 서식으로 다시 그려요.\n장소가 잘못 들어갔다면 새 장소명을 입력하세요 (전체 정정됨). 그대로 두려면 빈 칸으로 확인.', '');
+    if (newPlace === null) return; // 취소
     try {
-      const res = await fetch(`${WORKER_HTTP_URL}/admin/rebuild?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'POST' });
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rebuild?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 장소: newPlace.trim() }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '다시 그리기 실패');
-      alert(`PDF를 최신 서식으로 다시 그렸어요. (${data.totalCount}명)`);
+      const placeMsg = newPlace.trim() ? `\n장소가 "${newPlace.trim()}"(으)로 정정됐어요.` : '';
+      alert(`PDF를 최신 서식으로 다시 그렸어요. (${data.totalCount}명)${placeMsg}`);
     } catch (err) {
       alert('오류: ' + err.message);
     }

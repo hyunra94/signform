@@ -61,6 +61,15 @@
     text-align: center; font-size: 11.5px; color: #6FA875; margin-top: 8px; min-height: 14px;
   }
 
+  .edit-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 10px; }
+  .hidden-hint { font-size: 11px; color: #c9a8b0; }
+  .edit-toggle {
+    font-size: 11.5px; padding: 5px 10px; border-radius: 10px; cursor: pointer;
+    border: 1.5px solid var(--lavender); background: #FDFBFF; color: #a98a92;
+  }
+  .edit-toggle:hover { border-color: var(--accent); color: var(--accent-dark); }
+  body.edit-mode .edit-toggle { border-color: var(--accent-dark); color: var(--accent-dark); background: #FDF3F6; }
+
   .option-list { display: flex; flex-direction: column; gap: 12px; }
   .option {
     display: flex; align-items: center; gap: 14px; padding: 16px 18px;
@@ -73,6 +82,19 @@
   .option .title { font-size: 14.5px; font-weight: 700; margin-bottom: 2px; }
   .option .desc { font-size: 12px; color: #a98a92; line-height: 1.4; }
   .option .arrow { color: var(--accent-dark); font-size: 18px; }
+
+  .option.is-hidden { display: none; }
+  .option .hide-btn { display: none; }
+  body.edit-mode .option { cursor: default; }
+  body.edit-mode .option:hover { transform: none; }
+  body.edit-mode .option.is-hidden { display: flex; opacity: 0.45; }
+  body.edit-mode .option .arrow { display: none; }
+  body.edit-mode .option .hide-btn {
+    display: inline-block; flex-shrink: 0; font-size: 11px; padding: 6px 10px;
+    border-radius: 9px; border: 1.5px solid var(--lavender); background: var(--white);
+    color: #a98a92; cursor: pointer;
+  }
+  body.edit-mode .option .hide-btn:hover { border-color: var(--accent-dark); color: var(--accent-dark); }
 
   .divider { display: flex; align-items: center; gap: 10px; margin: 22px 0 14px; }
   .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--lavender); }
@@ -108,6 +130,11 @@
       <button class="settings-save" onclick="saveSettings()">저장</button>
       <div class="settings-saved-msg" id="settingsSavedMsg"></div>
     </div>
+  </div>
+
+  <div class="edit-row">
+    <span class="hidden-hint" id="hiddenHint"></span>
+    <button type="button" class="edit-toggle" id="editToggleBtn" onclick="toggleEditMode()">✏️ 편집</button>
   </div>
 
   <div class="option-list">
@@ -226,11 +253,15 @@
   }
 
   function loadSettings() {
+    let saved = {};
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) saved = JSON.parse(raw);
     } catch (e) {}
-    return { date: todayStr(), place: '전주MBC' };
+    // 저장된 날짜가 오늘 날짜가 아니면(전날 이전 설정이 남아있는 경우) 자동으로 오늘 날짜로 되돌림.
+    // 장소는 며칠씩 그대로인 경우가 많아 계속 기억함.
+    const today = todayStr();
+    return { date: saved.date === today ? saved.date : today, place: saved.place || '전주MBC' };
   }
 
   function toggleSettings() {
@@ -259,6 +290,72 @@
   }
 
   updateSettingsLabel();
+
+  // ---------- 메인 메뉴 항목 일시 숨기기 (편집모드) ----------
+  // 항목이 많아 복잡하다는 피드백으로 추가: 당장 안 쓰는 항목을 편집모드에서 개별로 숨겨두고,
+  // 필요하면 언제든 편집모드에서 다시 보이게 되돌릴 수 있음 (기기별 localStorage에 저장, 삭제 아님)
+  const HIDDEN_KEY = 'signform_hidden_options';
+  let editMode = false;
+  let hiddenKeys = loadHiddenKeys();
+
+  function loadHiddenKeys() {
+    try {
+      const raw = localStorage.getItem(HIDDEN_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveHiddenKeys() {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(hiddenKeys));
+  }
+
+  function initOptionHiding() {
+    document.querySelectorAll('.option-list .option').forEach((opt) => {
+      const key = opt.getAttribute('href');
+      opt.dataset.key = key;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hide-btn';
+      btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleHiddenKey(key);
+      };
+      opt.appendChild(btn);
+
+      opt.addEventListener('click', (e) => {
+        if (editMode) e.preventDefault();
+      });
+    });
+    renderOptionVisibility();
+  }
+
+  function toggleHiddenKey(key) {
+    if (hiddenKeys.includes(key)) hiddenKeys = hiddenKeys.filter((k) => k !== key);
+    else hiddenKeys.push(key);
+    saveHiddenKeys();
+    renderOptionVisibility();
+  }
+
+  function toggleEditMode() {
+    editMode = !editMode;
+    document.body.classList.toggle('edit-mode', editMode);
+    document.getElementById('editToggleBtn').textContent = editMode ? '✓ 완료' : '✏️ 편집';
+    renderOptionVisibility();
+  }
+
+  function renderOptionVisibility() {
+    document.querySelectorAll('.option-list .option').forEach((opt) => {
+      const isHidden = hiddenKeys.includes(opt.dataset.key);
+      opt.classList.toggle('is-hidden', isHidden);
+      const btn = opt.querySelector('.hide-btn');
+      if (btn) btn.textContent = isHidden ? '보이기' : '숨기기';
+    });
+    const hint = document.getElementById('hiddenHint');
+    hint.textContent = !editMode && hiddenKeys.length > 0 ? `숨긴 항목 ${hiddenKeys.length}개` : '';
+  }
+
+  initOptionHiding();
 </script>
 </body>
 </html>
