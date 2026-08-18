@@ -262,6 +262,20 @@
   @keyframes fadein { from { opacity: 0; transform: translateY(-6px);} to { opacity: 1; transform: translateY(0);} }
   .empty-msg { text-align: center; color: #9FB0C4; font-size: 13px; padding: 24px 0; }
 
+  /* ---- 실시간 현황 패널 안 탭 전환(명단/PDF) ---- */
+  .live-tabs { display: flex; gap: 8px; margin: 12px 0 10px; }
+  .live-tab {
+    flex: 1; padding: 8px; border-radius: 10px; border: 1.5px solid var(--lavender);
+    background: #F7F9FC; color: var(--text); font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  }
+  .live-tab.active { border-color: var(--accent-dark); background: var(--accent-dark); color: white; }
+  .pdf-frame-wrap {
+    border: 1.5px solid var(--lavender); border-radius: 12px; overflow: hidden;
+    background: #F7F9FC; height: 70vh;
+  }
+  .pdf-frame-wrap iframe { width: 100%; height: 100%; border: none; }
+  .pdf-toolbar { display: flex; justify-content: space-between; margin-top: 8px; }
+
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
     width: 38px; height: 38px; border-radius: 50%;
@@ -297,10 +311,25 @@
     </div>
 
     <div id="liveViewArea" class="hidden">
-      <div class="conn-row"><span class="dot" id="liveConnDot"></span><span id="liveConnText">불러오는 중...</span></div>
-      <div class="summary-row" id="liveSummaryRow"></div>
-      <div class="live-list" id="liveList"></div>
-      <div class="empty-msg hidden" id="liveEmptyMsg">아직 접수된 사람이 없어요.</div>
+      <div class="live-tabs">
+        <button type="button" class="live-tab active" id="liveTabList" onclick="switchLiveTab('list')">📋 명단</button>
+        <button type="button" class="live-tab" id="liveTabPdf" onclick="switchLiveTab('pdf')">📄 서명록 PDF</button>
+      </div>
+
+      <div id="liveListView">
+        <div class="conn-row"><span class="dot" id="liveConnDot"></span><span id="liveConnText">불러오는 중...</span></div>
+        <div class="summary-row" id="liveSummaryRow"></div>
+        <div class="live-list" id="liveList"></div>
+        <div class="empty-msg hidden" id="liveEmptyMsg">아직 접수된 사람이 없어요.</div>
+      </div>
+
+      <div id="livePdfView" class="hidden">
+        <div class="pdf-frame-wrap"><iframe id="pdfFrame" title="서명록 PDF 미리보기"></iframe></div>
+        <div class="pdf-toolbar">
+          <button type="button" class="btn-plain" onclick="refreshPdfPreview()">↻ 새로고침</button>
+          <a class="btn-plain" id="pdfOpenNewTab" href="#" target="_blank" rel="noopener">↗ 새 창에서 열기</a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -676,6 +705,22 @@
     return settings.date || todayStr();
   }
 
+  // ---------- 실시간 현황 패널 안 PDF 미리보기 탭 ----------
+  function switchLiveTab(tab) {
+    document.getElementById('liveTabList').classList.toggle('active', tab === 'list');
+    document.getElementById('liveTabPdf').classList.toggle('active', tab === 'pdf');
+    document.getElementById('liveListView').classList.toggle('hidden', tab !== 'list');
+    document.getElementById('livePdfView').classList.toggle('hidden', tab !== 'pdf');
+    if (tab === 'pdf') refreshPdfPreview();
+  }
+
+  function refreshPdfPreview() {
+    if (!liveAdminKey) return;
+    const url = `${WORKER_HTTP_URL}/download?programId=${encodeURIComponent(currentSeminarProgramId())}&key=${encodeURIComponent(liveAdminKey)}`;
+    document.getElementById('pdfFrame').src = `${url}&t=${Date.now()}`; // 캐시 우회해서 최신 PDF로 갱신
+    document.getElementById('pdfOpenNewTab').href = url;
+  }
+
   async function fetchAndRenderLive(isFirstLoad) {
     try {
       const res = await fetch(`${WORKER_HTTP_URL}/admin/rows?programId=${encodeURIComponent(currentSeminarProgramId())}&key=${encodeURIComponent(liveAdminKey)}`);
@@ -1045,6 +1090,9 @@
     remoteBadge.style.display = 'none';
     renderConfirmSummary();
     document.getElementById('name').focus();
+
+    // PDF 미리보기 탭이 열려있으면 방금 제출된 내용까지 반영해서 바로 갱신
+    if (!document.getElementById('livePdfView').classList.contains('hidden')) refreshPdfPreview();
   }
 
   function showStatus(text, cls) {
