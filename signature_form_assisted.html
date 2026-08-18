@@ -417,19 +417,19 @@
 
         <div class="affil-mode-row">
           <span class="affil-mode-label">입력 방식</span>
-          <button type="button" class="affil-mode-btn active" id="affilModeBtn-typing" onclick="setAffilMode('typing')">⌨️ 타이핑</button>
-          <button type="button" class="affil-mode-btn" id="affilModeBtn-handwrite" onclick="setAffilMode('handwrite')">✍️ 직접 필기(태블릿)</button>
+          <button type="button" class="affil-mode-btn" id="affilModeBtn-typing" onclick="setAffilMode('typing')">⌨️ 타이핑</button>
+          <button type="button" class="affil-mode-btn active" id="affilModeBtn-handwrite" onclick="setAffilMode('handwrite')">✍️ 직접 필기(태블릿)</button>
         </div>
 
         <div id="companyField" class="hidden-field">
           <label for="company">회사명</label>
-          <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요">
-          <p class="field-hint hidden" id="companyHandwriteNote">참석자가 태블릿에 직접 적어요.</p>
+          <input type="text" id="company" placeholder="재직 중인 회사명을 입력하세요" disabled>
+          <p class="field-hint" id="companyHandwriteNote">참석자가 태블릿에 직접 적어요.</p>
         </div>
         <div id="schoolField" class="hidden-field">
           <label for="school">학교명</label>
-          <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요">
-          <p class="field-hint hidden" id="schoolHandwriteNote">참석자가 태블릿에 직접 적어요.</p>
+          <input type="text" id="school" placeholder="재학 중인 학교명을 입력하세요" disabled>
+          <p class="field-hint" id="schoolHandwriteNote">참석자가 태블릿에 직접 적어요.</p>
         </div>
 
         <div class="consent-box">
@@ -523,7 +523,7 @@
   let subCatLocal = ''; // 원격 힌트로 받은 직업계고/대학생 표시(비영속)
   let latestAgree = false; // 참석자가 태블릿에서 체크한 개인정보 동의 상태(읽기전용 미러)
   let lastCatSeen = ''; // 소속 구분이 새로 바뀐 순간을 감지해서 자동 포커스 이동에 씀
-  let affilMode = 'typing'; // 'typing' | 'handwrite' — 회사명/학교명을 타이핑으로 받을지 태블릿 손글씨로 받을지 (프로토타입)
+  let affilMode = 'handwrite'; // 'typing' | 'handwrite' — 회사명/학교명을 타이핑으로 받을지 태블릿 손글씨로 받을지 (기본값: 직접 필기)
   let latestAffilImage = ''; // 태블릿에서 손글씨로 받은 회사명/학교명 이미지(base64 PNG)
 
   const liveCanvas = document.getElementById('live-preview-canvas');
