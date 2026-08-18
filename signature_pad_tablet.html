@@ -642,19 +642,29 @@
   // ==================== 태블릿 단독모드 ====================
   // PC 세션 없이 이 태블릿 한 대로 이름부터 서명까지 다 받고, 서버에 바로 제출함 (웹소켓 없음)
 
-  const SETTINGS_KEY = 'signform_settings';
   function todayStr() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
+
+  // index.html에서 저장한 날짜/장소를 Worker(KV)에서 읽어옴 — 기기별 localStorage가 아니라
+  // 모든 기기가 공유하는 값. 페이지 열릴 때 한 번 받아서 캐시해두고(못 받으면 기본값), 그대로 사용.
+  let cachedFormSettings = { date: todayStr(), place: '전주MBC' };
+  (function refreshFormSettingsFromServer() {
+    fetch(`${WORKER_HTTP_URL}/settings`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const today = todayStr();
+        cachedFormSettings = {
+          date: data.date === today ? data.date : today,
+          place: data.place || '전주MBC',
+        };
+      })
+      .catch(() => {});
+  })();
   function loadFormSettings() {
-    let saved = {};
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) saved = JSON.parse(raw);
-    } catch (e) {}
-    const today = todayStr();
-    return { date: saved.date === today ? saved.date : today, place: saved.place || '전주MBC' };
+    return cachedFormSettings;
   }
 
   const modeChoiceList = document.getElementById('modeChoiceList');

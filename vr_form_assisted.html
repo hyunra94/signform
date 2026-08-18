@@ -530,7 +530,6 @@
   const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
   const WS_URL_BASE = WORKER_HTTP_URL.replace(/^http/, 'ws');
 
-  const SETTINGS_KEY = 'signform_settings';
   function todayStr() {
     const d = new Date();
     const y = d.getFullYear();
@@ -538,14 +537,25 @@
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
+
+  // index.html에서 저장한 날짜/장소를 Worker(KV)에서 읽어옴 — 기기별 localStorage가 아니라
+  // 모든 기기가 공유하는 값. 페이지 열릴 때 한 번 받아서 캐시해두고(못 받으면 기본값), 그대로 사용.
+  let cachedFormSettings = { date: todayStr(), place: '전주MBC' };
+  (function refreshFormSettingsFromServer() {
+    fetch(`${WORKER_HTTP_URL}/settings`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const today = todayStr();
+        cachedFormSettings = {
+          date: data.date === today ? data.date : today,
+          place: data.place || '전주MBC',
+        };
+      })
+      .catch(() => {});
+  })();
   function loadFormSettings() {
-    let saved = {};
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (raw) saved = JSON.parse(raw);
-    } catch (e) {}
-    const today = todayStr();
-    return { date: saved.date === today ? saved.date : today, place: saved.place || '전주MBC' };
+    return cachedFormSettings;
   }
 
   let ws = null;
@@ -898,7 +908,6 @@
     openWebSocket();
     openQueueWebSocket();
     generateJoinQr(code);
-    document.getElementById('codeDisplay').classList.add('collapsed');
     setTimeout(() => document.getElementById('name').focus(), 100);
   }
 
