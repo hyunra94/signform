@@ -173,7 +173,7 @@
     background: #FBFCFE; overflow: hidden;
   }
   #live-preview-canvas {
-    display: block; width: 100%; aspect-ratio: 2.2 / 1;
+    display: block; width: 100%; aspect-ratio: 2.8 / 1;
   }
   .live-indicator {
     display: none; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px;
@@ -462,7 +462,7 @@
         <div class="signature-section">
           <label>서명 미리보기 (태블릿에서 서명)</label>
           <div class="pen-only-row">
-            <input type="checkbox" id="penOnlyToggle" onchange="togglePenOnly(this.checked)">
+            <input type="checkbox" id="penOnlyToggle" checked onchange="togglePenOnly(this.checked)">
             <label for="penOnlyToggle" class="pen-only-label">✒️ 펜으로만 서명 받기 (손가락 터치 차단)</label>
           </div>
           <div class="pad-wrap">
@@ -657,8 +657,8 @@
     showStatus('참석자를 다시 입력 화면으로 돌려보냈어요.', '');
   }
 
-  // ---------- 펜 전용 서명 설정 ----------
-  let penOnlyEnabled = false;
+  // ---------- 펜 전용 서명 설정 (기본값: 켜짐) ----------
+  let penOnlyEnabled = true;
   function togglePenOnly(checked) {
     penOnlyEnabled = checked;
     send({ type: 'hint', kind: 'penOnly', value: checked });
