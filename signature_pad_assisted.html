@@ -531,6 +531,41 @@
     send({ type: 'strokeLive', points: strokes, phase: 'drawing' });
   }
 
+  // 캔버스 전체가 아니라 실제 잉크가 그려진 영역만 여백을 살짝 두고 잘라서 내보냄
+  // (세로로 긴 큰 캔버스에 작게 그려진 서명이 PDF의 가로로 긴 작은 칸에 맞춰지면서
+  //  더 작아 보이는 문제를 완화 — 태블릿 방향/캔버스 크기와 상관없이 항상 칸을 꽉 채움)
+  function cropPadToDataUrl(canvasEl, padInstance, marginRatio = 0.15) {
+    const data = padInstance.toData();
+    if (!data || !data.length) return canvasEl.toDataURL('image/png');
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    data.forEach((group) => group.points.forEach((p) => {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }));
+
+    const w = canvasEl.offsetWidth || 1;
+    const h = canvasEl.offsetHeight || 1;
+    const marginX = Math.max((maxX - minX) * marginRatio, 6);
+    const marginY = Math.max((maxY - minY) * marginRatio, 6);
+    minX = Math.max(0, minX - marginX);
+    minY = Math.max(0, minY - marginY);
+    maxX = Math.min(w, maxX + marginX);
+    maxY = Math.min(h, maxY + marginY);
+
+    const ratio = canvasEl.width / w; // 캔버스 실제 해상도 배율(devicePixelRatio 반영)
+    const sx = minX * ratio, sy = minY * ratio;
+    const sw = Math.max((maxX - minX) * ratio, 1);
+    const sh = Math.max((maxY - minY) * ratio, 1);
+
+    const out = document.createElement('canvas');
+    out.width = sw; out.height = sh;
+    out.getContext('2d').drawImage(canvasEl, sx, sy, sw, sh, 0, 0, sw, sh);
+    return out.toDataURL('image/png');
+  }
+
   function initSignaturePad() {
     resizeCanvas();
     signaturePad = new SignaturePad(canvas, {
@@ -547,7 +582,7 @@
       stopLiveStream();
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => {
-        const dataUrl = signaturePad.toDataURL('image/png');
+        const dataUrl = cropPadToDataUrl(canvas, signaturePad);
         send({ type: 'signature', dataUrl });
         send({ type: 'strokeLive', points: [], phase: 'done' });
         savedBadge.style.display = 'flex';
@@ -600,7 +635,7 @@
     affilSignaturePad.addEventListener('endStroke', () => {
       clearTimeout(affilSaveTimer);
       affilSaveTimer = setTimeout(() => {
-        send({ type: 'update', field: '소속이미지', value: affilSignaturePad.toDataURL('image/png') });
+        send({ type: 'update', field: '소속이미지', value: cropPadToDataUrl(affilCanvas, affilSignaturePad) });
       }, 300);
     });
   }
