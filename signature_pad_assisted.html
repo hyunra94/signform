@@ -330,6 +330,7 @@
     <button class="join-btn" onclick="joinSession()">참가</button>
   </div>
   <p class="kb-hint">담당자 화면에 뜬 4자리 코드를 입력하거나, QR코드를 스캔하면 자동으로 참가돼요.</p>
+  <p class="kb-hint" id="pcDisconnectedNotice" style="display:none;color:#D97070;">담당자 PC와의 연결이 끊겨서 코드 입력 화면으로 돌아왔어요. 다시 참가해주세요.</p>
 </div>
 
 <!-- 입력 화면 -->
@@ -458,6 +459,8 @@
 
   let ws = null;
   let sessionCode = null;
+  let lastPeerCount = 1;
+  let pcGoneTimer = null;
   let intentionalDisconnect = false;
   let remoteState = { 성명: '', 연락처: '', 재직자여부: '', 소속이미지: '', signature: '', 동의: false };
   let selectedCatButton = ''; // 이 기기에서 직접 고른 버튼(재직자/직업계고/대학생/일반시민) — 하이라이트 표시용
@@ -666,6 +669,9 @@
     sessionCode = code;
     document.getElementById('sessionScreen').classList.add('hidden');
     document.getElementById('signScreen').classList.add('active');
+    document.getElementById('pcDisconnectedNotice').style.display = 'none';
+    lastPeerCount = 1;
+    if (pcGoneTimer) { clearTimeout(pcGoneTimer); pcGoneTimer = null; }
     initSignaturePad();
     openWebSocket();
   }
@@ -715,6 +721,7 @@
         affilInputMode = msg.value === 'handwrite' ? 'handwrite' : 'typing';
         renderGuide();
       }
+      else if (msg.type === 'peers') handlePeers(msg.count);
     };
   }
 
@@ -740,6 +747,11 @@
     if (!confirm('다른 세션 코드로 바꿀까요? 지금 화면의 입력 내용은 사라져요.')) return;
     intentionalDisconnect = true;
     if (ws) ws.close();
+    returnToJoinScreen();
+  }
+
+  // 코드 입력 화면으로 되돌리는 공통 처리 (수동 "코드 변경"과, 담당자 PC 연결 끊김 자동감지 둘 다 사용)
+  function returnToJoinScreen() {
     stopLiveStream();
 
     document.getElementById('signScreen').classList.remove('active');
@@ -760,6 +772,25 @@
     document.getElementById('tabletSubmitBtn').disabled = false;
     renderGuide();
     showStatus('', '');
+  }
+
+  // ---------- 담당자 PC 연결 끊김 자동 감지 ----------
+  // 서버가 보내는 peers 카운트가 2 이상(PC+태블릿)에서 2 미만으로 떨어지면 PC가 나간 것으로 판단.
+  // 잠깐의 네트워크 순단일 수 있으니 몇 초 기다렸다가, 그래도 안 돌아오면 코드 입력 화면으로 자동 복귀.
+  function handlePeers(count) {
+    if (count >= 2) {
+      if (pcGoneTimer) { clearTimeout(pcGoneTimer); pcGoneTimer = null; }
+    } else if (lastPeerCount >= 2 && count < 2 && !pcGoneTimer) {
+      pcGoneTimer = setTimeout(() => {
+        pcGoneTimer = null;
+        intentionalDisconnect = true;
+        if (ws) ws.close();
+        returnToJoinScreen();
+        const notice = document.getElementById('pcDisconnectedNotice');
+        if (notice) notice.style.display = 'block';
+      }, 4000);
+    }
+    lastPeerCount = count;
   }
 
   function resetPhoneAndCatUI() {
