@@ -390,9 +390,16 @@
     const sw = Math.max((maxX - minX) * ratio, 1);
     const sh = Math.max((maxY - minY) * ratio, 1);
 
+    // 서버가 PDF 만들 때 메모리를 너무 많이 안 먹도록 최종 이미지 크기를 적당히 제한
+    // (PDF 칸 자체가 작아서 화질 손해는 거의 안 보임 — 고해상도 태블릿에서 특히 중요)
+    const MAX_DIM = 640;
+    const scale = Math.min(1, MAX_DIM / Math.max(sw, sh));
+    const outW = Math.max(1, Math.round(sw * scale));
+    const outH = Math.max(1, Math.round(sh * scale));
+
     const out = document.createElement('canvas');
-    out.width = sw; out.height = sh;
-    out.getContext('2d').drawImage(canvasEl, sx, sy, sw, sh, 0, 0, sw, sh);
+    out.width = outW; out.height = outH;
+    out.getContext('2d').drawImage(canvasEl, sx, sy, sw, sh, 0, 0, outW, outH);
     return out.toDataURL('image/png');
   }
 
