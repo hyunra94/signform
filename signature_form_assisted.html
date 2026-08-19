@@ -15,6 +15,7 @@
     --accent: #4A6FA5; --accent-dark: #2F4C7A;
     --lavender: #D7E0F0; --text: #2B3A4A; --white: #FFFFFF;
     --shadow: rgba(74, 111, 165, 0.25);
+    --live-panel-reserve: 0px;
   }
   * { box-sizing: border-box; }
   html { height: 100%; }
@@ -23,6 +24,11 @@
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
     margin: 0; padding: clamp(10px, 3vh, 24px) 16px; color: var(--text);
     min-height: 100%; overflow-y: auto;
+  }
+  /* 넓은 PC 화면: 실시간 현황 패널이 열려있으면 접수 화면을 그만큼 왼쪽으로 밀어서(분할화면처럼)
+     팝업이 접수 화면과 절대 겹치지 않게 함 — 패널 폭이 바뀌면 이 값도 같이 바뀜 */
+  @media (min-width: 1200px) {
+    body { padding-right: calc(16px + var(--live-panel-reserve)); transition: padding-right 0.2s ease; }
   }
   #fitWrap { width: 100%; display: flex; justify-content: center; }
   .card {
@@ -298,6 +304,22 @@
   .pdf-frame-wrap iframe { width: 100%; height: 100%; border: none; }
   .pdf-toolbar { display: flex; justify-content: space-between; margin-top: 8px; }
 
+  /* ---- 실시간 현황 패널 안 상세보기 탭 (재직자/미래인재/일반시민 구분, PDF와 비슷한 형태) ---- */
+  .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; table-layout: fixed; }
+  .detail-table th, .detail-table td {
+    padding: 6px 5px; text-align: center; border-bottom: 1px solid #EDF2F8;
+    word-break: break-word; overflow-wrap: anywhere;
+  }
+  .detail-table th { color: #8494A8; font-weight: 500; }
+  .detail-table th:nth-child(1), .detail-table td:nth-child(1) { width: 22px; }
+  .detail-table th:nth-child(2), .detail-table td:nth-child(2) { width: 22%; }
+  .detail-table th:nth-child(3), .detail-table td:nth-child(3) { width: 26%; }
+  .detail-table th:nth-child(4), .detail-table td:nth-child(4) { width: 12%; }
+  .detail-table th:nth-child(5), .detail-table td:nth-child(5) { width: 16%; }
+  .detail-section-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin: 12px 0 6px; }
+  .detail-section-title:first-child { margin-top: 0; }
+  .lazy-thumb { font-size: 11px; color: #9FB0C4; }
+
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
     width: 38px; height: 38px; border-radius: 50%;
@@ -336,7 +358,8 @@
     <div id="liveViewArea" class="hidden">
       <div class="live-tabs">
         <button type="button" class="live-tab active" id="liveTabList" onclick="switchLiveTab('list')">📋 명단</button>
-        <button type="button" class="live-tab" id="liveTabPdf" onclick="switchLiveTab('pdf')">📄 서명록 PDF</button>
+        <button type="button" class="live-tab" id="liveTabDetail" onclick="switchLiveTab('detail')">📑 상세보기</button>
+        <button type="button" class="live-tab" id="liveTabPdf" onclick="switchLiveTab('pdf')">📄 PDF 보기</button>
       </div>
 
       <div id="liveListView">
@@ -344,6 +367,10 @@
         <div class="summary-row" id="liveSummaryRow"></div>
         <div class="live-list" id="liveList"></div>
         <div class="empty-msg hidden" id="liveEmptyMsg">아직 접수된 사람이 없어요.</div>
+      </div>
+
+      <div id="liveDetailView" class="hidden">
+        <div id="liveDetailBody"><div class="empty-msg">불러오는 중...</div></div>
       </div>
 
       <div id="livePdfView" class="hidden">
@@ -711,6 +738,20 @@
     if (saved) panel.style.width = Math.min(LIVE_PANEL_MAX_W, Math.max(LIVE_PANEL_MIN_W, saved)) + 'px';
   }
 
+  // 넓은 화면 + 패널이 열려있을 때만, 패널 폭만큼(+여유 간격) 접수 화면 오른쪽을 비워서
+  // 패널이 접수 화면과 겹치지 않고 화면이 왼쪽으로 밀리도록 함
+  function updateLivePanelReserve() {
+    const isOpen = document.getElementById('livePanelBackdrop').classList.contains('open');
+    if (!isOpen || window.innerWidth < 1200) {
+      document.documentElement.style.setProperty('--live-panel-reserve', '0px');
+      return;
+    }
+    const panel = document.getElementById('livePanel');
+    const w = panel.getBoundingClientRect().width;
+    document.documentElement.style.setProperty('--live-panel-reserve', (w + 40) + 'px');
+  }
+  window.addEventListener('resize', updateLivePanelReserve);
+
   (function setupLivePanelResize() {
     const panel = document.getElementById('livePanel');
     const handle = document.getElementById('livePanelResizeHandle');
@@ -727,18 +768,21 @@
       // 패널이 화면 오른쪽에 붙어있으므로, 손잡이를 왼쪽으로 끌수록(startX보다 작아질수록) 넓어짐
       const newW = Math.min(LIVE_PANEL_MAX_W, Math.max(LIVE_PANEL_MIN_W, startW + (startX - e.clientX)));
       panel.style.width = newW + 'px';
+      updateLivePanelReserve();
     });
     handle.addEventListener('pointerup', (e) => {
       if (!dragging) return;
       dragging = false;
       handle.releasePointerCapture(e.pointerId);
       localStorage.setItem(LIVE_PANEL_WIDTH_KEY, Math.round(panel.getBoundingClientRect().width));
+      updateLivePanelReserve();
     });
   })();
 
   function openLivePanel() {
     document.getElementById('livePanelBackdrop').classList.add('open');
     applySavedLivePanelWidth();
+    updateLivePanelReserve();
     if (liveAdminKey) {
       fetchAndRenderLive(true);
       clearInterval(livePollTimer);
@@ -755,6 +799,8 @@
   function closeLivePanel() {
     document.getElementById('livePanelBackdrop').classList.remove('open');
     clearInterval(livePollTimer);
+    clearInterval(liveDetailPollTimer);
+    updateLivePanelReserve();
   }
 
   function startLiveView() {
@@ -780,13 +826,128 @@
     return settings.date || todayStr();
   }
 
-  // ---------- 실시간 현황 패널 안 PDF 미리보기 탭 ----------
+  // ---------- 실시간 현황 패널 안 탭 전환(명단/상세보기/PDF) ----------
+  let liveDetailPollTimer = null;
+
   function switchLiveTab(tab) {
     document.getElementById('liveTabList').classList.toggle('active', tab === 'list');
+    document.getElementById('liveTabDetail').classList.toggle('active', tab === 'detail');
     document.getElementById('liveTabPdf').classList.toggle('active', tab === 'pdf');
     document.getElementById('liveListView').classList.toggle('hidden', tab !== 'list');
+    document.getElementById('liveDetailView').classList.toggle('hidden', tab !== 'detail');
     document.getElementById('livePdfView').classList.toggle('hidden', tab !== 'pdf');
+
+    clearInterval(liveDetailPollTimer);
     if (tab === 'pdf') refreshPdfPreview();
+    if (tab === 'detail') {
+      fetchAndRenderDetail();
+      liveDetailPollTimer = setInterval(fetchAndRenderDetail, 4000);
+    }
+  }
+
+  // 실제 PDF와 같은 순서(재직자 → 미래인재 → 일반시민)로 구분해서 보여줌 — PDF를 직접 만들지 않고도
+  // 실시간으로 PDF와 거의 같은 형태의 목록을 담당자 PC 화면에서 바로 확인할 수 있게 하기 위함
+  const LIVE_DETAIL_CATEGORY_ORDER = ['재직자', '미래인재', '일반시민'];
+  function liveDetailCategoryOf(it) {
+    if (it.재직자여부 === '재직자') return '재직자';
+    if (it.재직자여부 === '미래인재') return '미래인재';
+    return '일반시민';
+  }
+
+  async function fetchAndRenderDetail() {
+    if (!liveAdminKey) return;
+    const body = document.getElementById('liveDetailBody');
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rows?programId=${encodeURIComponent(currentSeminarProgramId())}&key=${encodeURIComponent(liveAdminKey)}`);
+      if (!res.ok) { body.innerHTML = '<div class="empty-msg">불러오기 실패</div>'; return; }
+      const data = await res.json();
+      renderLiveDetail(body, data.items || []);
+    } catch (err) {
+      body.innerHTML = '<div class="empty-msg">연결 오류</div>';
+    }
+  }
+
+  function renderLiveDetail(body, items) {
+    if (!items || items.length === 0) {
+      body.innerHTML = '<div class="empty-msg">아직 접수된 사람이 없어요.</div>';
+      return;
+    }
+    const groups = {};
+    items.forEach((it) => {
+      const cat = liveDetailCategoryOf(it);
+      (groups[cat] = groups[cat] || []).push(it);
+    });
+
+    const lazyThumb = (rowKey, field) =>
+      `<span class="lazy-thumb" data-rowkey="${rowKey}" data-field="${field}">불러오는 중…</span>`;
+
+    const sectionsHtml = LIVE_DETAIL_CATEGORY_ORDER.filter((cat) => groups[cat] && groups[cat].length).map((cat) => {
+      const rowsHtml = groups[cat].map((it, i) => {
+        const nameText = it.성명 || '';
+        const sosoText = it.회사명 || it.학교명 || '';
+        const delBtn = `<button type="button" class="del-btn" onclick="deleteLiveRow('${it.rowKey}')">삭제</button>`;
+
+        if (!nameText && !sosoText && it.has필기이미지) {
+          return `
+            <tr>
+              <td>${i + 1}</td>
+              <td colspan="2">${lazyThumb(it.rowKey, '필기이미지')}</td>
+              <td>${it.동의 ? 'O' : 'X'}</td>
+              <td>${delBtn}</td>
+            </tr>
+          `;
+        }
+
+        const nameCell = nameText ? escapeHtml(nameText) : (it.has필기이미지 ? lazyThumb(it.rowKey, '필기이미지') : '-');
+        const sosoCell = sosoText ? escapeHtml(sosoText) : (it.has소속이미지 ? lazyThumb(it.rowKey, '소속이미지') : '-');
+
+        return `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${nameCell}</td>
+            <td>${sosoCell}</td>
+            <td>${it.동의 ? 'O' : 'X'}</td>
+            <td>${delBtn}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="detail-section-title">${cat} (${groups[cat].length}명)</div>
+        <table class="detail-table">
+          <thead><tr><th>#</th><th>성명</th><th>소속</th><th>동의</th><th></th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      `;
+    }).join('');
+
+    body.innerHTML = sectionsHtml;
+    loadLiveDetailLazyThumbs();
+  }
+
+  async function loadLiveDetailLazyThumbs() {
+    const els = Array.from(document.querySelectorAll('#liveDetailBody .lazy-thumb'));
+    if (els.length === 0) return;
+    let idx = 0;
+    async function worker() {
+      while (idx < els.length) {
+        const el = els[idx++];
+        const rowKey = el.dataset.rowkey;
+        const field = el.dataset.field;
+        try {
+          const res = await fetch(`${WORKER_HTTP_URL}/admin/row-image?programId=${encodeURIComponent(currentSeminarProgramId())}&rowKey=${encodeURIComponent(rowKey)}&field=${encodeURIComponent(field)}&key=${encodeURIComponent(liveAdminKey)}`);
+          const data = await res.json();
+          if (data && data.dataUrl) {
+            el.outerHTML = `<img src="${data.dataUrl}" style="max-height:26px;max-width:90px;vertical-align:middle;" alt="손글씨">`;
+          } else {
+            el.textContent = '(없음)';
+          }
+        } catch (err) {
+          el.textContent = '(불러오기 실패)';
+        }
+      }
+    }
+    await Promise.all([worker(), worker(), worker()]);
   }
 
   function refreshPdfPreview() {
@@ -847,27 +1008,29 @@
     list.innerHTML = items.map((it) => {
       const time = formatTime5(it.submittedAt);
       const isNew = isNewBatch && it.index >= liveLastKnownCount;
-      const badge = it.재직자여부 ? `<span class="badge">${it.재직자여부}</span>` : '';
+      const badge = it.재직자여부 ? `<span class="badge">${escapeHtml(it.재직자여부)}</span>` : '';
+      const nameLabel = it.성명 ? escapeHtml(it.성명) : (it.has필기이미지 ? '[손글씨]' : '');
       return `
         <div class="live-row ${isNew ? 'new' : ''}">
-          <div><span class="name">${it.index + 1}. ${escapeHtml(it.성명 || '')}</span>${badge}</div>
+          <div><span class="name">${it.index + 1}. ${nameLabel}</span>${badge}</div>
           <div class="time">${time}</div>
-          <button type="button" class="del-btn" onclick="deleteLiveRow(${it.index})">삭제</button>
+          <button type="button" class="del-btn" onclick="deleteLiveRow('${it.rowKey}')">삭제</button>
         </div>
       `;
     }).join('');
     liveLastKnownCount = items.length;
   }
 
-  async function deleteLiveRow(index) {
-    if (!confirm(`${index + 1}번째 참석자를 삭제할까요? 되돌릴 수 없어요.`)) return;
+  async function deleteLiveRow(rowKey) {
+    if (!confirm('이 참석자를 삭제할까요? 되돌릴 수 없어요.')) return;
     try {
       const res = await fetch(
-        `${WORKER_HTTP_URL}/admin/delete-row?programId=${encodeURIComponent(currentSeminarProgramId())}&index=${index}&key=${encodeURIComponent(liveAdminKey)}`,
+        `${WORKER_HTTP_URL}/admin/delete-row?programId=${encodeURIComponent(currentSeminarProgramId())}&rowKey=${encodeURIComponent(rowKey)}&key=${encodeURIComponent(liveAdminKey)}`,
         { method: 'DELETE' }
       );
       if (!res.ok) throw new Error('삭제 실패');
       fetchAndRenderLive(false);
+      if (!document.getElementById('liveDetailView').classList.contains('hidden')) fetchAndRenderDetail();
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);
     }

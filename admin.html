@@ -103,6 +103,9 @@
   .detail-section-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin: 14px 0 6px; }
   .detail-section-title:first-child { margin-top: 0; }
   .lazy-thumb { font-size: 11px; color: #b7a3ab; }
+  /* 전체삭제는 실수로 누르기 쉬워서 기본적으로 숨겨두고, "관리" 표머리를 더블클릭해야만 나타남 */
+  .danger-action { display: none; }
+  #listTable.show-danger .danger-action { display: inline-block; }
 
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
@@ -136,7 +139,7 @@
   <div id="listArea" class="hidden">
     <table id="listTable">
       <thead>
-        <tr><th>날짜</th><th>제출 인원</th><th>동의 인원</th><th>최근 제출</th><th>다운로드</th><th>관리</th></tr>
+        <tr><th>날짜</th><th>제출 인원</th><th>동의 인원</th><th>최근 제출</th><th>다운로드</th><th id="manageHeader" ondblclick="toggleDeleteAllVisible()" title="더블클릭하면 전체삭제 버튼이 나타나요/숨겨져요" style="cursor:pointer; user-select:none;">관리</th></tr>
       </thead>
       <tbody id="listBody"></tbody>
     </table>
@@ -267,9 +270,8 @@
           <button class="btn-plain" onclick="openDetailModal('${item.programId}', '${safeId}')">상세보기</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdf('${item.programId}')">PDF 다시그리기</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="compressImages('${item.programId}')">🗜️ 이미지 압축</button><br>
-          <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdfParts('${item.programId}')">🚨 나눠서 만들기(임시)</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdfPartsByCategory('${item.programId}')">🚨 구분별로 나눠서(임시)</button><br>
-          <button class="btn-plain" style="color:#D97070;margin-top:4px;" onclick="deleteDay('${item.programId}')">전체삭제</button>
+          <button class="btn-plain danger-action" style="color:#D97070;margin-top:4px;" onclick="deleteDay('${item.programId}')">전체삭제</button>
         </td>
       `;
       tbody.appendChild(tr);
@@ -310,6 +312,10 @@
     }
   }
 
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   // 실제 PDF와 같은 순서(재직자 → 미래인재 → 일반시민)로 구분해서 보여줌 — PDF를 직접 만들지 않고도
   // 실시간으로 PDF와 거의 같은 형태의 목록을 확인할 수 있게 하기 위함
   const DETAIL_CATEGORY_ORDER = ['재직자', '미래인재', '일반시민'];
@@ -319,11 +325,17 @@
     return '일반시민';
   }
 
+  // rowKey -> 이름. 삭제 확인 문구에 이름을 보여주기 위함(사용자 입력값을 onclick 속성에 직접 넣지 않고 조회해서 씀 — XSS 방지)
+  let lastDetailNameByKey = {};
+
   function renderDetail(body, programId, safeId, items) {
     if (!items || items.length === 0) {
       body.innerHTML = '<div class="detail-loading">참석자가 없어요.</div>';
       return;
     }
+    lastDetailNameByKey = {};
+    items.forEach((it) => { lastDetailNameByKey[it.rowKey] = it.성명 || ''; });
+
     const groups = {};
     items.forEach((it) => {
       const cat = detailCategoryOf(it);
@@ -337,6 +349,7 @@
       const rowsHtml = groups[cat].map((it, i) => {
         const nameText = it.성명 || '';
         const sosoText = it.회사명 || it.학교명 || ''; // 카테고리에 맞는 쪽만 이미 채워져 있음
+        const delBtn = `<button class="btn-plain del-row-btn" style="color:#D97070;" onclick="deleteRow('${programId}', '${it.rowKey}', '${safeId}')">삭제</button>`;
 
         // 이름+소속을 한 캔버스에 손글씨로 같이 받은 경우(VR버스 셀프 키오스크): 텍스트가 둘 다 없으면
         // 같은 이미지를 두 번 따로 불러올 필요 없이 한 칸에 합쳐서 보여줌
@@ -345,26 +358,26 @@
             <tr>
               <td>${i + 1}</td>
               <td colspan="2">${lazyThumb(it.rowKey, '필기이미지')}</td>
-              <td>${it.연락처 || ''}</td>
+              <td>${escapeHtml(it.연락처 || '')}</td>
               <td>${it.동의 ? 'O' : 'X'}</td>
               <td>${it.hasSignature ? '✓' : '-'}</td>
-              <td><button class="btn-plain del-row-btn" style="color:#D97070;" onclick="deleteRow('${programId}', '${it.rowKey}', '${(it.성명 || '').replace(/'/g, "\\'")}', '${safeId}')">삭제</button></td>
+              <td>${delBtn}</td>
             </tr>
           `;
         }
 
-        const nameCell = nameText || (it.has필기이미지 ? lazyThumb(it.rowKey, '필기이미지') : '-');
-        const sosoCell = sosoText || (it.has소속이미지 ? lazyThumb(it.rowKey, '소속이미지') : '-');
+        const nameCell = nameText ? escapeHtml(nameText) : (it.has필기이미지 ? lazyThumb(it.rowKey, '필기이미지') : '-');
+        const sosoCell = sosoText ? escapeHtml(sosoText) : (it.has소속이미지 ? lazyThumb(it.rowKey, '소속이미지') : '-');
 
         return `
           <tr>
             <td>${i + 1}</td>
             <td>${nameCell}</td>
             <td>${sosoCell}</td>
-            <td>${it.연락처 || ''}</td>
+            <td>${escapeHtml(it.연락처 || '')}</td>
             <td>${it.동의 ? 'O' : 'X'}</td>
             <td>${it.hasSignature ? '✓' : '-'}</td>
-            <td><button class="btn-plain del-row-btn" style="color:#D97070;" onclick="deleteRow('${programId}', '${it.rowKey}', '${(it.성명 || '').replace(/'/g, "\\'")}', '${safeId}')">삭제</button></td>
+            <td>${delBtn}</td>
           </tr>
         `;
       }).join('');
@@ -408,7 +421,8 @@
     await Promise.all([worker(), worker(), worker()]);
   }
 
-  async function deleteRow(programId, rowKey, name, safeId) {
+  async function deleteRow(programId, rowKey, safeId) {
+    const name = lastDetailNameByKey[rowKey] || '';
     if (!confirm(`${name || '이'} 참석자를 삭제할까요? 되돌릴 수 없어요.`)) return;
     // 목록이 갱신되기 전까지 다른 삭제 버튼도 눌러서 엉뚱한 사람이 지워지는 일이 없게 잠깐 잠금
     // (지금은 rowKey로 정확한 대상을 지정해서 실제로 밀림 문제는 안 생기지만, 이중 클릭 방지 차원에서도 유지)
@@ -423,6 +437,10 @@
       alert('삭제 중 오류: ' + err.message);
       document.querySelectorAll('.del-row-btn').forEach((btn) => (btn.disabled = false));
     }
+  }
+
+  function toggleDeleteAllVisible() {
+    document.getElementById('listTable').classList.toggle('show-danger');
   }
 
   async function deleteDay(programId) {
@@ -478,39 +496,6 @@
     } catch (err) {
       alert('오류: ' + err.message);
     }
-  }
-
-  // ---------- 🚨 임시 비상 기능: 통합 PDF가 계속 안 만들어질 때, 작은 묶음으로 나눠서 여러 파일로 생성 ----------
-  async function rebuildPdfParts(programId) {
-    const sizeInput = prompt('한 파일에 몇 명씩 나눠 담을까요? (기본 30명, 사람이 아주 많으면 더 작게)', '30');
-    if (sizeInput === null) return; // 취소
-    const partSize = Math.max(5, Math.min(100, parseInt(sizeInput, 10) || 30));
-    try {
-      const res = await fetch(`${WORKER_HTTP_URL}/admin/rebuild-parts?programId=${encodeURIComponent(programId)}&partSize=${partSize}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '나눠서 만들기 실패');
-
-      showPartsModal(programId, data.partCount);
-    } catch (err) {
-      alert('오류: ' + err.message);
-    }
-  }
-
-  function showPartsModal(programId, partCount) {
-    const backdrop = document.getElementById('partsModalBackdrop');
-    const body = document.getElementById('partsModalBody');
-    document.getElementById('partsModalTitle').textContent = `${programId} — ${partCount}개 파일로 나눠 만드는 중`;
-    body.innerHTML = `<div class="detail-loading">만들고 있어요 — 잠시 후 아래에서 하나씩 눌러 다운로드하세요.</div>`;
-    backdrop.classList.add('open');
-
-    const links = Array.from({ length: partCount }, (_, i) => i + 1).map((p) => {
-      const url = `${WORKER_HTTP_URL}/download?programId=${encodeURIComponent(programId)}&part=${p}&key=${encodeURIComponent(currentAdminKey)}`;
-      return `<div style="margin:8px 0;"><a href="${url}" target="_blank">📄 ${p}번째 파일 (part${p})</a></div>`;
-    }).join('');
-    // 백그라운드 생성이 끝날 시간을 조금 준 뒤 링크를 보여줌 (그 전에 눌러도 404가 뜰 뿐 위험하진 않음)
-    setTimeout(() => {
-      body.innerHTML = links + `<p class="field-hint" style="margin-top:10px;">혹시 링크가 아직 안 열리면(방금 생성 시작) 몇 초 더 기다렸다가 다시 눌러주세요.</p>`;
-    }, Math.min(1000 + partCount * 400, 6000));
   }
 
   function closePartsModal() {
