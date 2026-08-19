@@ -254,6 +254,7 @@
           <button class="btn-plain" onclick="openDetailModal('${item.programId}', '${safeId}')">상세보기</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdf('${item.programId}')">PDF 다시그리기</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdfParts('${item.programId}')">🚨 나눠서 만들기(임시)</button><br>
+          <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdfPartsByCategory('${item.programId}')">🚨 구분별로 나눠서(임시)</button><br>
           <button class="btn-plain" style="color:#D97070;margin-top:4px;" onclick="deleteDay('${item.programId}')">전체삭제</button>
         </td>
       `;
@@ -401,6 +402,47 @@
 
   function closePartsModal() {
     document.getElementById('partsModalBackdrop').classList.remove('open');
+  }
+
+  // ---------- 🚨 임시 비상 기능: 재직자/미래인재/일반시민 구분별로 각각 별도의 PDF로 생성 ----------
+  async function rebuildPdfPartsByCategory(programId) {
+    const sizeInput = prompt('한 구분 안에서 인원이 너무 많으면 몇 명씩 더 나눌까요? (기본 40명)', '40');
+    if (sizeInput === null) return; // 취소
+    const maxPerFile = Math.max(5, Math.min(150, parseInt(sizeInput, 10) || 40));
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rebuild-parts-by-category?programId=${encodeURIComponent(programId)}&maxPerFile=${maxPerFile}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '구분별로 나눠서 만들기 실패');
+
+      showPartsModalByCategory(programId, data.categoryCounts || {}, maxPerFile);
+    } catch (err) {
+      alert('오류: ' + err.message);
+    }
+  }
+
+  function showPartsModalByCategory(programId, categoryCounts, maxPerFile) {
+    const backdrop = document.getElementById('partsModalBackdrop');
+    const body = document.getElementById('partsModalBody');
+    const categories = ['재직자', '미래인재', '일반시민'].filter((c) => categoryCounts[c] > 0);
+    document.getElementById('partsModalTitle').textContent = `${programId} — 구분별로 나눠 만드는 중`;
+    body.innerHTML = `<div class="detail-loading">만들고 있어요 — 잠시 후 아래에서 하나씩 눌러 다운로드하세요.</div>`;
+    backdrop.classList.add('open');
+
+    const links = categories.map((cat) => {
+      const count = categoryCounts[cat];
+      const subPartCount = Math.max(1, Math.ceil(count / maxPerFile));
+      const rows = Array.from({ length: subPartCount }, (_, i) => i + 1).map((p) => {
+        const url = `${WORKER_HTTP_URL}/download?programId=${encodeURIComponent(programId)}&cat=${encodeURIComponent(cat)}${subPartCount > 1 ? `&part=${p}` : ''}&key=${encodeURIComponent(currentAdminKey)}`;
+        const label = subPartCount > 1 ? `${cat} ${p}/${subPartCount}` : cat;
+        return `<div style="margin:6px 0;"><a href="${url}" target="_blank">📄 ${label}</a></div>`;
+      }).join('');
+      return `<div style="margin:12px 0;"><b>${cat}</b> (${count}명)${rows}</div>`;
+    }).join('');
+
+    const maxSubParts = Math.max(...categories.map((c) => Math.ceil(categoryCounts[c] / maxPerFile)), 1);
+    setTimeout(() => {
+      body.innerHTML = links + `<p class="field-hint" style="margin-top:10px;">혹시 링크가 아직 안 열리면(방금 생성 시작) 몇 초 더 기다렸다가 다시 눌러주세요.</p>`;
+    }, Math.min(1000 + maxSubParts * 3 * 400, 8000));
   }
 </script>
 
