@@ -345,7 +345,8 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '다시 그리기 실패');
       const placeMsg = newPlace.trim() ? `\n장소가 "${newPlace.trim()}"(으)로 정정됐어요.` : '';
-      alert(`PDF를 최신 서식으로 다시 그렸어요. (${data.totalCount}명)${placeMsg}`);
+      const queuedMsg = data.pdfQueued ? '\n(PDF는 뒤에서 그려지고 있어요 — 사람이 많으면 몇 초~수십 초 걸릴 수 있어요. 잠시 후 다운로드해주세요.)' : '';
+      alert(`요청을 접수했어요. (${data.totalCount}명)${placeMsg}${queuedMsg}`);
     } catch (err) {
       alert('오류: ' + err.message);
     }
