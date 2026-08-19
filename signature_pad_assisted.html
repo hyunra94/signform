@@ -145,7 +145,8 @@
 
   /* ---- 소속 상세를 손글씨로 받을 때(프로토타입) ---- */
   .affil-write-pad {
-    position: relative; height: clamp(150px, 26vh, 230px); border: 2px dashed var(--accent); border-radius: 14px;
+    /* 서명판과 비슷한 크기·비율로 맞춰서 필기감(펜이 굵어 보이는 정도)을 비슷하게 느끼도록 함 */
+    position: relative; height: clamp(180px, 30vh, 280px); border: 2px dashed var(--accent); border-radius: 14px;
     background: var(--white); overflow: hidden;
   }
   #affil-signature-pad { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -641,7 +642,7 @@
     resizeAffilCanvas();
     affilSignaturePad = new SignaturePad(affilCanvas, {
       backgroundColor: 'rgba(255,255,255,0)',
-      penColor: '#2B3A4A', minWidth: 1.5, maxWidth: 3.5
+      penColor: '#2B3A4A', minWidth: 1.5, maxWidth: 4
     });
     affilSignaturePad.addEventListener('beginStroke', () => { affilPlaceholder.style.display = 'none'; });
     affilSignaturePad.addEventListener('endStroke', () => {

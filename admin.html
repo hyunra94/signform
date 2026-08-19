@@ -253,6 +253,7 @@
         <td>
           <button class="btn-plain" onclick="openDetailModal('${item.programId}', '${safeId}')">상세보기</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdf('${item.programId}')">PDF 다시그리기</button><br>
+          <button class="btn-plain" style="margin-top:4px;" onclick="compressImages('${item.programId}')">🗜️ 이미지 압축</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdfParts('${item.programId}')">🚨 나눠서 만들기(임시)</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdfPartsByCategory('${item.programId}')">🚨 구분별로 나눠서(임시)</button><br>
           <button class="btn-plain" style="color:#D97070;margin-top:4px;" onclick="deleteDay('${item.programId}')">전체삭제</button>
@@ -362,6 +363,31 @@
       const placeMsg = newPlace.trim() ? `\n장소가 "${newPlace.trim()}"(으)로 정정됐어요.` : '';
       const queuedMsg = data.pdfQueued ? '\n(PDF는 뒤에서 그려지고 있어요 — 사람이 많으면 몇 초~수십 초 걸릴 수 있어요. 잠시 후 다운로드해주세요.)' : '';
       alert(`요청을 접수했어요. (${data.totalCount}명)${placeMsg}${queuedMsg}`);
+    } catch (err) {
+      alert('오류: ' + err.message);
+    }
+  }
+
+  // ---------- 🗜️ 이미지 압축: 이 기능 배포 이전에 저장된 서명/필기 이미지를 소급으로 축소(용량만 줄임, 화질 차이는 거의 없음) ----------
+  async function compressImages(programId) {
+    if (!confirm(`${programId}의 저장된 이미지 중 큰 것만 서버에서 축소해요.\n데이터/서명 내용은 그대로고, PDF 칸이 작아서 화질 차이는 거의 안 보여요.\n진행할까요?`)) return;
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/compress-images?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '이미지 압축 요청 실패');
+      alert(`요청을 접수했어요. (${data.totalCount}명)\n뒤에서 처리되고 있어요 — 사람이 많으면 시간이 좀 걸려요.\n잠시 후 이 버튼을 다시 누르면 이번엔 진행 결과를 보여줘요.`);
+
+      // 진행 결과 확인: 몇 초간 폴링해보고, 이미 끝나 있으면(방금 요청이 금방 끝난 경우 등) 바로 알려줌
+      for (let i = 0; i < 5; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const st = await fetch(`${WORKER_HTTP_URL}/admin/compress-images-status?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(currentAdminKey)}`);
+        const stData = await st.json();
+        const result = stData && stData.result;
+        if (result && Date.now() - result.at < 20000) {
+          alert(`압축 완료: 전체 ${result.processedCount}명 중 ${result.compressedCount}명 이미지 축소함.`);
+          return;
+        }
+      }
     } catch (err) {
       alert('오류: ' + err.message);
     }
