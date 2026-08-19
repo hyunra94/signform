@@ -141,6 +141,12 @@
   }
   .standalone-scroll input:focus { border-color: var(--accent); }
 
+  /* ---- 성명·연락처를 한 줄에 나란히 둬서 세로 공간을 아낌(서명판이 스크롤 없이 한 화면에 들어오도록) ---- */
+  .name-phone-row { display: flex; gap: 10px; }
+  .name-phone-row .field-col { flex: 1; min-width: 0; }
+  .name-phone-row label { margin-top: 14px; }
+  .name-phone-row .phone-input-row { margin-bottom: 0; }
+
   .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
   .radio-pill {
     display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 20px;
@@ -184,14 +190,28 @@
     font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
   }
 
-  .consent-box { margin-top: 16px; border: 1px solid var(--lavender); border-radius: 12px; overflow: hidden; font-size: 11.5px; }
+  .consent-box {
+    margin-top: 16px; border: 1px solid var(--lavender); border-radius: 12px; overflow: hidden; font-size: 11.5px;
+    max-height: 400px; opacity: 1; transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.25s ease, border-width 0.25s ease;
+  }
+  /* 동의 체크하면 긴 약관 텍스트는 접어서 서명판이 화면에 들어올 공간을 확보함 */
+  .consent-box.collapsed { max-height: 0; opacity: 0; margin-top: 0; border-width: 0; }
   .consent-section { padding: 10px 12px; }
   .consent-section + .consent-section { border-top: 1px solid var(--lavender); }
   .consent-title { font-weight: 700; color: var(--accent-dark); margin-bottom: 5px; }
   .consent-box ul { margin: 0; padding-left: 16px; color: var(--text); line-height: 1.6; }
   .consent-box li { margin: 0; }
 
-  .agree-row { margin-top: 16px; padding: 10px 12px; background: #EDF2F8; border-radius: 10px; font-size: 12.5px; color: var(--text); }
+  /* ---- 동의 체크박스: 손가락으로도 확실히 눌리도록 줄 전체를 큰 터치 영역으로 만듦
+     (예전엔 16px짜리 네모만 눌려서, 잘 안눌리니까 펜 끝으로 찍으려는 사람들이 많았음) ---- */
+  .agree-row {
+    display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 14px 14px;
+    background: #EDF2F8; border: 1.5px solid transparent; border-radius: 12px; font-size: 13px;
+    color: var(--text); cursor: pointer; transition: background 0.15s, border-color 0.15s; -webkit-tap-highlight-color: transparent;
+  }
+  .agree-row.checked { background: #F0FAF2; border-color: #6FA875; }
+  .agree-row .agree-checkbox { width: 26px; height: 26px; flex-shrink: 0; accent-color: var(--accent-dark); }
+  .agree-row span { flex: 1; }
 
   .sa-pad-wrap { flex: 0 0 auto; height: clamp(160px, 28vh, 260px); margin-top: 8px; }
   .sa-pad-wrap .pad-placeholder { font-size: 14px; }
@@ -247,13 +267,18 @@
   <div class="standalone-scroll">
     <button class="kb-global-toggle" id="saKbToggleBtn" onclick="toggleSaKeyboard()">⌨️ 화면 키보드 켜기</button>
 
-    <label for="saName">성명</label>
-    <input type="text" id="saName" placeholder="이름을 입력하세요" inputmode="none">
-
-    <label for="saPhone">연락처</label>
-    <div class="phone-input-row">
-      <input type="tel" id="saPhone" placeholder="010-0000-0000" readonly onclick="openSaPhoneNumpad()">
-      <button type="button" class="numpad-open-btn" onclick="openSaPhoneNumpad()" title="숫자 키패드 열기">🔢</button>
+    <div class="name-phone-row">
+      <div class="field-col">
+        <label for="saName">성명</label>
+        <input type="text" id="saName" placeholder="이름을 입력하세요" inputmode="none">
+      </div>
+      <div class="field-col">
+        <label for="saPhone">연락처</label>
+        <div class="phone-input-row">
+          <input type="tel" id="saPhone" placeholder="010-0000-0000" readonly onclick="openSaPhoneNumpad()">
+          <button type="button" class="numpad-open-btn" onclick="openSaPhoneNumpad()" title="숫자 키패드 열기">🔢</button>
+        </div>
+      </div>
     </div>
 
     <label>재직자 여부</label>
@@ -272,7 +297,7 @@
       <input type="text" id="saSchool" placeholder="재학 중인 학교명을 입력하세요" inputmode="none">
     </div>
 
-    <div class="consent-box">
+    <div class="consent-box" id="saConsentBox">
       <div class="consent-section">
         <div class="consent-title">개인정보 수집·이용 동의</div>
         <ul>
@@ -291,10 +316,10 @@
         </ul>
       </div>
     </div>
-    <div class="agree-row">
-      <input type="checkbox" id="saAgree" style="width:16px;height:16px;margin-right:8px;vertical-align:middle;">
-      <label for="saAgree" style="display:inline;margin:0;font-weight:400;">위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</label>
-    </div>
+    <label class="agree-row" id="saAgreeRow" for="saAgree">
+      <input type="checkbox" id="saAgree" class="agree-checkbox">
+      <span>위 개인정보 수집·이용 및 제3자 제공에 동의합니다.</span>
+    </label>
 
     <label>서명</label>
     <div class="pad-wrap sa-pad-wrap">
@@ -747,8 +772,17 @@
     document.getElementById('saCompanyField').classList.remove('show');
     document.getElementById('saSchoolField').classList.remove('show');
     document.getElementById('saAgree').checked = false;
+    updateSaConsentUi();
     clearSaSignature();
   }
+
+  // 동의 체크 여부에 맞춰 체크박스 줄 강조 + 긴 약관 텍스트 접기/펼치기(서명판이 화면에 들어올 공간 확보)
+  function updateSaConsentUi() {
+    const checked = document.getElementById('saAgree').checked;
+    document.getElementById('saAgreeRow').classList.toggle('checked', checked);
+    document.getElementById('saConsentBox').classList.toggle('collapsed', checked);
+  }
+  document.getElementById('saAgree').addEventListener('change', updateSaConsentUi);
 
   // ---------- 재직자여부 -> 회사명/학교명 ----------
   const isFutureTalentSa = (v) => v === '직업계고' || v === '대학생';
