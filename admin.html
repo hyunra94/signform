@@ -145,6 +145,19 @@
   </div>
 </div>
 
+<!-- 🚨 임시: 나눠서 만든 PDF 파일 목록 팝업 -->
+<div class="detail-modal-backdrop" id="partsModalBackdrop">
+  <div class="detail-modal-card">
+    <div class="detail-modal-head">
+      <h3 id="partsModalTitle">나눠서 만들기</h3>
+      <div class="detail-modal-actions">
+        <button class="detail-modal-close" onclick="closePartsModal()">✕</button>
+      </div>
+    </div>
+    <div id="partsModalBody"><div class="detail-loading">만들고 있어요...</div></div>
+  </div>
+</div>
+
 <script>
   // ⚠️ 배포된 Worker 주소로 교체하세요
   const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
@@ -240,6 +253,7 @@
         <td>
           <button class="btn-plain" onclick="openDetailModal('${item.programId}', '${safeId}')">상세보기</button><br>
           <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdf('${item.programId}')">PDF 다시그리기</button><br>
+          <button class="btn-plain" style="margin-top:4px;" onclick="rebuildPdfParts('${item.programId}')">🚨 나눠서 만들기(임시)</button><br>
           <button class="btn-plain" style="color:#D97070;margin-top:4px;" onclick="deleteDay('${item.programId}')">전체삭제</button>
         </td>
       `;
@@ -350,6 +364,43 @@
     } catch (err) {
       alert('오류: ' + err.message);
     }
+  }
+
+  // ---------- 🚨 임시 비상 기능: 통합 PDF가 계속 안 만들어질 때, 작은 묶음으로 나눠서 여러 파일로 생성 ----------
+  async function rebuildPdfParts(programId) {
+    const sizeInput = prompt('한 파일에 몇 명씩 나눠 담을까요? (기본 30명, 사람이 아주 많으면 더 작게)', '30');
+    if (sizeInput === null) return; // 취소
+    const partSize = Math.max(5, Math.min(100, parseInt(sizeInput, 10) || 30));
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rebuild-parts?programId=${encodeURIComponent(programId)}&partSize=${partSize}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '나눠서 만들기 실패');
+
+      showPartsModal(programId, data.partCount);
+    } catch (err) {
+      alert('오류: ' + err.message);
+    }
+  }
+
+  function showPartsModal(programId, partCount) {
+    const backdrop = document.getElementById('partsModalBackdrop');
+    const body = document.getElementById('partsModalBody');
+    document.getElementById('partsModalTitle').textContent = `${programId} — ${partCount}개 파일로 나눠 만드는 중`;
+    body.innerHTML = `<div class="detail-loading">만들고 있어요 — 잠시 후 아래에서 하나씩 눌러 다운로드하세요.</div>`;
+    backdrop.classList.add('open');
+
+    const links = Array.from({ length: partCount }, (_, i) => i + 1).map((p) => {
+      const url = `${WORKER_HTTP_URL}/download?programId=${encodeURIComponent(programId)}&part=${p}&key=${encodeURIComponent(currentAdminKey)}`;
+      return `<div style="margin:8px 0;"><a href="${url}" target="_blank">📄 ${p}번째 파일 (part${p})</a></div>`;
+    }).join('');
+    // 백그라운드 생성이 끝날 시간을 조금 준 뒤 링크를 보여줌 (그 전에 눌러도 404가 뜰 뿐 위험하진 않음)
+    setTimeout(() => {
+      body.innerHTML = links + `<p class="field-hint" style="margin-top:10px;">혹시 링크가 아직 안 열리면(방금 생성 시작) 몇 초 더 기다렸다가 다시 눌러주세요.</p>`;
+    }, Math.min(1000 + partCount * 400, 6000));
+  }
+
+  function closePartsModal() {
+    document.getElementById('partsModalBackdrop').classList.remove('open');
   }
 </script>
 
