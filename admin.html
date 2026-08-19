@@ -87,9 +87,22 @@
   .detail-modal-close {
     background: none; border: none; font-size: 20px; color: var(--text); cursor: pointer; line-height: 1;
   }
-  .detail-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  .detail-table th, .detail-table td { padding: 7px 6px; text-align: center; border-bottom: 1px solid #FDF3F6; }
+  .detail-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 18px; table-layout: fixed; }
+  .detail-table th, .detail-table td {
+    padding: 7px 6px; text-align: center; border-bottom: 1px solid #FDF3F6;
+    word-break: break-word; overflow-wrap: anywhere; /* 성명/소속이 길어도 칸을 벗어나지 않고 줄바꿈되게 함 */
+  }
   .detail-table th { color: #a98a92; font-weight: 500; }
+  .detail-table th:nth-child(1), .detail-table td:nth-child(1) { width: 26px; }
+  .detail-table th:nth-child(2), .detail-table td:nth-child(2) { width: 19%; }
+  .detail-table th:nth-child(3), .detail-table td:nth-child(3) { width: 23%; }
+  .detail-table th:nth-child(4), .detail-table td:nth-child(4) { width: 18%; }
+  .detail-table th:nth-child(5), .detail-table td:nth-child(5) { width: 10%; }
+  .detail-table th:nth-child(6), .detail-table td:nth-child(6) { width: 10%; }
+  .detail-table th:nth-child(7), .detail-table td:nth-child(7) { width: 14%; }
+  .detail-section-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin: 14px 0 6px; }
+  .detail-section-title:first-child { margin-top: 0; }
+  .lazy-thumb { font-size: 11px; color: #b7a3ab; }
 
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
@@ -297,28 +310,102 @@
     }
   }
 
+  // 실제 PDF와 같은 순서(재직자 → 미래인재 → 일반시민)로 구분해서 보여줌 — PDF를 직접 만들지 않고도
+  // 실시간으로 PDF와 거의 같은 형태의 목록을 확인할 수 있게 하기 위함
+  const DETAIL_CATEGORY_ORDER = ['재직자', '미래인재', '일반시민'];
+  function detailCategoryOf(it) {
+    if (it.재직자여부 === '재직자') return '재직자';
+    if (it.재직자여부 === '미래인재') return '미래인재';
+    return '일반시민';
+  }
+
   function renderDetail(body, programId, safeId, items) {
     if (!items || items.length === 0) {
       body.innerHTML = '<div class="detail-loading">참석자가 없어요.</div>';
       return;
     }
-    const rowsHtml = items.map(it => `
-      <tr>
-        <td>${it.index + 1}</td>
-        <td>${it.성명 || ''}</td>
-        <td>${it.연락처 || ''}</td>
-        <td>${it.재직자여부 || ''}</td>
-        <td>${it.동의 ? 'O' : 'X'}</td>
-        <td>${it.hasSignature ? '✓' : '-'}</td>
-        <td><button class="btn-plain del-row-btn" style="color:#D97070;" onclick="deleteRow('${programId}', '${it.rowKey}', '${(it.성명 || '').replace(/'/g, "\\'")}', '${safeId}')">삭제</button></td>
-      </tr>
-    `).join('');
-    body.innerHTML = `
-      <table class="detail-table">
-        <thead><tr><th>#</th><th>성명</th><th>연락처</th><th>구분</th><th>동의</th><th>서명</th><th></th></tr></thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-    `;
+    const groups = {};
+    items.forEach((it) => {
+      const cat = detailCategoryOf(it);
+      (groups[cat] = groups[cat] || []).push(it);
+    });
+
+    const lazyThumb = (rowKey, field) =>
+      `<span class="lazy-thumb" data-rowkey="${rowKey}" data-field="${field}">불러오는 중…</span>`;
+
+    const sectionsHtml = DETAIL_CATEGORY_ORDER.filter((cat) => groups[cat] && groups[cat].length).map((cat) => {
+      const rowsHtml = groups[cat].map((it, i) => {
+        const nameText = it.성명 || '';
+        const sosoText = it.회사명 || it.학교명 || ''; // 카테고리에 맞는 쪽만 이미 채워져 있음
+
+        // 이름+소속을 한 캔버스에 손글씨로 같이 받은 경우(VR버스 셀프 키오스크): 텍스트가 둘 다 없으면
+        // 같은 이미지를 두 번 따로 불러올 필요 없이 한 칸에 합쳐서 보여줌
+        if (!nameText && !sosoText && it.has필기이미지) {
+          return `
+            <tr>
+              <td>${i + 1}</td>
+              <td colspan="2">${lazyThumb(it.rowKey, '필기이미지')}</td>
+              <td>${it.연락처 || ''}</td>
+              <td>${it.동의 ? 'O' : 'X'}</td>
+              <td>${it.hasSignature ? '✓' : '-'}</td>
+              <td><button class="btn-plain del-row-btn" style="color:#D97070;" onclick="deleteRow('${programId}', '${it.rowKey}', '${(it.성명 || '').replace(/'/g, "\\'")}', '${safeId}')">삭제</button></td>
+            </tr>
+          `;
+        }
+
+        const nameCell = nameText || (it.has필기이미지 ? lazyThumb(it.rowKey, '필기이미지') : '-');
+        const sosoCell = sosoText || (it.has소속이미지 ? lazyThumb(it.rowKey, '소속이미지') : '-');
+
+        return `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${nameCell}</td>
+            <td>${sosoCell}</td>
+            <td>${it.연락처 || ''}</td>
+            <td>${it.동의 ? 'O' : 'X'}</td>
+            <td>${it.hasSignature ? '✓' : '-'}</td>
+            <td><button class="btn-plain del-row-btn" style="color:#D97070;" onclick="deleteRow('${programId}', '${it.rowKey}', '${(it.성명 || '').replace(/'/g, "\\'")}', '${safeId}')">삭제</button></td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="detail-section-title">${cat} (${groups[cat].length}명)</div>
+        <table class="detail-table">
+          <thead><tr><th>#</th><th>성명</th><th>소속</th><th>연락처</th><th>동의</th><th>서명</th><th></th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      `;
+    }).join('');
+
+    body.innerHTML = sectionsHtml;
+    loadLazyThumbs(programId);
+  }
+
+  // 텍스트가 없어서 썸네일이 필요한 항목만, 한 명씩(최대 3개씩 동시) 그 이미지 하나만 불러옴
+  async function loadLazyThumbs(programId) {
+    const els = Array.from(document.querySelectorAll('.lazy-thumb'));
+    if (els.length === 0) return;
+    let idx = 0;
+    async function worker() {
+      while (idx < els.length) {
+        const el = els[idx++];
+        const rowKey = el.dataset.rowkey;
+        const field = el.dataset.field;
+        try {
+          const res = await fetch(`${WORKER_HTTP_URL}/admin/row-image?programId=${encodeURIComponent(programId)}&rowKey=${encodeURIComponent(rowKey)}&field=${encodeURIComponent(field)}&key=${encodeURIComponent(currentAdminKey)}`);
+          const data = await res.json();
+          if (data && data.dataUrl) {
+            el.outerHTML = `<img src="${data.dataUrl}" style="max-height:28px;max-width:100px;vertical-align:middle;" alt="손글씨">`;
+          } else {
+            el.textContent = '(없음)';
+          }
+        } catch (err) {
+          el.textContent = '(불러오기 실패)';
+        }
+      }
+    }
+    await Promise.all([worker(), worker(), worker()]);
   }
 
   async function deleteRow(programId, rowKey, name, safeId) {
