@@ -311,14 +311,19 @@
     word-break: break-word; overflow-wrap: anywhere;
   }
   .detail-table th { color: #8494A8; font-weight: 500; }
-  .detail-table th:nth-child(1), .detail-table td:nth-child(1) { width: 22px; }
-  .detail-table th:nth-child(2), .detail-table td:nth-child(2) { width: 22%; }
-  .detail-table th:nth-child(3), .detail-table td:nth-child(3) { width: 26%; }
-  .detail-table th:nth-child(4), .detail-table td:nth-child(4) { width: 12%; }
-  .detail-table th:nth-child(5), .detail-table td:nth-child(5) { width: 16%; }
+  .detail-table th:nth-child(1), .detail-table td:nth-child(1) { width: 20px; }
+  .detail-table th:nth-child(2), .detail-table td:nth-child(2) { width: 19%; }
+  .detail-table th:nth-child(3), .detail-table td:nth-child(3) { width: 22%; }
+  .detail-table th:nth-child(4), .detail-table td:nth-child(4) { width: 21%; }
+  .detail-table th:nth-child(5), .detail-table td:nth-child(5) { width: 10%; }
+  .detail-table th:nth-child(6), .detail-table td:nth-child(6) { width: 15%; }
   .detail-section-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin: 12px 0 6px; }
   .detail-section-title:first-child { margin-top: 0; }
   .lazy-thumb { font-size: 11px; color: #9FB0C4; }
+  .edit-input {
+    width: 100%; padding: 3px 5px; border-radius: 6px; border: 1.5px solid var(--accent);
+    font-family: inherit; font-size: 11.5px; box-sizing: border-box;
+  }
 
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
@@ -867,11 +872,17 @@
     }
   }
 
+  // rowKey -> 그 사람의 항목 전체. 수정 폼에 쓸 값을 여기서 조회해서 씀
+  let lastLiveItemsByKey = {};
+
   function renderLiveDetail(body, items) {
     if (!items || items.length === 0) {
       body.innerHTML = '<div class="empty-msg">아직 접수된 사람이 없어요.</div>';
       return;
     }
+    lastLiveItemsByKey = {};
+    items.forEach((it) => { lastLiveItemsByKey[it.rowKey] = it; });
+
     const groups = {};
     items.forEach((it) => {
       const cat = liveDetailCategoryOf(it);
@@ -885,15 +896,19 @@
       const rowsHtml = groups[cat].map((it, i) => {
         const nameText = it.성명 || '';
         const sosoText = it.회사명 || it.학교명 || '';
-        const delBtn = `<button type="button" class="del-btn" onclick="deleteLiveRow('${it.rowKey}')">삭제</button>`;
+        const actionBtns = `
+          <button type="button" class="del-btn" onclick="startEditLiveRow('${it.rowKey}')">수정</button>
+          <button type="button" class="del-btn" onclick="deleteLiveRow('${it.rowKey}')">삭제</button>
+        `;
 
         if (!nameText && !sosoText && it.has필기이미지) {
           return `
-            <tr>
+            <tr data-rowkey="${it.rowKey}">
               <td>${i + 1}</td>
               <td colspan="2">${lazyThumb(it.rowKey, '필기이미지')}</td>
+              <td>${escapeHtml(it.연락처 || '')}</td>
               <td>${it.동의 ? 'O' : 'X'}</td>
-              <td>${delBtn}</td>
+              <td>${actionBtns}</td>
             </tr>
           `;
         }
@@ -902,12 +917,13 @@
         const sosoCell = sosoText ? escapeHtml(sosoText) : (it.has소속이미지 ? lazyThumb(it.rowKey, '소속이미지') : '-');
 
         return `
-          <tr>
+          <tr data-rowkey="${it.rowKey}">
             <td>${i + 1}</td>
             <td>${nameCell}</td>
             <td>${sosoCell}</td>
+            <td>${escapeHtml(it.연락처 || '')}</td>
             <td>${it.동의 ? 'O' : 'X'}</td>
-            <td>${delBtn}</td>
+            <td>${actionBtns}</td>
           </tr>
         `;
       }).join('');
@@ -915,7 +931,7 @@
       return `
         <div class="detail-section-title">${cat} (${groups[cat].length}명)</div>
         <table class="detail-table">
-          <thead><tr><th>#</th><th>성명</th><th>소속</th><th>동의</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th>성명</th><th>소속</th><th>연락처</th><th>동의</th><th></th></tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       `;
@@ -948,6 +964,67 @@
       }
     }
     await Promise.all([worker(), worker(), worker()]);
+  }
+
+  // ---------- 잘못 입력된 텍스트 수정 (손글씨/서명 이미지는 대상 아님 — 지우고 다시 받아야 함) ----------
+  function startEditLiveRow(rowKey) {
+    const it = lastLiveItemsByKey[rowKey];
+    const tr = document.querySelector(`tr[data-rowkey="${rowKey}"]`);
+    if (!it || !tr) return;
+
+    const idx = tr.children[0].textContent;
+    const nameText = it.성명 || '';
+    const sosoText = it.회사명 || it.학교명 || '';
+    const isCombinedImage = !nameText && !sosoText && it.has필기이미지;
+    const sosoPlaceholder = !sosoText && it.has소속이미지 ? '(손글씨 → 입력하면 텍스트로 바뀜)' : '';
+
+    const nameCell = isCombinedImage
+      ? `<td colspan="2" style="color:#9FB0C4;font-size:11px;">손글씨 이미지라 여기선 수정 불가 (삭제 후 재접수)</td>`
+      : `
+        <td><input type="text" class="edit-input" id="liveEditName-${rowKey}" value="${escapeHtml(nameText)}" placeholder="성명"></td>
+        <td><input type="text" class="edit-input" id="liveEditSoso-${rowKey}" value="${escapeHtml(sosoText)}" placeholder="${sosoPlaceholder}"></td>
+      `;
+
+    tr.innerHTML = `
+      <td>${idx}</td>
+      ${nameCell}
+      <td><input type="text" class="edit-input" id="liveEditContact-${rowKey}" value="${escapeHtml(it.연락처 || '')}" placeholder="연락처"></td>
+      <td><input type="checkbox" id="liveEditAgree-${rowKey}" ${it.동의 ? 'checked' : ''}></td>
+      <td>
+        <button type="button" class="del-btn" onclick="saveEditLiveRow('${rowKey}')">저장</button>
+        <button type="button" class="del-btn" onclick="fetchAndRenderDetail()">취소</button>
+      </td>
+    `;
+  }
+
+  async function saveEditLiveRow(rowKey) {
+    const it = lastLiveItemsByKey[rowKey] || {};
+    const patch = { 동의: document.getElementById(`liveEditAgree-${rowKey}`).checked };
+    const contactEl = document.getElementById(`liveEditContact-${rowKey}`);
+    if (contactEl) patch.연락처 = contactEl.value.trim();
+
+    const nameEl = document.getElementById(`liveEditName-${rowKey}`);
+    const sosoEl = document.getElementById(`liveEditSoso-${rowKey}`);
+    if (nameEl) patch.성명 = nameEl.value.trim();
+    if (sosoEl) {
+      const soso = sosoEl.value.trim();
+      if (it.재직자여부 === '재직자') patch.회사명 = soso;
+      else if (it.재직자여부 === '미래인재') patch.학교명 = soso;
+    }
+
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/edit-row?programId=${encodeURIComponent(currentSeminarProgramId())}&rowKey=${encodeURIComponent(rowKey)}&key=${encodeURIComponent(liveAdminKey)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || '수정 실패');
+      await fetchAndRenderDetail();
+      fetchAndRenderLive(false);
+    } catch (err) {
+      alert('수정 중 오류: ' + err.message);
+    }
   }
 
   function refreshPdfPreview() {

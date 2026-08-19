@@ -103,6 +103,11 @@
   .detail-section-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin: 14px 0 6px; }
   .detail-section-title:first-child { margin-top: 0; }
   .lazy-thumb { font-size: 11px; color: #b7a3ab; }
+  .edit-input {
+    width: 100%; padding: 4px 6px; border-radius: 6px; border: 1.5px solid var(--accent);
+    font-family: inherit; font-size: 12px; box-sizing: border-box;
+  }
+  .edit-row-btn { color: var(--accent-dark); }
   /* 전체삭제는 실수로 누르기 쉬워서 기본적으로 숨겨두고, "관리" 표머리를 더블클릭해야만 나타남 */
   .danger-action { display: none; }
   #listTable.show-danger .danger-action { display: inline-block; }
@@ -325,16 +330,21 @@
     return '일반시민';
   }
 
-  // rowKey -> 이름. 삭제 확인 문구에 이름을 보여주기 위함(사용자 입력값을 onclick 속성에 직접 넣지 않고 조회해서 씀 — XSS 방지)
-  let lastDetailNameByKey = {};
+  // rowKey -> 그 사람의 항목 전체. 삭제 확인 문구·수정 폼에 쓸 값을 여기서 조회해서 씀
+  // (사용자 입력값을 onclick 속성에 직접 넣지 않고 조회해서 씀 — XSS 방지)
+  let lastDetailItemsByKey = {};
+  let lastDetailProgramId = null;
+  let lastDetailSafeId = null;
 
   function renderDetail(body, programId, safeId, items) {
+    lastDetailProgramId = programId;
+    lastDetailSafeId = safeId;
     if (!items || items.length === 0) {
       body.innerHTML = '<div class="detail-loading">참석자가 없어요.</div>';
       return;
     }
-    lastDetailNameByKey = {};
-    items.forEach((it) => { lastDetailNameByKey[it.rowKey] = it.성명 || ''; });
+    lastDetailItemsByKey = {};
+    items.forEach((it) => { lastDetailItemsByKey[it.rowKey] = it; });
 
     const groups = {};
     items.forEach((it) => {
@@ -349,19 +359,22 @@
       const rowsHtml = groups[cat].map((it, i) => {
         const nameText = it.성명 || '';
         const sosoText = it.회사명 || it.학교명 || ''; // 카테고리에 맞는 쪽만 이미 채워져 있음
-        const delBtn = `<button class="btn-plain del-row-btn" style="color:#D97070;" onclick="deleteRow('${programId}', '${it.rowKey}', '${safeId}')">삭제</button>`;
+        const actionBtns = `
+          <button class="btn-plain edit-row-btn" onclick="startEditRow('${it.rowKey}')">수정</button>
+          <button class="btn-plain del-row-btn" style="color:#D97070;" onclick="deleteRow('${programId}', '${it.rowKey}', '${safeId}')">삭제</button>
+        `;
 
         // 이름+소속을 한 캔버스에 손글씨로 같이 받은 경우(VR버스 셀프 키오스크): 텍스트가 둘 다 없으면
         // 같은 이미지를 두 번 따로 불러올 필요 없이 한 칸에 합쳐서 보여줌
         if (!nameText && !sosoText && it.has필기이미지) {
           return `
-            <tr>
+            <tr data-rowkey="${it.rowKey}">
               <td>${i + 1}</td>
               <td colspan="2">${lazyThumb(it.rowKey, '필기이미지')}</td>
               <td>${escapeHtml(it.연락처 || '')}</td>
               <td>${it.동의 ? 'O' : 'X'}</td>
               <td>${it.hasSignature ? '✓' : '-'}</td>
-              <td>${delBtn}</td>
+              <td>${actionBtns}</td>
             </tr>
           `;
         }
@@ -370,14 +383,14 @@
         const sosoCell = sosoText ? escapeHtml(sosoText) : (it.has소속이미지 ? lazyThumb(it.rowKey, '소속이미지') : '-');
 
         return `
-          <tr>
+          <tr data-rowkey="${it.rowKey}">
             <td>${i + 1}</td>
             <td>${nameCell}</td>
             <td>${sosoCell}</td>
             <td>${escapeHtml(it.연락처 || '')}</td>
             <td>${it.동의 ? 'O' : 'X'}</td>
             <td>${it.hasSignature ? '✓' : '-'}</td>
-            <td>${delBtn}</td>
+            <td>${actionBtns}</td>
           </tr>
         `;
       }).join('');
@@ -422,7 +435,7 @@
   }
 
   async function deleteRow(programId, rowKey, safeId) {
-    const name = lastDetailNameByKey[rowKey] || '';
+    const name = (lastDetailItemsByKey[rowKey] || {}).성명 || '';
     if (!confirm(`${name || '이'} 참석자를 삭제할까요? 되돌릴 수 없어요.`)) return;
     // 목록이 갱신되기 전까지 다른 삭제 버튼도 눌러서 엉뚱한 사람이 지워지는 일이 없게 잠깐 잠금
     // (지금은 rowKey로 정확한 대상을 지정해서 실제로 밀림 문제는 안 생기지만, 이중 클릭 방지 차원에서도 유지)
@@ -441,6 +454,68 @@
 
   function toggleDeleteAllVisible() {
     document.getElementById('listTable').classList.toggle('show-danger');
+  }
+
+  // ---------- 잘못 입력된 텍스트 수정 (손글씨/서명 이미지는 대상 아님 — 지우고 다시 받아야 함) ----------
+  function startEditRow(rowKey) {
+    const it = lastDetailItemsByKey[rowKey];
+    const tr = document.querySelector(`tr[data-rowkey="${rowKey}"]`);
+    if (!it || !tr) return;
+
+    const idx = tr.children[0].textContent;
+    const nameText = it.성명 || '';
+    const sosoText = it.회사명 || it.학교명 || '';
+    const isCombinedImage = !nameText && !sosoText && it.has필기이미지;
+    const sosoPlaceholder = !sosoText && it.has소속이미지 ? '(손글씨로 입력됨 — 여기 입력하면 텍스트로 바뀌어요)' : '';
+
+    const nameCell = isCombinedImage
+      ? `<td colspan="2" style="color:#b7a3ab;font-size:11.5px;">이름+소속이 손글씨 이미지라 여기서는 수정할 수 없어요. 삭제 후 다시 받아주세요.</td>`
+      : `
+        <td><input type="text" class="edit-input" id="editName-${rowKey}" value="${escapeHtml(nameText)}" placeholder="성명"></td>
+        <td><input type="text" class="edit-input" id="editSoso-${rowKey}" value="${escapeHtml(sosoText)}" placeholder="${sosoPlaceholder}"></td>
+      `;
+
+    tr.innerHTML = `
+      <td>${idx}</td>
+      ${nameCell}
+      <td><input type="text" class="edit-input" id="editContact-${rowKey}" value="${escapeHtml(it.연락처 || '')}" placeholder="연락처"></td>
+      <td><input type="checkbox" id="editAgree-${rowKey}" ${it.동의 ? 'checked' : ''}></td>
+      <td>${it.hasSignature ? '✓' : '-'}</td>
+      <td>
+        <button class="btn-plain" onclick="saveEditRow('${rowKey}')">저장</button>
+        <button class="btn-plain" onclick="loadDetail(lastDetailProgramId, lastDetailSafeId)">취소</button>
+      </td>
+    `;
+  }
+
+  async function saveEditRow(rowKey) {
+    const it = lastDetailItemsByKey[rowKey] || {};
+    const patch = { 동의: document.getElementById(`editAgree-${rowKey}`).checked };
+    const contactEl = document.getElementById(`editContact-${rowKey}`);
+    if (contactEl) patch.연락처 = contactEl.value.trim();
+
+    const nameEl = document.getElementById(`editName-${rowKey}`);
+    const sosoEl = document.getElementById(`editSoso-${rowKey}`);
+    if (nameEl) patch.성명 = nameEl.value.trim();
+    if (sosoEl) {
+      const soso = sosoEl.value.trim();
+      if (it.재직자여부 === '재직자') patch.회사명 = soso;
+      else if (it.재직자여부 === '미래인재') patch.학교명 = soso;
+    }
+
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/edit-row?programId=${encodeURIComponent(lastDetailProgramId)}&rowKey=${encodeURIComponent(rowKey)}&key=${encodeURIComponent(currentAdminKey)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || '수정 실패');
+      await loadDetail(lastDetailProgramId, lastDetailSafeId);
+      await loadList();
+    } catch (err) {
+      alert('수정 중 오류: ' + err.message);
+    }
   }
 
   async function deleteDay(programId) {
