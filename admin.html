@@ -549,8 +549,13 @@
     }
   }
 
+  const REBUILD_STALL_MS = 20000; // 진행 상황이 이만큼 그대로 멈춰있으면 사실상 죽은 것으로 보고 포기함
+                                    // (실행시간 제한에 걸려 죽으면 진행률 갱신 자체가 더는 안 일어남)
+
   // PDF가 몇 명 중 몇 명까지 그려졌는지 실시간으로 보여줌 — "요청은 접수됐는데 실제로 끝났는지
-  // 알 수 없다"는 문제를 해결하기 위함(뒤에서 조용히 실패해도 예전엔 알 방법이 없었음)
+  // 알 수 없다"는 문제를 해결하기 위함(뒤에서 조용히 실패해도 예전엔 알 방법이 없었음).
+  // 인원이 많아서 통합 PDF가 멈추거나 계속 실패하면, 서버에서 미리 막지 않고 일단 시도는 해본 뒤
+  // 화면 쪽에서 진행이 멈춘 걸 감지해서 자동으로 "구분별로 나눠서"로 대신 만들어줌.
   async function showRebuildProgressModal(programId, placeApplied) {
     const myToken = ++rebuildPollToken;
     const backdrop = document.getElementById('partsModalBackdrop');
@@ -561,7 +566,10 @@
 
     const placeMsg = placeApplied ? `<p class="field-hint">장소가 "${escapeHtml(placeApplied)}"(으)로 정정됐어요.</p>` : '';
 
-    for (let i = 0; i < 80; i++) { // 1.2초 x 80 = 최대 약 96초까지 지켜봄
+    let lastProgressKey = '';
+    let lastProgressAt = Date.now();
+
+    for (let i = 0; i < 80; i++) { // 1.2초 x 80 = 최대 약 96초까지 지켜봄 (그 전에 멈춤 감지되면 먼저 끝남)
       await new Promise((r) => setTimeout(r, 1200));
       if (myToken !== rebuildPollToken) return; // 그 사이 다른 다시그리기가 새로 시작됐으면 여기서 멈춤
 
@@ -574,7 +582,14 @@
       if (!s) continue;
 
       if (s.status === 'running') {
+        const progressKey = `${s.done || 0}/${s.page || 0}`;
+        if (progressKey !== lastProgressKey) {
+          lastProgressKey = progressKey;
+          lastProgressAt = Date.now();
+        }
+
         const pct = s.total ? Math.round(((s.done || 0) / s.total) * 100) : 0;
+        const largeNote = s.large ? `<p class="field-hint">인원이 많아서 시간이 좀 걸릴 수 있어요. 너무 오래 걸리면 자동으로 구분별로 나눠서 대신 만들어요.</p>` : '';
         body.innerHTML = `
           <div style="text-align:center;">
             <div style="font-size:14px;margin-bottom:10px;">${s.done || 0} / ${s.total}명 그리는 중${s.totalPages ? ` (페이지 ${s.page || 0}/${s.totalPages})` : ''}</div>
@@ -582,23 +597,44 @@
               <div style="background:var(--accent-dark);height:100%;width:${pct}%;transition:width 0.3s;"></div>
             </div>
           </div>
+          ${largeNote}
         `;
+
+        if (Date.now() - lastProgressAt > REBUILD_STALL_MS) {
+          body.innerHTML += `<p class="field-hint" style="margin-top:10px;">${REBUILD_STALL_MS / 1000}초 넘게 진행이 안 돼서, 대신 구분별로 나눠서 만들게요...</p>`;
+          await fallbackToPartsByCategory(programId, myToken);
+          return;
+        }
       } else if (s.status === 'success') {
         body.innerHTML = `<div class="detail-loading">✅ ${s.total}명 전체 완료!</div>${placeMsg}`;
         return;
       } else if (s.status === 'error') {
         if (s.willRetry) {
           body.innerHTML = `<div class="detail-loading">⚠️ 한 번 실패해서 자동으로 다시 시도하고 있어요...</div>`;
+          lastProgressKey = ''; lastProgressAt = Date.now(); // 새로 재시도하는 거라 멈춤 판단 기준 시각도 리셋
           continue;
         }
-        body.innerHTML = `
-          <div class="detail-loading">❌ 계속 실패했어요: ${escapeHtml(s.error || '알 수 없는 오류')}</div>
-          <p class="field-hint">인원이 많은 날짜는 통합 PDF 대신 아래 "구분별로 나눠서(임시)"를 써주세요.</p>
-        `;
+        body.innerHTML = `<div class="detail-loading">⚠️ 통합 PDF가 계속 실패해서, 대신 구분별로 나눠서 만들게요...</div>`;
+        await fallbackToPartsByCategory(programId, myToken);
         return;
       }
     }
-    body.innerHTML = `<div class="detail-loading">시간이 오래 걸리고 있어요. 잠시 후 다시 열어서 확인해주세요.</div>`;
+    body.innerHTML = `<div class="detail-loading">시간이 너무 오래 걸려서, 대신 구분별로 나눠서 만들게요...</div>`;
+    await fallbackToPartsByCategory(programId, myToken);
+  }
+
+  // 통합 PDF가 멈추거나 실패했을 때 자동으로 대신 시도하는 대체 수단
+  async function fallbackToPartsByCategory(programId, myToken) {
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rebuild-parts-by-category?programId=${encodeURIComponent(programId)}&maxPerFile=40&key=${encodeURIComponent(currentAdminKey)}`, { method: 'POST' });
+      const data = await res.json();
+      if (myToken !== rebuildPollToken) return; // 그 사이 다른 작업이 새로 시작됐으면 화면을 덮어쓰지 않음
+      if (!res.ok) throw new Error(data.error || '구분별로 나눠서 만들기 실패');
+      showPartsModalByCategory(programId, data.categoryCounts || {}, 40);
+    } catch (err) {
+      if (myToken !== rebuildPollToken) return;
+      document.getElementById('partsModalBody').innerHTML = `<div class="detail-loading">❌ 대체 방법도 실패했어요: ${escapeHtml(err.message)}</div>`;
+    }
   }
 
   // ---------- 🗜️ 이미지 압축: 이 기능 배포 이전에 저장된 서명/필기 이미지를 소급으로 축소(용량만 줄임, 화질 차이는 거의 없음) ----------
