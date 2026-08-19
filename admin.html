@@ -65,6 +65,7 @@
     background: none; border: none; color: var(--accent-dark); font-size: 12px;
     cursor: pointer; text-decoration: underline; padding: 0;
   }
+  .btn-plain:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .detail-loading { text-align: center; font-size: 12px; color: #c9a8b0; padding: 10px 0; }
 
@@ -293,7 +294,7 @@
         <td>${it.재직자여부 || ''}</td>
         <td>${it.동의 ? 'O' : 'X'}</td>
         <td>${it.hasSignature ? '✓' : '-'}</td>
-        <td><button class="btn-plain" style="color:#D97070;" onclick="deleteRow('${programId}', ${it.index}, '${safeId}')">삭제</button></td>
+        <td><button class="btn-plain del-row-btn" style="color:#D97070;" onclick="deleteRow('${programId}', '${it.rowKey}', '${(it.성명 || '').replace(/'/g, "\\'")}', '${safeId}')">삭제</button></td>
       </tr>
     `).join('');
     body.innerHTML = `
@@ -304,15 +305,20 @@
     `;
   }
 
-  async function deleteRow(programId, index, safeId) {
-    if (!confirm(`${index + 1}번째 참석자를 삭제할까요? 되돌릴 수 없어요.`)) return;
+  async function deleteRow(programId, rowKey, name, safeId) {
+    if (!confirm(`${name || '이'} 참석자를 삭제할까요? 되돌릴 수 없어요.`)) return;
+    // 목록이 갱신되기 전까지 다른 삭제 버튼도 눌러서 엉뚱한 사람이 지워지는 일이 없게 잠깐 잠금
+    // (지금은 rowKey로 정확한 대상을 지정해서 실제로 밀림 문제는 안 생기지만, 이중 클릭 방지 차원에서도 유지)
+    document.querySelectorAll('.del-row-btn').forEach((btn) => (btn.disabled = true));
     try {
-      const res = await fetch(`${WORKER_HTTP_URL}/admin/delete-row?programId=${encodeURIComponent(programId)}&index=${index}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('삭제 실패');
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/delete-row?programId=${encodeURIComponent(programId)}&rowKey=${encodeURIComponent(rowKey)}&key=${encodeURIComponent(currentAdminKey)}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || '삭제 실패');
       await loadDetail(programId, safeId);
       await loadList(); // 목록의 인원수도 갱신
     } catch (err) {
       alert('삭제 중 오류: ' + err.message);
+      document.querySelectorAll('.del-row-btn').forEach((btn) => (btn.disabled = false));
     }
   }
 
