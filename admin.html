@@ -8,6 +8,7 @@
 <meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
 <meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
 <style>
   :root {
     --bg-1: #FFF0F5; --bg-2: #FFE4E1;
@@ -118,7 +119,18 @@
     font-family: inherit; font-size: 13px; box-sizing: border-box; background: var(--white);
   }
   .add-row-form .full { grid-column: 1 / -1; }
-  .add-row-actions { grid-column: 1 / -1; display: flex; gap: 14px; justify-content: flex-end; }
+  .add-row-actions { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; justify-content: flex-end; }
+  .add-pad-wrap {
+    position: relative; border: 2px dashed var(--accent); border-radius: 12px;
+    background: var(--white); overflow: hidden;
+  }
+  #addSignaturePad { display: block; width: 100%; height: 120px; touch-action: none; cursor: crosshair; }
+  .add-pad-placeholder {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #d8b8c0; font-size: 12.5px; pointer-events: none; text-align: center; padding: 0 12px;
+  }
+  .add-pad-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .add-pad-actions button { background: none; border: none; color: var(--accent-dark); font-size: 11.5px; cursor: pointer; padding: 2px 4px; }
   /* 전체삭제는 실수로 누르기 쉬워서 기본적으로 숨겨두고, "관리" 표머리를 더블클릭해야만 나타남 */
   .danger-action { display: none; }
   #listTable.show-danger .danger-action { display: inline-block; }
@@ -175,7 +187,7 @@
       </div>
     </div>
     <div id="addRowFormWrap" class="add-row-form hidden">
-      <div class="full" style="font-size:11.5px;color:#a98a92;margin:-2px 0 2px;">누락된 참석자를 직접 등록해요. 실제 서명은 없이 텍스트로만 기록되고, PDF의 서명 칸은 비어있어요.</div>
+      <div class="full" style="font-size:11.5px;color:#a98a92;margin:-2px 0 2px;">누락된 참석자를 직접 등록해요. 가능하면 아래 칸에 그 자리에서 직접 서명받아 주세요 — 비워두면 PDF 서명 칸이 빈 채로 남아요.</div>
       <div>
         <label for="addName">성명</label>
         <input type="text" id="addName" placeholder="성명">
@@ -199,6 +211,16 @@
       <div class="full" style="display:flex;align-items:center;gap:6px;">
         <input type="checkbox" id="addAgree" style="width:14px;height:14px;">
         <label for="addAgree" style="font-size:12.5px;color:var(--text);margin:0;">개인정보 수집 동의</label>
+      </div>
+      <div class="full">
+        <label for="addSignaturePad">서명 (선택 — 그 자리에서 직접 받아주세요)</label>
+        <div class="add-pad-wrap">
+          <canvas id="addSignaturePad"></canvas>
+          <span class="add-pad-placeholder" id="addPadPlaceholder">여기에 서명 ✍️</span>
+        </div>
+        <div class="add-pad-actions">
+          <button type="button" onclick="clearAddSignature()">지우기</button>
+        </div>
       </div>
       <div class="add-row-actions">
         <button class="btn-plain" onclick="toggleAddRowForm()">취소</button>
@@ -345,7 +367,70 @@
     openDetailSafeId = null;
   }
 
-  // ---------- 누락된 참석자를 관리자가 직접 추가 (서명/손글씨 없이 텍스트만) ----------
+  // ---------- 누락된 참석자를 관리자가 직접 추가 (그 자리에서 서명도 받을 수 있음) ----------
+  const addSigCanvas = document.getElementById('addSignaturePad');
+  const addPadPlaceholder = document.getElementById('addPadPlaceholder');
+  let addSignaturePad = null;
+
+  function resizeAddSignatureCanvas() {
+    if (addSigCanvas.offsetWidth === 0) return; // 폼이 숨겨진 동안엔 크기가 0이라 건너뜀
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    addSigCanvas.width = addSigCanvas.offsetWidth * ratio;
+    addSigCanvas.height = addSigCanvas.offsetHeight * ratio;
+    addSigCanvas.getContext('2d').scale(ratio, ratio);
+    if (!addSignaturePad) {
+      addSignaturePad = new SignaturePad(addSigCanvas, {
+        backgroundColor: 'rgba(255,255,255,0)',
+        penColor: '#5A4A50',
+        minWidth: 1,
+        maxWidth: 3,
+      });
+      addSignaturePad.addEventListener('beginStroke', () => { addPadPlaceholder.style.display = 'none'; });
+    } else {
+      addSignaturePad.clear();
+    }
+  }
+
+  window.addEventListener('resize', resizeAddSignatureCanvas);
+
+  function clearAddSignature() {
+    if (addSignaturePad) addSignaturePad.clear();
+    addPadPlaceholder.style.display = 'block';
+  }
+
+  // 서명 캔버스 전체가 아니라 실제 잉크가 그려진 영역만 살짝 여백을 두고 잘라서 저장(다른 폼과 동일한 방식)
+  function cropAddSignature() {
+    const data = addSignaturePad.toData();
+    if (!data || !data.length) return addSigCanvas.toDataURL('image/png');
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    data.forEach((group) => group.points.forEach((p) => {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }));
+    const w = addSigCanvas.offsetWidth || 1;
+    const h = addSigCanvas.offsetHeight || 1;
+    const marginX = Math.max((maxX - minX) * 0.15, 6);
+    const marginY = Math.max((maxY - minY) * 0.15, 6);
+    minX = Math.max(0, minX - marginX);
+    minY = Math.max(0, minY - marginY);
+    maxX = Math.min(w, maxX + marginX);
+    maxY = Math.min(h, maxY + marginY);
+    const ratio = addSigCanvas.width / w;
+    const sx = minX * ratio, sy = minY * ratio;
+    const sw = Math.max((maxX - minX) * ratio, 1);
+    const sh = Math.max((maxY - minY) * ratio, 1);
+    const MAX_DIM = 640;
+    const scale = Math.min(1, MAX_DIM / Math.max(sw, sh));
+    const outW = Math.max(1, Math.round(sw * scale));
+    const outH = Math.max(1, Math.round(sh * scale));
+    const out = document.createElement('canvas');
+    out.width = outW; out.height = outH;
+    out.getContext('2d').drawImage(addSigCanvas, sx, sy, sw, sh, 0, 0, outW, outH);
+    return out.toDataURL('image/png');
+  }
+
   function toggleAddRowForm() {
     const el = document.getElementById('addRowFormWrap');
     const willShow = el.classList.contains('hidden');
@@ -357,6 +442,8 @@
       document.getElementById('addSoso').value = '';
       document.getElementById('addAgree').checked = false;
       updateAddSosoLabel();
+      addPadPlaceholder.style.display = 'block';
+      requestAnimationFrame(resizeAddSignatureCanvas); // 숨김 해제 직후라야 실제 크기를 잴 수 있음
       document.getElementById('addName').focus();
     }
   }
@@ -379,6 +466,10 @@
     if (!성명) { alert('성명을 입력해주세요.'); return; }
     const 재직자여부 = document.getElementById('addCategory').value === '일반시민' ? '' : document.getElementById('addCategory').value;
     const soso = document.getElementById('addSoso').value.trim();
+
+    const hasSignature = addSignaturePad && !addSignaturePad.isEmpty();
+    if (!hasSignature && !confirm('서명 없이 추가할까요? PDF의 서명 칸이 빈 채로 남아요.')) return;
+
     // 그날 이미 등록된 다른 참석자가 있으면 그 사람의 장소를 그대로 재사용(지난 날짜 보정 시에도 정확하도록)
     const existingRow = Object.values(lastDetailItemsByKey)[0];
     const body = {
@@ -389,6 +480,7 @@
       학교명: 재직자여부 === '미래인재' ? soso : '',
       동의: document.getElementById('addAgree').checked,
       장소: (existingRow && existingRow.장소) || '',
+      signature: hasSignature ? cropAddSignature() : '',
     };
 
     const btn = document.getElementById('addRowSaveBtn');
