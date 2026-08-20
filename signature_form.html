@@ -349,9 +349,8 @@
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data) return;
-        const today = todayStr();
         cachedFormSettings = {
-          date: data.date === today ? data.date : today,
+          date: data.date || todayStr(),
           place: data.place || '전주MBC',
         };
       })

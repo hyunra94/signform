@@ -307,9 +307,8 @@
     const isOpen = panel.classList.toggle('open');
     if (isOpen) {
       const s = await getSettings();
-      const today = todayStr();
-      // 저장된 날짜가 오늘이 아니면(전날 설정이 남아있는 경우) 자동으로 오늘 날짜로 되돌림. 장소는 계속 기억함.
-      document.getElementById('settingDate').value = s.date === today ? s.date : today;
+      // 저장된 날짜가 없을 때만 오늘 날짜를 기본값으로 채움. 이미 저장된 날짜는 그대로 존중함.
+      document.getElementById('settingDate').value = s.date || todayStr();
       document.getElementById('settingPlace').value = s.place || '전주MBC';
     }
   }
@@ -327,8 +326,7 @@
 
   async function updateSettingsLabel() {
     const s = await getSettings();
-    const today = todayStr();
-    const date = s.date === today ? s.date : today;
+    const date = s.date || todayStr();
     document.getElementById('settingsCurrent').textContent = `(${date} · ${s.place})`;
   }
 
