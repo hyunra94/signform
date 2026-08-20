@@ -108,6 +108,17 @@
     font-family: inherit; font-size: 12px; box-sizing: border-box;
   }
   .edit-row-btn { color: var(--accent-dark); }
+  .add-row-form {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;
+    padding: 12px; border: 1.5px dashed var(--accent); border-radius: 12px; background: #FFFBFC;
+  }
+  .add-row-form label { font-size: 11px; color: #a98a92; display: block; margin-bottom: 2px; }
+  .add-row-form input[type="text"], .add-row-form select {
+    width: 100%; padding: 7px 8px; border-radius: 8px; border: 1.5px solid var(--lavender);
+    font-family: inherit; font-size: 13px; box-sizing: border-box; background: var(--white);
+  }
+  .add-row-form .full { grid-column: 1 / -1; }
+  .add-row-actions { grid-column: 1 / -1; display: flex; gap: 14px; justify-content: flex-end; }
   /* 전체삭제는 실수로 누르기 쉬워서 기본적으로 숨겨두고, "관리" 표머리를 더블클릭해야만 나타남 */
   .danger-action { display: none; }
   #listTable.show-danger .danger-action { display: inline-block; }
@@ -158,8 +169,40 @@
     <div class="detail-modal-head">
       <h3 id="detailModalTitle">참석자 명단</h3>
       <div class="detail-modal-actions">
+        <button class="btn-plain" onclick="toggleAddRowForm()">＋ 참석자 추가</button>
         <button class="btn-plain" id="detailRefreshBtn" onclick="refreshOpenDetail()">🔄 새로고침</button>
         <button class="detail-modal-close" onclick="closeDetailModal()">✕</button>
+      </div>
+    </div>
+    <div id="addRowFormWrap" class="add-row-form hidden">
+      <div class="full" style="font-size:11.5px;color:#a98a92;margin:-2px 0 2px;">누락된 참석자를 직접 등록해요. 실제 서명은 없이 텍스트로만 기록되고, PDF의 서명 칸은 비어있어요.</div>
+      <div>
+        <label for="addName">성명</label>
+        <input type="text" id="addName" placeholder="성명">
+      </div>
+      <div>
+        <label for="addContact">연락처</label>
+        <input type="text" id="addContact" placeholder="연락처 (선택)">
+      </div>
+      <div>
+        <label for="addCategory">구분</label>
+        <select id="addCategory" onchange="updateAddSosoLabel()">
+          <option value="일반시민">일반시민</option>
+          <option value="재직자">재직자</option>
+          <option value="미래인재">미래인재</option>
+        </select>
+      </div>
+      <div id="addSosoRow" class="hidden">
+        <label for="addSoso">소속</label>
+        <input type="text" id="addSoso" placeholder="회사명/학교명">
+      </div>
+      <div class="full" style="display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="addAgree" style="width:14px;height:14px;">
+        <label for="addAgree" style="font-size:12.5px;color:var(--text);margin:0;">개인정보 수집 동의</label>
+      </div>
+      <div class="add-row-actions">
+        <button class="btn-plain" onclick="toggleAddRowForm()">취소</button>
+        <button class="btn-plain" id="addRowSaveBtn" onclick="submitAddRow()">저장</button>
       </div>
     </div>
     <div id="detailModalBody"><div class="detail-loading">불러오는 중...</div></div>
@@ -290,14 +333,82 @@
     openDetailProgramId = programId;
     openDetailSafeId = safeId;
     document.getElementById('detailModalTitle').textContent = `참석자 명단 · ${programId}`;
+    document.getElementById('addRowFormWrap').classList.add('hidden');
     document.getElementById('detailModalBackdrop').classList.add('open');
     loadDetail(programId, safeId);
   }
 
   function closeDetailModal() {
     document.getElementById('detailModalBackdrop').classList.remove('open');
+    document.getElementById('addRowFormWrap').classList.add('hidden');
     openDetailProgramId = null;
     openDetailSafeId = null;
+  }
+
+  // ---------- 누락된 참석자를 관리자가 직접 추가 (서명/손글씨 없이 텍스트만) ----------
+  function toggleAddRowForm() {
+    const el = document.getElementById('addRowFormWrap');
+    const willShow = el.classList.contains('hidden');
+    el.classList.toggle('hidden');
+    if (willShow) {
+      document.getElementById('addName').value = '';
+      document.getElementById('addContact').value = '';
+      document.getElementById('addCategory').value = '일반시민';
+      document.getElementById('addSoso').value = '';
+      document.getElementById('addAgree').checked = false;
+      updateAddSosoLabel();
+      document.getElementById('addName').focus();
+    }
+  }
+
+  function updateAddSosoLabel() {
+    const category = document.getElementById('addCategory').value;
+    const sosoRow = document.getElementById('addSosoRow');
+    const sosoInput = document.getElementById('addSoso');
+    if (category === '일반시민') {
+      sosoRow.classList.add('hidden');
+    } else {
+      sosoRow.classList.remove('hidden');
+      sosoInput.placeholder = category === '재직자' ? '회사명' : '학교명';
+    }
+  }
+
+  async function submitAddRow() {
+    if (!lastDetailProgramId) return;
+    const 성명 = document.getElementById('addName').value.trim();
+    if (!성명) { alert('성명을 입력해주세요.'); return; }
+    const 재직자여부 = document.getElementById('addCategory').value === '일반시민' ? '' : document.getElementById('addCategory').value;
+    const soso = document.getElementById('addSoso').value.trim();
+    // 그날 이미 등록된 다른 참석자가 있으면 그 사람의 장소를 그대로 재사용(지난 날짜 보정 시에도 정확하도록)
+    const existingRow = Object.values(lastDetailItemsByKey)[0];
+    const body = {
+      성명,
+      연락처: document.getElementById('addContact').value.trim(),
+      재직자여부,
+      회사명: 재직자여부 === '재직자' ? soso : '',
+      학교명: 재직자여부 === '미래인재' ? soso : '',
+      동의: document.getElementById('addAgree').checked,
+      장소: (existingRow && existingRow.장소) || '',
+    };
+
+    const btn = document.getElementById('addRowSaveBtn');
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/add-row?programId=${encodeURIComponent(lastDetailProgramId)}&key=${encodeURIComponent(currentAdminKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || '추가 실패');
+      document.getElementById('addRowFormWrap').classList.add('hidden');
+      await loadDetail(lastDetailProgramId, lastDetailSafeId);
+      await loadList();
+    } catch (err) {
+      alert('추가 중 오류: ' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   function refreshOpenDetail() {
