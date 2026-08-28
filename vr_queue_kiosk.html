@@ -200,13 +200,24 @@
         <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
       </div>
 
-      <label>이름 · 소속 · 서명</label>
-      <p class="modal-hint" id="writeHint">이름을 적고, 서명까지 아래 칸에 순서대로 적어주세요.</p>
+      <label for="nameInput">성명</label>
+      <input type="text" id="nameInput" placeholder="성명을 입력해주세요">
+
+      <div class="sub-field" id="companyField">
+        <label for="companyInput">회사명</label>
+        <input type="text" id="companyInput" placeholder="회사명">
+      </div>
+      <div class="sub-field" id="schoolField">
+        <label for="schoolInput">학교명</label>
+        <input type="text" id="schoolInput" placeholder="학교명">
+      </div>
+
+      <label>서명</label>
       <div class="pad-wrap">
         <canvas id="signature-pad"></canvas>
-        <span class="pad-placeholder" id="padPlaceholder">예) 홍길동 · (서명) ✍️</span>
+        <span class="pad-placeholder" id="padPlaceholder">여기에 서명해주세요 ✍️</span>
       </div>
-      <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearSignature()">다시 쓰기</button></div>
+      <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearSignature()">다시 서명</button></div>
 
       <div class="modal-btns">
         <button class="btn-cancel" id="cancelBtn" onclick="closeModal()">취소</button>
@@ -374,11 +385,10 @@
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
       document.getElementById(`catBtn-${c}`).classList.toggle('active', c === cat);
     });
-    const hintEl = document.getElementById('writeHint');
-    if (cat === '재직자') hintEl.textContent = '이름, 회사명, 서명을 아래 칸에 순서대로 적어주세요.';
-    else if (isFutureTalent(cat)) hintEl.textContent = '이름, 학교명, 서명을 아래 칸에 순서대로 적어주세요.';
-    else if (cat === '일반시민') hintEl.textContent = '이름과 서명을 아래 칸에 적어주세요.';
-    else hintEl.textContent = '이름을 적고, 서명까지 아래 칸에 순서대로 적어주세요.';
+    document.getElementById('companyField').classList.toggle('show', cat === '재직자');
+    document.getElementById('schoolField').classList.toggle('show', isFutureTalent(cat));
+    if (cat !== '재직자') document.getElementById('companyInput').value = '';
+    if (!isFutureTalent(cat)) document.getElementById('schoolInput').value = '';
   }
 
   let signaturePad = null;
@@ -415,8 +425,8 @@
     const sh = Math.max((maxY - minY) * ratio, 1);
 
     // 서버가 PDF 만들 때 메모리를 너무 많이 안 먹도록 최종 이미지 크기를 적당히 제한
-    // (이름+소속+서명을 한 칸에 합쳐 넣는 화면이라 다른 곳보다 살짝 여유를 둠)
-    const MAX_DIM = 800;
+    // (PDF 서명 칸 자체가 작아서 화질 손해는 거의 안 보임)
+    const MAX_DIM = 640;
     const scale = Math.min(1, MAX_DIM / Math.max(sw, sh));
     const outW = Math.max(1, Math.round(sw * scale));
     const outH = Math.max(1, Math.round(sh * scale));
@@ -462,7 +472,11 @@
     document.getElementById('cancelBtn').textContent = '취소';
     const slot = currentData.slots[index];
     document.getElementById('modalTime').textContent = `${slot.time} 시간대`;
-    document.getElementById('writeHint').textContent = '이름을 적고, 서명까지 아래 칸에 순서대로 적어주세요.';
+    document.getElementById('nameInput').value = '';
+    document.getElementById('companyInput').value = '';
+    document.getElementById('schoolInput').value = '';
+    document.getElementById('companyField').classList.remove('show');
+    document.getElementById('schoolField').classList.remove('show');
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
     document.getElementById('modalStatus').textContent = '';
     document.getElementById('formPart').style.display = 'block';
@@ -480,10 +494,16 @@
   }
 
   async function confirmCheckin() {
-    if (checkinInProgress) return; // 연타/중복 전송 방지 (같은 사람이 여러 번 타는 건 정상이라 서버 중복체크는 없음)
+    if (checkinInProgress) return; // 연타/중복 전송 방지 (같은 사람이 여러 번 타는 건 정상이라 이름 기준 중복체크는 없음)
     const statusEl = document.getElementById('modalStatus');
+    const 성명 = document.getElementById('nameInput').value.trim();
+    const 회사명 = document.getElementById('companyInput').value.trim();
+    const 학교명 = document.getElementById('schoolInput').value.trim();
     if (!selectedCat) { statusEl.textContent = '재직자 여부를 선택해주세요.'; return; }
-    if (!signaturePad || signaturePad.isEmpty()) { statusEl.textContent = '이름과 서명을 적어주세요.'; return; }
+    if (!성명) { statusEl.textContent = '성명을 입력해주세요.'; return; }
+    if (selectedCat === '재직자' && !회사명) { statusEl.textContent = '회사명을 입력해주세요.'; return; }
+    if (isFutureTalent(selectedCat) && !학교명) { statusEl.textContent = '학교명을 입력해주세요.'; return; }
+    if (!signaturePad || signaturePad.isEmpty()) { statusEl.textContent = '서명을 완료해주세요.'; return; }
     if (pendingSlotIndex === null) return;
 
     checkinInProgress = true;
@@ -491,8 +511,9 @@
 
     // 직업계고/대학생은 화면 선택지일 뿐, 서명록에는 '미래인재'로 합쳐서 저장됨
     const 재직자여부 = isFutureTalent(selectedCat) ? '미래인재' : selectedCat;
-    // 이름+소속+서명을 한 캔버스에 필기로 받음 (텍스트 성명은 없음)
-    const 필기이미지 = cropPadToDataUrl(sigCanvas, signaturePad);
+    const finalCompany = 재직자여부 === '재직자' ? 회사명 : '';
+    const finalSchool = 재직자여부 === '미래인재' ? 학교명 : '';
+    const signature = cropPadToDataUrl(sigCanvas, signaturePad);
 
     statusEl.textContent = '등록 중...';
     statusEl.style.color = '#a98a92';
@@ -503,7 +524,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           programId: `${queueDate}-vr`,
-          재직자여부, 필기이미지, 동의: true,
+          성명, 재직자여부, 회사명: finalCompany, 학교명: finalSchool, signature, 동의: true,
         }),
       });
       const result = await res.json().catch(() => ({}));
@@ -522,8 +543,8 @@
       return;
     }
 
-    // 서명록 등록 성공 → 시간대 대기열에도 등록 (이름은 필기 이미지 안에만 있어서 명단에는 빈 이름으로 기록됨)
-    send({ type: 'checkin', slotIndex: pendingSlotIndex, 성명: '', 재직자여부, 회사명: '', 학교명: '' });
+    // 서명록 등록 성공 → 시간대 대기열에도 실제 이름으로 등록(담당자 화면에서 바로 확인 가능)
+    send({ type: 'checkin', slotIndex: pendingSlotIndex, 성명, 재직자여부, 회사명: finalCompany, 학교명: finalSchool });
 
     document.getElementById('formPart').style.display = 'none';
     document.getElementById('successMsg').textContent = '등록 완료!';
@@ -553,7 +574,11 @@
 
   function resetModalForm() {
     selectedCat = '';
-    document.getElementById('writeHint').textContent = '이름을 적고, 서명까지 아래 칸에 순서대로 적어주세요.';
+    document.getElementById('nameInput').value = '';
+    document.getElementById('companyInput').value = '';
+    document.getElementById('schoolInput').value = '';
+    document.getElementById('companyField').classList.remove('show');
+    document.getElementById('schoolField').classList.remove('show');
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
     document.getElementById('modalStatus').textContent = '';
     clearSignature();
