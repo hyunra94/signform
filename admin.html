@@ -172,6 +172,9 @@
       <tbody id="listBody"></tbody>
     </table>
     <div class="empty hidden" id="emptyMsg">아직 제출된 기록이 없어요.</div>
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn-plain" onclick="changeAdminKey()">🔑 비밀번호 변경</button>
+    </div>
   </div>
 </div>
 
@@ -296,6 +299,35 @@
   }
 
   let currentAdminKey = '';
+
+  // ---------- 관리자 비밀번호 변경 ----------
+  // 현재 키(currentAdminKey)로 이미 로그인된 상태라 그 자체가 "현재 비밀번호 확인"을 대신함.
+  // 변경하면 Worker의 KV에 저장되고, 그 뒤로는 모든 기기가 새 비밀번호로 다시 로그인해야 함.
+  async function changeAdminKey() {
+    const newKey = prompt('새 관리자 비밀번호를 입력해주세요 (4자 이상).');
+    if (newKey === null) return;
+    const trimmed = newKey.trim();
+    if (trimmed.length < 4) { alert('비밀번호는 4자 이상으로 입력해주세요.'); return; }
+    if (!confirm('비밀번호를 변경할까요? 변경 후에는 이 브라우저를 포함해 모든 기기에서 새 비밀번호로 다시 로그인해야 해요.')) return;
+
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/change-key?key=${encodeURIComponent(currentAdminKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newKey: trimmed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || '변경 실패');
+
+      currentAdminKey = trimmed;
+      if (document.getElementById('rememberKey').checked || localStorage.getItem('admin_key')) {
+        localStorage.setItem('admin_key', trimmed);
+      }
+      alert('비밀번호가 변경됐어요. 이 브라우저에는 새 비밀번호로 다시 저장해뒀어요.');
+    } catch (err) {
+      alert('오류: ' + err.message);
+    }
+  }
 
   function renderList(items, key) {
     currentAdminKey = key;
@@ -582,10 +614,12 @@
           `;
         }
 
+        // 이름+서명을 한 캔버스에 같이 받은 경우(VR버스 셀프 키오스크): 성명 칸에 썸네일로 보여주고,
+        // 서명은 그 이미지 안에 같이 들어있으니 서명 칸에도 등록된 것으로 표시함
         const nameCell = nameText
           ? escapeHtml(nameText)
           : it.has필기이미지 ? lazyThumb(it.rowKey, '필기이미지')
-          : it.has성명이미지 ? lazyThumb(it.rowKey, '성명이미지')
+          : it.has성명서명이미지 ? lazyThumb(it.rowKey, '성명서명이미지')
           : '-';
         const sosoCell = sosoText ? escapeHtml(sosoText) : (it.has소속이미지 ? lazyThumb(it.rowKey, '소속이미지') : '-');
 
@@ -596,7 +630,7 @@
             <td>${sosoCell}</td>
             <td>${escapeHtml(it.연락처 || '')}</td>
             <td>${it.동의 ? 'O' : 'X'}</td>
-            <td>${it.hasSignature ? '✓' : '-'}</td>
+            <td>${(it.hasSignature || it.has성명서명이미지) ? '✓' : '-'}</td>
             <td>${actionBtns}</td>
           </tr>
         `;
@@ -673,7 +707,7 @@
     const nameText = it.성명 || '';
     const sosoText = it.회사명 || it.학교명 || '';
     const isCombinedImage = !nameText && !sosoText && it.has필기이미지; // 예전 방식(하위호환용) — 이건 분리해서 못 고침
-    const namePlaceholder = !nameText && it.has성명이미지 ? '(손글씨로 입력됨 — 여기 입력하면 텍스트로 바뀌어요)' : '성명';
+    const namePlaceholder = !nameText && it.has성명서명이미지 ? '(손글씨 이름+서명 — 여기 입력하면 텍스트로 바뀌고 서명은 사라져요)' : '성명';
     const sosoPlaceholder = !sosoText && it.has소속이미지 ? '(손글씨로 입력됨 — 여기 입력하면 텍스트로 바뀌어요)' : '';
 
     const nameCell = isCombinedImage
@@ -688,7 +722,7 @@
       ${nameCell}
       <td><input type="text" class="edit-input" id="editContact-${rowKey}" value="${escapeHtml(it.연락처 || '')}" placeholder="연락처"></td>
       <td><input type="checkbox" id="editAgree-${rowKey}" ${it.동의 ? 'checked' : ''}></td>
-      <td>${it.hasSignature ? '✓' : '-'}</td>
+      <td>${(it.hasSignature || it.has성명서명이미지) ? '✓' : '-'}</td>
       <td>
         <button class="btn-plain" onclick="saveEditRow('${rowKey}')">저장</button>
         <button class="btn-plain" onclick="loadDetail(lastDetailProgramId, lastDetailSafeId)">취소</button>

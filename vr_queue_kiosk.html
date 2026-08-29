@@ -86,8 +86,8 @@
     position: relative; margin-top: 6px; border: 2px dashed var(--accent); border-radius: 14px;
     background: #FFFDFE; overflow: hidden;
   }
-  #signature-pad { display: block; width: 100%; height: 170px; touch-action: none; cursor: crosshair; }
-  #name-pad, #affil-pad { display: block; width: 100%; height: 90px; touch-action: none; cursor: crosshair; }
+  #signature-pad { display: block; width: 100%; height: 200px; touch-action: none; cursor: crosshair; }
+  #affil-pad { display: block; width: 100%; height: 90px; touch-action: none; cursor: crosshair; }
   .pad-placeholder {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     color: #d8b8c0; font-size: 13px; pointer-events: none;
@@ -201,14 +201,6 @@
         <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
       </div>
 
-      <label>성명</label>
-      <p class="modal-hint">이름을 아래 칸에 적어주세요.</p>
-      <div class="pad-wrap">
-        <canvas id="name-pad"></canvas>
-        <span class="pad-placeholder" id="namePlaceholder">이름 ✍️</span>
-      </div>
-      <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearNamePad()">다시 쓰기</button></div>
-
       <div class="sub-field" id="affilField">
         <label>소속</label>
         <p class="modal-hint" id="affilHint">회사명을 아래 칸에 적어주세요.</p>
@@ -219,12 +211,13 @@
         <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearAffilPad()">다시 쓰기</button></div>
       </div>
 
-      <label>서명</label>
+      <label>성명 + 서명</label>
+      <p class="modal-hint">이름을 적고 이어서 서명까지 아래 칸에 같이 적어주세요.</p>
       <div class="pad-wrap">
         <canvas id="signature-pad"></canvas>
-        <span class="pad-placeholder" id="padPlaceholder">여기에 서명해주세요 ✍️</span>
+        <span class="pad-placeholder" id="padPlaceholder">이름 + 서명 ✍️</span>
       </div>
-      <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearSignature()">다시 서명</button></div>
+      <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearSignature()">다시 쓰기</button></div>
 
       <div class="modal-btns">
         <button class="btn-cancel" id="cancelBtn" onclick="closeModal()">취소</button>
@@ -403,11 +396,9 @@
     }
   }
 
-  let signaturePad = null, namePad = null, affilPad = null;
+  let signaturePad = null, affilPad = null;
   const sigCanvas = document.getElementById('signature-pad');
   const sigPlaceholder = document.getElementById('padPlaceholder');
-  const nameCanvas = document.getElementById('name-pad');
-  const namePlaceholder = document.getElementById('namePlaceholder');
   const affilCanvas = document.getElementById('affil-pad');
   const affilPlaceholder = document.getElementById('affilPlaceholder');
 
@@ -453,7 +444,7 @@
     return out.toDataURL('image/png');
   }
 
-  // 성명/소속/서명 세 캔버스가 전부 같은 방식으로 동작해서(크기 재기+SignaturePad 생성/유지),
+  // 소속/성명+서명 두 캔버스가 같은 방식으로 동작해서(크기 재기+SignaturePad 생성/유지),
   // 초기화·리사이즈 로직 하나를 공유해서 씀 — 각자 자기 pad 변수에 반환값을 저장함
   function initOrResizePad(canvasEl, existingPad, placeholderEl) {
     if (canvasEl.offsetWidth === 0) return existingPad; // 아직 숨겨진 칸(예: 소속)이라 크기를 잴 수 없음 — 나중에 보일 때 다시 호출됨
@@ -474,21 +465,15 @@
     return existingPad;
   }
   function initOrResizeSignaturePad() { signaturePad = initOrResizePad(sigCanvas, signaturePad, sigPlaceholder); }
-  function initOrResizeNamePad() { namePad = initOrResizePad(nameCanvas, namePad, namePlaceholder); }
   function initOrResizeAffilPad() { affilPad = initOrResizePad(affilCanvas, affilPad, affilPlaceholder); }
   window.addEventListener('resize', () => {
     if (signaturePad) initOrResizeSignaturePad();
-    if (namePad) initOrResizeNamePad();
     if (affilPad) initOrResizeAffilPad();
   });
 
   function clearSignature() {
     if (signaturePad) signaturePad.clear();
     sigPlaceholder.style.display = 'block';
-  }
-  function clearNamePad() {
-    if (namePad) namePad.clear();
-    namePlaceholder.style.display = 'block';
   }
   function clearAffilPad() {
     if (affilPad) affilPad.clear();
@@ -513,10 +498,8 @@
     document.getElementById('formPart').style.display = 'block';
     document.getElementById('successPart').classList.remove('show');
     document.getElementById('modalBackdrop').classList.add('open');
-    initOrResizeNamePad();
     initOrResizeAffilPad();
     initOrResizeSignaturePad();
-    namePlaceholder.style.display = 'block';
     affilPlaceholder.style.display = 'block';
     sigPlaceholder.style.display = 'block';
   }
@@ -533,12 +516,11 @@
     const statusEl = document.getElementById('modalStatus');
     const needsAffil = selectedCat === '재직자' || isFutureTalent(selectedCat);
     if (!selectedCat) { statusEl.textContent = '재직자 여부를 선택해주세요.'; return; }
-    if (!namePad || namePad.isEmpty()) { statusEl.textContent = '이름을 적어주세요.'; return; }
     if (needsAffil && (!affilPad || affilPad.isEmpty())) {
       statusEl.textContent = selectedCat === '재직자' ? '회사명을 적어주세요.' : '학교명을 적어주세요.';
       return;
     }
-    if (!signaturePad || signaturePad.isEmpty()) { statusEl.textContent = '서명을 완료해주세요.'; return; }
+    if (!signaturePad || signaturePad.isEmpty()) { statusEl.textContent = '이름과 서명을 적어주세요.'; return; }
     if (pendingSlotIndex === null) return;
 
     checkinInProgress = true;
@@ -546,9 +528,9 @@
 
     // 직업계고/대학생은 화면 선택지일 뿐, 서명록에는 '미래인재'로 합쳐서 저장됨
     const 재직자여부 = isFutureTalent(selectedCat) ? '미래인재' : selectedCat;
-    const 성명이미지 = cropPadToDataUrl(nameCanvas, namePad);
     const 소속이미지 = needsAffil ? cropPadToDataUrl(affilCanvas, affilPad) : '';
-    const signature = cropPadToDataUrl(sigCanvas, signaturePad);
+    // 이름+서명을 한 캔버스에 같이 받음 — PDF의 성명·서명 두 칸에 걸쳐 그대로 그려짐
+    const 성명서명이미지 = cropPadToDataUrl(sigCanvas, signaturePad);
 
     statusEl.textContent = '등록 중...';
     statusEl.style.color = '#a98a92';
@@ -559,7 +541,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           programId: `${queueDate}-vr`,
-          재직자여부, 성명이미지, 소속이미지, signature, 동의: true,
+          재직자여부, 성명서명이미지, 소속이미지, 동의: true,
         }),
       });
       const result = await res.json().catch(() => ({}));
@@ -612,7 +594,6 @@
     document.getElementById('affilField').classList.remove('show');
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
     document.getElementById('modalStatus').textContent = '';
-    clearNamePad();
     clearAffilPad();
     clearSignature();
   }
