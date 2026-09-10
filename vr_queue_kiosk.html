@@ -68,28 +68,29 @@
     background: var(--white); border-radius: 24px; padding: 20px 22px; width: 100%; max-width: 420px;
     max-height: 96vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
   }
-  .modal-card.wide { max-width: 760px; }
+  .modal-card.wide { max-width: 780px; }
+  .title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+  .title-row h2 { text-align: left; margin: 0; }
   .modal-card h2 { text-align: center; font-size: 18px; margin: 0 0 4px; color: var(--accent-dark); }
   .modal-card .modal-time { text-align: center; font-size: 13px; color: #a98a92; margin-bottom: 10px; }
   .group-count {
     text-align: center; font-size: 12.5px; color: var(--ok); font-weight: 700;
     margin: -6px 0 10px; background: #F0FAF2; border-radius: 10px; padding: 6px;
   }
-  /* 가로 공간이 있을 땐 재직자여부+성명서명(왼쪽)과 소속(오른쪽)을 나란히 배치해서
-     세로로만 길어지지 않게 함 — 소속 칸이 없는 카테고리(일반시민)를 고르면 단일 칸으로 합쳐짐 */
+  /* "참여 등록" 옆의 인원수 스테퍼 — 남은 자리가 1자리뿐이면 늘릴 필요가 없으니 openModal에서 숨김 */
+  .group-stepper { display: flex; align-items: center; gap: 8px; background: #FDF3F6; border-radius: 12px; padding: 6px 8px; }
+  .stepper-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: none; background: white;
+    color: var(--accent-dark); font-size: 17px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  .stepper-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .stepper-label { font-size: 13px; font-weight: 700; color: var(--accent-dark); white-space: nowrap; min-width: 62px; text-align: center; }
+  /* 가로 공간이 있을 땐 성명+서명(왼쪽)과 재직자여부+소속(오른쪽)을 나란히 배치해서 세로로만 길어지지 않게 함 */
   .form-grid { display: grid; grid-template-columns: 1fr; gap: 0 22px; }
   @media (min-width: 620px) {
-    .form-grid.split { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr 1fr; }
   }
   .form-col { min-width: 0; }
-  .group-size-row { margin: 8px 0 4px; }
-  .group-size-btns { display: flex; gap: 6px; }
-  .size-btn {
-    flex: 1; padding: 9px 4px; border-radius: 10px; border: 1.5px solid var(--lavender);
-    background: #FDFBFF; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
-  }
-  .size-btn.active { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
-  .size-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .modal-card label { display: block; font-size: 13px; font-weight: 500; margin: 8px 0 3px; }
   .modal-card input {
     width: 100%; padding: 12px; border: 1.5px solid var(--lavender); border-radius: 12px;
@@ -101,8 +102,8 @@
     position: relative; margin-top: 4px; border: 2px dashed var(--accent); border-radius: 14px;
     background: #FFFDFE; overflow: hidden;
   }
-  #signature-pad { display: block; width: 100%; height: min(180px, 22vh); touch-action: none; cursor: crosshair; }
-  #affil-pad { display: block; width: 100%; height: min(110px, 14vh); touch-action: none; cursor: crosshair; }
+  #signature-pad { display: block; width: 100%; height: min(240px, 30vh); touch-action: none; cursor: crosshair; }
+  #affil-pad { display: block; width: 100%; height: min(150px, 20vh); touch-action: none; cursor: crosshair; }
   .pad-placeholder {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     color: #d8b8c0; font-size: 13px; pointer-events: none;
@@ -114,12 +115,13 @@
   }
   .cat-row { display: flex; gap: 8px; }
   .cat-btn {
-    flex: 1; padding: 10px 6px; border-radius: 12px; border: 1.5px solid var(--lavender);
-    background: #FDFBFF; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    flex: 1; padding: 13px 6px; border-radius: 12px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
   }
   .cat-btn.active { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
-  .sub-field { display: none; }
-  .sub-field.show { display: block; }
+  /* 소속 칸은 항상 자리를 차지하되(레이아웃이 안 흔들리게), 필요 없을 땐(일반시민) 흐리게/비활성으로만 보여줌 */
+  .sub-field { opacity: 0.35; pointer-events: none; transition: opacity 0.2s ease; }
+  .sub-field.show { opacity: 1; pointer-events: auto; }
   .modal-btns { display: flex; gap: 10px; margin-top: 14px; }
   .modal-btns button {
     flex: 1; padding: 13px; border: none; border-radius: 14px; font-family: inherit;
@@ -129,10 +131,15 @@
   .btn-confirm { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; }
   .btn-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
   .modal-status { text-align: center; font-size: 13px; margin-top: 8px; min-height: 16px; color: #D97070; }
-  .success-check { display: none; text-align: center; padding: 20px 0; }
-  .success-check.show { display: block; }
-  .success-check .big { font-size: 44px; }
-  .success-check .msg { font-size: 17px; font-weight: 700; margin-top: 10px; }
+  /* 여러 명 연달아 등록할 때 화면 전체를 안 가리고 살짝 떴다 사라지는 작은 완료 표시 */
+  #formPart { position: relative; }
+  .mini-toast {
+    position: absolute; top: -6px; left: 50%; transform: translate(-50%, -50%);
+    background: var(--ok); color: white; padding: 8px 20px; border-radius: 30px;
+    font-size: 13px; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 6; white-space: nowrap;
+  }
+  .mini-toast.show { opacity: 1; }
 
   .conn-dot {
     position: fixed; top: 14px; right: 16px; width: 8px; height: 8px; border-radius: 50%; background: #ccc;
@@ -156,6 +163,11 @@
   .settings-current {
     margin-top: 14px; padding: 10px 12px; background: #FDF3F6; border-radius: 10px;
     font-size: 12.5px; color: var(--accent-dark); font-weight: 700; text-align: center;
+  }
+  .settings-save {
+    margin-top: 8px; width: 100%; padding: 10px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
   }
   .settings-slot-label { font-size: 12px; font-weight: 500; margin: 16px 0 6px; color: var(--text); }
   .settings-slot-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
@@ -203,26 +215,19 @@
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal-card wide">
     <div id="formPart">
-      <h2>✍️ 참여 등록</h2>
+      <div class="title-row">
+        <h2>✍️ 참여 등록</h2>
+        <div class="group-stepper hidden" id="groupStepper">
+          <button type="button" class="stepper-btn" onclick="changeGroupSize(-1)">−</button>
+          <span class="stepper-label" id="groupStepperLabel">1인 탑승</span>
+          <button type="button" class="stepper-btn" onclick="changeGroupSize(1)">+</button>
+        </div>
+      </div>
       <div class="modal-time" id="modalTime">-</div>
       <div class="group-count hidden" id="groupCount"></div>
 
-      <div class="group-size-row hidden" id="groupSizeRow">
-        <label>몇 분이 함께 오셨나요?</label>
-        <div class="group-size-btns" id="groupSizeBtns"></div>
-      </div>
-
       <div class="form-grid" id="formGrid">
         <div class="form-col">
-          <label>재직자 여부</label>
-          <p class="modal-hint">재직 또는 재학 여부를 선택해주세요. 해당 없으면 일반 시민을 골라주세요.</p>
-          <div class="cat-row">
-            <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
-            <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
-            <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
-            <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
-          </div>
-
           <label>성명 + 서명</label>
           <p class="modal-hint">이름을 적고 이어서 서명까지 아래 칸에 같이 적어주세요.</p>
           <div class="pad-wrap">
@@ -233,9 +238,18 @@
         </div>
 
         <div class="form-col">
+          <label>재직자 여부</label>
+          <p class="modal-hint">재직 또는 재학 여부를 선택해주세요. 해당 없으면 일반 시민을 골라주세요.</p>
+          <div class="cat-row">
+            <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
+            <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
+            <button type="button" class="cat-btn" id="catBtn-대학생" onclick="selectCat('대학생')">대학생</button>
+            <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+          </div>
+
           <div class="sub-field" id="affilField">
             <label>소속</label>
-            <p class="modal-hint" id="affilHint">회사명을 아래 칸에 적어주세요.</p>
+            <p class="modal-hint" id="affilHint">재직자·직업계고·대학생을 고르면 여기에 소속을 적어주세요.</p>
             <div class="pad-wrap">
               <canvas id="affil-pad"></canvas>
               <span class="pad-placeholder" id="affilPlaceholder">소속 ✍️</span>
@@ -250,10 +264,7 @@
         <button class="btn-confirm" id="confirmBtn" onclick="confirmCheckin()">등록하기</button>
       </div>
       <div class="modal-status" id="modalStatus"></div>
-    </div>
-    <div class="success-check" id="successPart">
-      <div class="big">✅</div>
-      <div class="msg" id="successMsg">등록 완료!</div>
+      <div class="mini-toast" id="miniToast"></div>
     </div>
   </div>
 </div>
@@ -297,6 +308,13 @@
         <button class="btn-cancel" onclick="closeSettingsModal()">닫기</button>
         <button class="btn-confirm" onclick="applySettingsConfig()">시간대 생성 / 다시 만들기</button>
       </div>
+
+      <div class="settings-slot-label">시간대 하나만 추가 (기존 명단은 그대로 둠)</div>
+      <div class="settings-row">
+        <div><label for="addSlotTime">시간</label><input type="time" id="addSlotTime"></div>
+        <div><label for="addSlotCapacity">정원</label><input type="number" id="addSlotCapacity" value="10" min="1"></div>
+      </div>
+      <button class="settings-save" onclick="addSingleSlot()">이 시간대만 추가</button>
 
       <div class="settings-slot-label">현재 시간대 (개별 삭제 가능)</div>
       <div class="settings-slot-list" id="settingsSlotList"></div>
@@ -413,18 +431,10 @@
       document.getElementById(`catBtn-${c}`).classList.toggle('active', c === cat);
     });
     const needsAffil = cat === '재직자' || isFutureTalent(cat);
+    // 소속 칸은 항상 그 자리에 보이고(레이아웃이 안 흔들림), 필요 없을 때만 흐리게+터치 불가 처리
     document.getElementById('affilField').classList.toggle('show', needsAffil);
     document.getElementById('affilHint').textContent = cat === '재직자' ? '회사명을 아래 칸에 적어주세요.' : '학교명을 아래 칸에 적어주세요.';
-    // 소속 칸이 필요할 때만 좌우 2단으로 나눔 — 일반시민처럼 소속이 없으면 왼쪽 칸 하나로 합쳐서 공간 낭비 방지
-    document.getElementById('formGrid').classList.toggle('split', needsAffil);
-    // 2단/1단이 바뀌면 왼쪽 칸(성명+서명) 너비도 같이 바뀌므로 캔버스 해상도를 다시 맞춰야 함
-    requestAnimationFrame(initOrResizeSignaturePad);
-    if (!needsAffil) {
-      clearAffilPad();
-    } else {
-      // 방금 숨김 해제된 참이라 그 전까지는 캔버스 크기가 0이었음 — 실제 크기로 다시 잡아야 필기가 됨
-      requestAnimationFrame(initOrResizeAffilPad);
-    }
+    if (!needsAffil) clearAffilPad();
   }
 
   let signaturePad = null, affilPad = null;
@@ -525,42 +535,42 @@
     const slot = currentData.slots[index];
     document.getElementById('modalTime').textContent = `${slot.time} 시간대`;
     document.getElementById('affilField').classList.remove('show');
-    document.getElementById('formGrid').classList.remove('split');
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
     document.getElementById('modalStatus').textContent = '';
-    document.getElementById('formPart').style.display = 'block';
-    document.getElementById('successPart').classList.remove('show');
     document.getElementById('modalBackdrop').classList.add('open');
     initOrResizeAffilPad();
     initOrResizeSignaturePad();
     affilPlaceholder.style.display = 'block';
     sigPlaceholder.style.display = 'block';
-    renderGroupSizeButtons(slot.capacity - slot.entries.length);
+    renderGroupStepper(slot.capacity - slot.entries.length);
   }
 
-  // 시간대에 남은 자리 수만큼만 인원수 버튼을 보여줌 (그 이상은 어차피 등록이 안 되니까)
-  function renderGroupSizeButtons(remaining) {
-    const row = document.getElementById('groupSizeRow');
-    const btnsEl = document.getElementById('groupSizeBtns');
-    if (remaining <= 1) {
-      row.classList.add('hidden');
-      btnsEl.innerHTML = '';
+  // 시간대에 남은 자리 수만큼만 인원수를 늘릴 수 있게 함 (그 이상은 어차피 등록이 안 되니까)
+  let groupSizeMax = 1;
+  function renderGroupStepper(remaining) {
+    groupSizeMax = Math.max(remaining, 1);
+    groupTargetCount = 1;
+    const wrap = document.getElementById('groupStepper');
+    if (groupSizeMax <= 1) {
+      wrap.classList.add('hidden');
       return;
     }
-    row.classList.remove('hidden');
-    const maxShown = Math.min(remaining, 5);
-    let html = '';
-    for (let n = 1; n <= maxShown; n++) {
-      html += `<button type="button" class="size-btn ${n === 1 ? 'active' : ''}" onclick="selectGroupSize(${n})">${n}명</button>`;
-    }
-    btnsEl.innerHTML = html;
+    wrap.classList.remove('hidden');
+    updateGroupStepperUI();
   }
 
-  function selectGroupSize(n) {
-    groupTargetCount = n;
-    document.querySelectorAll('#groupSizeBtns .size-btn').forEach((btn, i) => {
-      btn.classList.toggle('active', i === n - 1);
-    });
+  function updateGroupStepperUI() {
+    document.getElementById('groupStepperLabel').textContent = `${groupTargetCount}인 탑승`;
+    const btns = document.querySelectorAll('#groupStepper .stepper-btn');
+    btns[0].disabled = groupTargetCount <= 1;
+    btns[1].disabled = groupTargetCount >= groupSizeMax;
+  }
+
+  function changeGroupSize(delta) {
+    const next = groupTargetCount + delta;
+    if (next < 1 || next > groupSizeMax) return;
+    groupTargetCount = next;
+    updateGroupStepperUI();
   }
 
   function closeModal() {
@@ -568,6 +578,19 @@
     pendingSlotIndex = null;
     groupCount = 0;
     checkinInProgress = false;
+    // 다음에 모달을 열었을 때 이전 사람의 서명/소속 낙서가 남아있지 않도록 항상 비움
+    // (예전엔 그룹 등록이 끝나서 자동으로 닫힐 때 이 정리가 빠져있어서, 캔버스 리사이즈 로직이
+    //  마지막 사람의 필기를 "복원"해버리는 버그가 있었음)
+    resetModalForm();
+  }
+
+  let miniToastTimer = null;
+  function showMiniToast(text) {
+    const el = document.getElementById('miniToast');
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(miniToastTimer);
+    miniToastTimer = setTimeout(() => el.classList.remove('show'), 900);
   }
 
   async function confirmCheckin() {
@@ -581,6 +604,11 @@
     }
     if (!signaturePad || signaturePad.isEmpty()) { statusEl.textContent = '이름과 서명을 적어주세요.'; return; }
     if (pendingSlotIndex === null) return;
+    const slotForCheck = currentData.slots[pendingSlotIndex];
+    if (slotForCheck && slotForCheck.entries.length >= slotForCheck.capacity) {
+      statusEl.textContent = '이 시간대 정원이 모두 찼어요.';
+      return;
+    }
 
     checkinInProgress = true;
     document.getElementById('confirmBtn').disabled = true;
@@ -622,43 +650,45 @@
 
     // 서명록 등록 성공 → 시간대 대기열에도 등록 (이름은 손글씨 이미지 안에만 있어서 명단에는 빈 이름으로 기록됨).
     // rowKey를 같이 보내서 관리 화면에서 나중에 그 사람의 손글씨 이미지를 조회할 수 있게 함.
-    send({ type: 'checkin', slotIndex: pendingSlotIndex, 성명: '', 재직자여부, 회사명: '', 학교명: '', rowKey: result.rowKey || '' });
+    const slotIndexAtSubmit = pendingSlotIndex;
+    send({ type: 'checkin', slotIndex: slotIndexAtSubmit, 성명: '', 재직자여부, 회사명: '', 학교명: '', rowKey: result.rowKey || '' });
 
-    document.getElementById('formPart').style.display = 'none';
-    document.getElementById('successMsg').textContent = '등록 완료!';
-    document.getElementById('successPart').classList.add('show');
-
-    // 같은 시간대로 계속 등록할 수 있게 모달은 유지 — 폼만 비워서 다음 사람 바로 입력 가능
+    // 화면 전체를 가리는 완료 화면 대신, 작게 떴다 사라지는 표시만 하고 바로 다음 사람을 입력받음
+    showMiniToast('✅ 등록 완료!');
     groupCount += 1;
     // 몇 명 등록할지 미리 정했으면(2명 이상), 첫 등록 이후엔 인원수를 바꿀 수 없게 잠금
-    document.getElementById('groupSizeRow').classList.add('hidden');
+    document.getElementById('groupStepper').classList.add('hidden');
+    const reachedTarget = groupTargetCount > 1 && groupCount >= groupTargetCount;
+
+    resetModalForm();
+    checkinInProgress = false;
+    document.getElementById('confirmBtn').disabled = false;
+
+    if (reachedTarget) {
+      // 미리 정한 인원수를 다 등록했으면 바로 닫음 — closeModal이 폼도 같이 정리해줌
+      closeModal();
+      return;
+    }
+
+    const gc = document.getElementById('groupCount');
+    gc.textContent = groupTargetCount > 1
+      ? `${groupTargetCount}명 중 ${groupCount}명 등록 완료 — 다음 분 입력해주세요`
+      : `이번 시간대에 지금까지 ${groupCount}명 등록됐어요`;
+    gc.classList.remove('hidden');
+    document.getElementById('cancelBtn').textContent = '그만 등록할게요';
+
+    // 정원이 자연히 다 찼는지는 서버에서 방금 보낸 checkin의 응답(웹소켓 브로드캐스트)이
+    // 와야 정확히 알 수 있어서, 다음 사람 입력을 막지 않고 잠깐 뒤에 배경에서만 확인함
     setTimeout(() => {
-      const slot = currentData.slots[pendingSlotIndex];
-      const isFull = slot && slot.entries.length >= slot.capacity;
-      const reachedTarget = groupTargetCount > 1 && groupCount >= groupTargetCount;
-      if (isFull || reachedTarget) {
-        // 정원이 다 찼거나, 미리 정한 인원수만큼 다 등록했으면 자동으로 닫음
-        closeModal();
-        return;
-      }
-      resetModalForm();
-      checkinInProgress = false;
-      document.getElementById('confirmBtn').disabled = false;
-      document.getElementById('successPart').classList.remove('show');
-      document.getElementById('formPart').style.display = 'block';
-      const gc = document.getElementById('groupCount');
-      gc.textContent = groupTargetCount > 1
-        ? `${groupTargetCount}명 중 ${groupCount}명 등록 완료 — 다음 분 입력해주세요`
-        : `이번 시간대에 지금까지 ${groupCount}명 등록됐어요`;
-      gc.classList.remove('hidden');
-      document.getElementById('cancelBtn').textContent = '그만 등록할게요';
-    }, 1300);
+      if (pendingSlotIndex !== slotIndexAtSubmit) return; // 그 사이 모달을 닫았거나 다른 시간대를 열었으면 건너뜀
+      const slot = currentData.slots[slotIndexAtSubmit];
+      if (slot && slot.entries.length >= slot.capacity) closeModal();
+    }, 600);
   }
 
   function resetModalForm() {
     selectedCat = '';
     document.getElementById('affilField').classList.remove('show');
-    document.getElementById('formGrid').classList.remove('split');
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
     document.getElementById('modalStatus').textContent = '';
     clearAffilPad();
@@ -756,6 +786,19 @@
     const warn = count > 0 ? `\n(등록된 ${count}명도 같이 삭제돼요)` : '';
     if (!confirm(`${time} 시간대를 통째로 삭제할까요?${warn}`)) return;
     send({ type: 'removeSlot', slotIndex: index });
+  }
+
+  // 전체를 다시 만들지 않고 특정 시간대 하나만 끼워 넣음 — 이미 만들어둔 시간대 명단이 지워지지 않음
+  function addSingleSlot() {
+    const time = document.getElementById('addSlotTime').value;
+    const capacity = Number(document.getElementById('addSlotCapacity').value) || 10;
+    if (!time) { alert('추가할 시간을 선택해주세요.'); return; }
+    if ((currentData.slots || []).some((s) => s.time === time)) {
+      alert('이미 같은 시간대가 있어요.');
+      return;
+    }
+    send({ type: 'addSlot', time, capacity });
+    document.getElementById('addSlotTime').value = '';
   }
 
   function applySettingsConfig() {

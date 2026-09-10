@@ -190,6 +190,13 @@
         </div>
         <button class="settings-save" onclick="applySettings()">시간대 생성 / 다시 만들기</button>
         <div class="settings-hint">⚠️ 다시 만들면 지금까지 등록된 명단이 전부 초기화돼요. 점심시간은 비워두면 종일 시간대로 생성돼요.</div>
+
+        <label for="addSlotTime" style="margin-top:16px;">시간대 하나만 추가 (기존 명단은 그대로 둠)</label>
+        <div class="settings-row">
+          <div><input type="time" id="addSlotTime"></div>
+          <div><input type="number" id="addSlotCapacity" value="10" min="1" placeholder="정원"></div>
+        </div>
+        <button class="settings-save" onclick="addSingleSlot()">이 시간대만 추가</button>
       </div>
     </div>
   </div>
@@ -274,6 +281,19 @@
     if (currentData.slots.length > 0 && !confirm('시간대를 다시 만들면 지금까지 등록된 명단이 모두 초기화돼요. 계속할까요?')) return;
     send({ type: 'configure', startTime, endTime, intervalMinutes, capacity, lunchStart, lunchEnd });
     document.getElementById('settingsPanel').classList.remove('open');
+  }
+
+  // 전체를 다시 만들지 않고 특정 시간대 하나만 끼워 넣음 — 이미 만들어둔 시간대 명단이 지워지지 않음
+  function addSingleSlot() {
+    const time = document.getElementById('addSlotTime').value;
+    const capacity = Number(document.getElementById('addSlotCapacity').value) || 10;
+    if (!time) { alert('추가할 시간을 선택해주세요.'); return; }
+    if ((currentData.slots || []).some((s) => s.time === time)) {
+      alert('이미 같은 시간대가 있어요.');
+      return;
+    }
+    send({ type: 'addSlot', time, capacity });
+    document.getElementById('addSlotTime').value = '';
   }
 
   function currentSlotIndex() {
