@@ -420,13 +420,13 @@
       const isCurrent = i === nowIdx;
       const isPast = nowIdx >= 0 && i < nowIdx;
       const remain = Math.max(s.capacity - s.entries.length, 0);
-      const disabled = isFull || isPast;
+      const disabled = isFull || isPast || s.disabled;
       return `
-        <button class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isPast ? 'past' : ''}"
+        <button class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isPast ? 'past' : ''} ${s.disabled ? 'past' : ''}"
                 ${disabled ? 'disabled' : ''} onclick="openModal(${i})">
           <div class="time">${s.time}${isCurrent ? '<div class="now-badge">지금 시간대</div>' : ''}</div>
           <div class="avail">
-            ${isPast ? '종료' : isFull
+            ${s.disabled ? '운영중지' : isPast ? '종료' : isFull
               ? '마감'
               : `<b>${remain}</b><span class="avail-label">자리 남음 (${s.entries.length}/${s.capacity})</span>`}
           </div>
@@ -833,8 +833,13 @@
     const nowIdx = currentSlotIndex(slots);
     listEl.innerHTML = slots.map((s, i) => `
       <div class="settings-slot-row ${i === nowIdx ? 'now' : ''}">
-        <span><span class="settings-slot-time">${s.time}</span><span class="settings-slot-count">${s.entries.length}/${s.capacity}명</span></span>
-        <button type="button" class="settings-slot-del" onclick="removeSettingsSlot(${i}, '${s.time}')">삭제</button>
+        <span>
+          <span class="settings-slot-time">${s.time}</span><span class="settings-slot-count">${s.entries.length}/${s.capacity}명</span>
+          ${s.disabled ? '<span class="settings-slot-count">(비활성화됨)</span>' : ''}
+        </span>
+        ${s.disabled
+          ? `<button type="button" class="settings-slot-del" onclick="send({type:'setSlotDisabled', slotIndex:${i}, disabled:false})">다시 켜기</button>`
+          : `<button type="button" class="settings-slot-del" onclick="removeSettingsSlot(${i}, '${s.time}')">삭제</button>`}
       </div>
     `).join('');
   }
@@ -842,8 +847,10 @@
   function removeSettingsSlot(index, time) {
     const slot = currentData.slots[index];
     const count = slot ? slot.entries.length : 0;
-    const warn = count > 0 ? `\n(등록된 ${count}명도 같이 삭제돼요)` : '';
-    if (!confirm(`${time} 시간대를 통째로 삭제할까요?${warn}`)) return;
+    const msg = count > 0
+      ? `이 시간대에는 이미 ${count}명이 등록되어 있어요. 삭제하면 명단이 사라지지 않게 대신 "비활성화"돼요 (참여자 화면에서 더 이상 선택할 수 없어짐). 계속할까요?`
+      : `${time} 시간대를 삭제할까요?`;
+    if (!confirm(msg)) return;
     send({ type: 'removeSlot', slotIndex: index });
   }
 

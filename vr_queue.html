@@ -50,6 +50,8 @@
   .slot-btn:active { transform: scale(0.97); }
   .slot-btn.now { box-shadow: 0 0 0 4px var(--accent-dark), 0 8px 22px var(--shadow); }
   .slot-btn.full { opacity: 0.7; }
+  .slot-btn.disabled-slot { opacity: 0.55; }
+  .now-badge.disabled-badge { background: #c9a8b0; }
   .slot-btn .time { font-size: clamp(20px, 2.6vw, 28px); font-weight: 700; color: var(--text); }
   .slot-btn .now-badge {
     display: inline-block; font-size: 11px; background: var(--accent-dark); color: white;
@@ -98,7 +100,7 @@
   .modal-status { text-align: center; font-size: 13px; margin-top: 8px; min-height: 16px; color: #D97070; }
 
   /* ---- 명단 표 (구분 / 성명 / 소속) ---- */
-  .entry-table-wrap { max-height: 38vh; overflow-y: auto; margin-top: 10px; border: 1px solid var(--lavender); border-radius: 12px; }
+  .entry-table-wrap { max-height: 55vh; overflow-y: auto; margin-top: 10px; border: 1px solid var(--lavender); border-radius: 12px; }
   .entry-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   .entry-table th {
     position: sticky; top: 0; text-align: left; padding: 8px 10px; background: #FDF3F6;
@@ -119,7 +121,13 @@
   .empty-entries-row td { text-align: center; color: #c9a8b0; font-size: 12px; padding: 14px 0; }
 
   /* ---- 관리자 특수 상황 추가 (이름 텍스트 + 소속은 선택 + 서명은 필수) ---- */
-  .quick-add-panel { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--lavender); }
+  .quick-add-toggle {
+    display: block; width: 100%; margin-top: 12px; padding: 10px; border-radius: 12px;
+    border: 1.5px dashed var(--lavender); background: none; color: var(--accent-dark);
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .quick-add-toggle.open { border-style: solid; background: #FDF3F6; }
+  .quick-add-panel { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--lavender); }
   .quick-add-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin-bottom: 2px; }
   .quick-add-cats { display: flex; gap: 6px; margin-top: 8px; }
   .quick-cat-btn {
@@ -237,8 +245,9 @@
       </table>
     </div>
 
-    <div class="quick-add-panel">
-      <div class="quick-add-title">⚠️ 특수 상황 추가 (관리자)</div>
+    <button type="button" class="quick-add-toggle" id="quickAddToggle" onclick="toggleQuickAdd()">＋ 특수 상황 추가 (관리자)</button>
+
+    <div class="quick-add-panel hidden" id="quickAddPanel">
       <p class="modal-hint">부득이한 경우에만 관리자가 대신 등록하세요. 소속은 몰라도 되지만 서명은 꼭 받아야 해요.</p>
       <input type="text" id="qaName" placeholder="이름">
       <div class="quick-add-cats" id="qaCats">
@@ -259,7 +268,7 @@
 
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeDetail()">닫기</button>
-      <button class="btn-danger" onclick="removeSelectedSlot()">이 시간대 삭제</button>
+      <button class="btn-danger" id="detailDangerBtn" onclick="removeSelectedSlot()">이 시간대 삭제</button>
     </div>
   </div>
 </div>
@@ -431,9 +440,11 @@
       const isFull = s.entries.length >= s.capacity;
       const isCurrent = i === nowIdx;
       return `
-        <div class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''}" role="button" tabindex="0" onclick="selectSlot(${i})">
-          <button type="button" class="slot-btn-del" onclick="event.stopPropagation(); removeSlot(${i}, '${s.time}')" title="이 시간대 삭제">✕</button>
-          <div class="time">${s.time}${isCurrent ? '<div class="now-badge">지금 시간대</div>' : ''}</div>
+        <div class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${s.disabled ? 'disabled-slot' : ''}" role="button" tabindex="0" onclick="selectSlot(${i})">
+          ${s.disabled
+            ? `<button type="button" class="slot-btn-del" onclick="event.stopPropagation(); send({type:'setSlotDisabled', slotIndex:${i}, disabled:false})" title="다시 활성화">↺</button>`
+            : `<button type="button" class="slot-btn-del" onclick="event.stopPropagation(); removeSlot(${i}, '${s.time}')" title="이 시간대 삭제">✕</button>`}
+          <div class="time">${s.time}${isCurrent ? '<div class="now-badge">지금 시간대</div>' : ''}${s.disabled ? '<div class="now-badge disabled-badge">비활성화</div>' : ''}</div>
           <div class="avail"><b>${s.entries.length}</b><span> / ${s.capacity}명</span></div>
         </div>
       `;
@@ -447,8 +458,16 @@
   }
 
   function renderDetail(s, i) {
-    document.getElementById('detailTime').textContent = `${s.time} 시간대`;
+    document.getElementById('detailTime').textContent = `${s.time} 시간대${s.disabled ? ' (비활성화됨)' : ''}`;
     document.getElementById('detailCount').textContent = `${s.entries.length} / ${s.capacity}명`;
+    const dangerBtn = document.getElementById('detailDangerBtn');
+    if (s.disabled) {
+      dangerBtn.textContent = '다시 활성화하기';
+      dangerBtn.onclick = () => send({ type: 'setSlotDisabled', slotIndex: i, disabled: false });
+    } else {
+      dangerBtn.textContent = '이 시간대 삭제';
+      dangerBtn.onclick = removeSelectedSlot;
+    }
     const entriesEl = document.getElementById('detailEntries');
     entriesEl.innerHTML = s.entries.length
       ? s.entries.map((e, ei) => {
@@ -478,10 +497,25 @@
     qaCat = '';
     document.querySelectorAll('#qaCats .quick-cat-btn').forEach((btn) => btn.classList.remove('active'));
     document.getElementById('qaStatus').textContent = '';
+    // 명단(서명 목록)을 넉넉하게 볼 수 있게, 특수 상황 추가 폼은 매번 접힌 채로 시작함
+    document.getElementById('quickAddPanel').classList.add('hidden');
+    document.getElementById('quickAddToggle').classList.remove('open');
+    document.getElementById('quickAddToggle').textContent = '＋ 특수 상황 추가 (관리자)';
     document.getElementById('entryBackdrop').classList.add('open');
     renderSlots();
-    initOrResizeQaSigPad();
-    clearQaSig();
+  }
+
+  function toggleQuickAdd() {
+    const panel = document.getElementById('quickAddPanel');
+    const toggleBtn = document.getElementById('quickAddToggle');
+    const opening = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden', !opening);
+    toggleBtn.classList.toggle('open', opening);
+    toggleBtn.textContent = opening ? '－ 접기' : '＋ 특수 상황 추가 (관리자)';
+    if (opening) {
+      initOrResizeQaSigPad();
+      clearQaSig();
+    }
   }
 
   function closeDetail() {
@@ -623,8 +657,11 @@
     if (!adminKey) { statusEl.textContent = '먼저 우측 하단 "⚙️ 관리"에서 관리자 키를 입력해주세요.'; statusEl.style.color = '#D97070'; return; }
     if (selectedSlotIndex === null) return;
     const slot = currentData.slots[selectedSlotIndex];
-    if (slot && slot.entries.length >= slot.capacity) {
-      statusEl.textContent = '이 시간대 정원이 모두 찼어요.'; statusEl.style.color = '#D97070'; return;
+    // 사전 신청자가 안 와서 자리가 비었는데 현장에서 등록하고 싶어하는 사람이 있는 경우처럼,
+    // 정원이 꽉 찬 걸로 나와도 부득이하게 추가해야 할 때가 있어서 완전히 막지 않고 확인만 받음
+    const overrideCapacity = !!(slot && slot.entries.length >= slot.capacity);
+    if (overrideCapacity && !confirm('이 시간대 정원이 이미 찼어요. 그래도 추가로 등록할까요? (부득이한 경우에만)')) {
+      return;
     }
 
     qaSubmitting = true;
@@ -662,7 +699,7 @@
       return;
     }
 
-    send({ type: 'checkin', slotIndex: selectedSlotIndex, 성명: name, 재직자여부: cat, 회사명: company, 학교명: school, rowKey: result.rowKey || '' });
+    send({ type: 'checkin', slotIndex: selectedSlotIndex, 성명: name, 재직자여부: cat, 회사명: company, 학교명: school, rowKey: result.rowKey || '', overrideCapacity });
 
     document.getElementById('qaName').value = '';
     document.getElementById('qaSoso').value = '';
@@ -678,10 +715,12 @@
   function removeSlot(index, time) {
     const slot = currentData.slots[index];
     const count = slot ? slot.entries.length : 0;
-    const warn = count > 0 ? `\n(등록된 ${count}명도 같이 삭제돼요)` : '';
-    if (!confirm(`${time} 시간대를 통째로 삭제할까요?${warn}`)) return;
+    const msg = count > 0
+      ? `이 시간대에는 이미 ${count}명이 등록되어 있어요. 삭제하면 명단이 사라지지 않게 대신 "비활성화"돼요 (참여자 화면에서 더 이상 선택할 수 없어짐). 계속할까요?`
+      : `${time} 시간대를 삭제할까요?`;
+    if (!confirm(msg)) return;
     send({ type: 'removeSlot', slotIndex: index });
-    if (selectedSlotIndex === index) closeDetail();
+    if (count === 0 && selectedSlotIndex === index) closeDetail();
   }
 
   function removeEntry(slotIndex, entryIndex) {
@@ -777,8 +816,13 @@
     const nowIdx = currentSlotIndex(slots);
     listEl.innerHTML = slots.map((s, i) => `
       <div class="settings-slot-row ${i === nowIdx ? 'now' : ''}">
-        <span><span class="settings-slot-time">${s.time}</span><span class="settings-slot-count">${s.entries.length}/${s.capacity}명</span></span>
-        <button type="button" class="settings-slot-del" onclick="removeSettingsSlot(${i}, '${s.time}')">삭제</button>
+        <span>
+          <span class="settings-slot-time">${s.time}</span><span class="settings-slot-count">${s.entries.length}/${s.capacity}명</span>
+          ${s.disabled ? '<span class="settings-slot-count">(비활성화됨)</span>' : ''}
+        </span>
+        ${s.disabled
+          ? `<button type="button" class="settings-slot-del" onclick="send({type:'setSlotDisabled', slotIndex:${i}, disabled:false})">다시 켜기</button>`
+          : `<button type="button" class="settings-slot-del" onclick="removeSettingsSlot(${i}, '${s.time}')">삭제</button>`}
       </div>
     `).join('');
   }
@@ -786,8 +830,10 @@
   function removeSettingsSlot(index, time) {
     const slot = currentData.slots[index];
     const count = slot ? slot.entries.length : 0;
-    const warn = count > 0 ? `\n(등록된 ${count}명도 같이 삭제돼요)` : '';
-    if (!confirm(`${time} 시간대를 통째로 삭제할까요?${warn}`)) return;
+    const msg = count > 0
+      ? `이 시간대에는 이미 ${count}명이 등록되어 있어요. 삭제하면 명단이 사라지지 않게 대신 "비활성화"돼요 (참여자 화면에서 더 이상 선택할 수 없어짐). 계속할까요?`
+      : `${time} 시간대를 삭제할까요?`;
+    if (!confirm(msg)) return;
     send({ type: 'removeSlot', slotIndex: index });
   }
 
