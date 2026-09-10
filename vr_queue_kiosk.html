@@ -123,6 +123,12 @@
   /* 소속 칸은 항상 자리를 차지하되(레이아웃이 안 흔들리게), 필요 없을 땐(일반시민) 흐리게/비활성으로만 보여줌 */
   .sub-field { opacity: 0.35; pointer-events: none; transition: opacity 0.2s ease; }
   .sub-field.show { opacity: 1; pointer-events: auto; }
+  .same-affil-check {
+    display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500;
+    color: #a98a92; margin: -2px 0 6px; cursor: pointer;
+  }
+  .same-affil-check input { width: 14px; height: 14px; }
+  .same-affil-check:has(input:disabled) { color: #d8b8c0; cursor: default; }
   .modal-btns { display: flex; gap: 10px; margin-top: 14px; }
   .modal-btns button {
     flex: 1; padding: 13px; border: none; border-radius: 14px; font-family: inherit;
@@ -251,6 +257,10 @@
           <div class="sub-field" id="affilField">
             <label>소속</label>
             <p class="modal-hint" id="affilHint">재직자·직업계고·대학생을 고르면 여기에 소속을 적어주세요.</p>
+            <label class="same-affil-check">
+              <input type="checkbox" id="sameAffilCheck" onchange="onSameAffilToggle()" disabled>
+              이전 사람과 소속 동일
+            </label>
             <div class="pad-wrap">
               <canvas id="affil-pad"></canvas>
               <span class="pad-placeholder" id="affilPlaceholder">소속 ✍️</span>
@@ -347,6 +357,7 @@
   let selectedCat = '';
   let groupCount = 0;
   let groupTargetCount = 1; // "몇 분이 함께 오셨나요?"로 미리 정한 인원 — 1이면 예전처럼 그만둘 때까지 계속 등록
+  let lastCompanyData = null, lastSchoolData = null; // 같은 시간대에서 방금 전 사람이 쓴 소속(회사/학교) 손글씨 — 다음 사람 칸에 미리 채워줌
 
   function openWebSocket() {
     ws = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${queueDate}`);
@@ -427,6 +438,7 @@
   // 직업계고/대학생은 UI 선택지일 뿐, 실제 저장되는 값은 '미래인재'로 합쳐짐
   const isFutureTalent = (value) => value === '직업계고' || value === '대학생';
   function selectCat(cat) {
+    const catChanged = cat !== selectedCat; // 이미 고른 칸을 또 눌러서 방금 손으로 고친 소속이 지워지는 일 방지
     selectedCat = cat;
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
       document.getElementById(`catBtn-${c}`).classList.toggle('active', c === cat);
@@ -435,7 +447,34 @@
     // 소속 칸은 항상 그 자리에 보이고(레이아웃이 안 흔들림), 필요 없을 때만 흐리게+터치 불가 처리
     document.getElementById('affilField').classList.toggle('show', needsAffil);
     document.getElementById('affilHint').textContent = cat === '재직자' ? '회사명을 아래 칸에 적어주세요.' : '학교명을 아래 칸에 적어주세요.';
-    if (!needsAffil) clearAffilPad();
+
+    const sameCheck = document.getElementById('sameAffilCheck');
+    if (!needsAffil) {
+      clearAffilPad();
+      sameCheck.checked = false;
+      sameCheck.disabled = true;
+    } else if (catChanged) {
+      // 종류(회사/학교)가 바뀌었으니 체크박스는 매번 새로 판단 — 같은 시간대에서 그 종류로 쓴
+      // 소속이 있을 때만 체크할 수 있게 하고, 기본은 꺼둠(직접 켜야만 이전 내용을 가져옴)
+      const cached = cat === '재직자' ? lastCompanyData : lastSchoolData;
+      sameCheck.checked = false;
+      sameCheck.disabled = !(cached && cached.length);
+      clearAffilPad();
+    }
+  }
+
+  // "이전 사람과 소속 동일" 체크박스 — 켜면 방금 전 같은 종류(회사/학교)의 소속 손글씨를 그대로 가져오고,
+  // 끄면 비워서 직접 새로 쓸 수 있게 함
+  function onSameAffilToggle() {
+    const checked = document.getElementById('sameAffilCheck').checked;
+    const cached = selectedCat === '재직자' ? lastCompanyData : lastSchoolData;
+    if (checked && cached && cached.length) {
+      affilPad.clear();
+      affilPad.fromData(cached);
+      affilPlaceholder.style.display = 'none';
+    } else {
+      clearAffilPad();
+    }
   }
 
   let signaturePad = null, affilPad = null;
@@ -529,6 +568,8 @@
     selectedCat = '';
     groupCount = 0;
     groupTargetCount = 1;
+    lastCompanyData = null;
+    lastSchoolData = null;
     checkinInProgress = false;
     document.getElementById('confirmBtn').disabled = false;
     document.getElementById('groupCount').classList.add('hidden');
@@ -619,6 +660,12 @@
     const 소속이미지 = needsAffil ? cropPadToDataUrl(affilCanvas, affilPad) : '';
     // 이름+서명을 한 캔버스에 같이 받음 — PDF의 성명·서명 두 칸에 걸쳐 그대로 그려짐
     const 성명서명이미지 = cropPadToDataUrl(sigCanvas, signaturePad);
+    // 다음 사람이 "이전 사람과 소속 동일"에 체크하면 쓸 수 있게, 방금 쓴 소속의 손글씨(벡터) 저장
+    if (needsAffil) {
+      const strokeData = affilPad.toData();
+      if (selectedCat === '재직자') lastCompanyData = strokeData;
+      else lastSchoolData = strokeData;
+    }
 
     statusEl.textContent = '등록 중...';
     statusEl.style.color = '#a98a92';
@@ -692,6 +739,9 @@
     document.getElementById('affilField').classList.remove('show');
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
     document.getElementById('modalStatus').textContent = '';
+    const sameCheck = document.getElementById('sameAffilCheck');
+    sameCheck.checked = false;
+    sameCheck.disabled = true;
     clearAffilPad();
     clearSignature();
   }
