@@ -62,6 +62,13 @@
   }
   .settings-hint { font-size: 11px; color: #c9a8b0; margin-top: 8px; line-height: 1.5; }
 
+  .performance-banner {
+    text-align: center; margin-bottom: 12px; padding: 12px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+  }
+  .performance-banner .label { font-size: 12px; opacity: 0.9; }
+  .performance-banner .num { font-size: 26px; font-weight: 700; margin-top: 2px; }
+
   .summary { display: flex; justify-content: center; gap: 20px; margin-bottom: 14px; font-size: 12.5px; color: #a98a92; }
   .summary b { color: var(--accent-dark); font-size: 15px; }
 
@@ -93,13 +100,24 @@
   .entry-list { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--lavender); display: none; }
   .entry-list.open { display: block; }
   .entry-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 6px 0; font-size: 12.5px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 0; font-size: 12.5px;
   }
   .entry-row + .entry-row { border-top: 1px solid #FDF3F6; }
+  .entry-fields { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
+  .entry-field { display: flex; align-items: center; gap: 5px; }
+  .entry-field .field-label { color: #c9a8b0; font-size: 10.5px; }
+  .entry-cat-badge {
+    display: inline-block; font-size: 10px; font-weight: 700; color: var(--accent-dark);
+    background: #FDF3F6; border-radius: 8px; padding: 2px 7px; white-space: nowrap;
+  }
   .entry-name { font-weight: 700; }
-  .entry-meta { color: #a98a92; margin-left: 6px; font-size: 11.5px; }
-  .entry-del { background: none; border: none; color: #D97070; font-size: 11px; cursor: pointer; text-decoration: underline; }
+  .entry-thumb {
+    max-height: 26px; max-width: 90px; vertical-align: middle; border-radius: 4px;
+    border: 1px solid var(--lavender); background: white;
+  }
+  .entry-lazy { color: #c9a8b0; font-size: 11px; }
+  .entry-del { background: none; border: none; color: #D97070; font-size: 11px; cursor: pointer; text-decoration: underline; white-space: nowrap; }
   .quick-add { margin-top: 8px; }
   .quick-add-row1 { display: flex; gap: 6px; }
   .quick-add input {
@@ -145,6 +163,16 @@
     <div class="conn-status"><span class="dot" id="connDot"></span><span id="connText">연결 중...</span></div>
     <div class="kiosk-link"><a href="./vr_queue_kiosk.html" target="_blank">🖥 현장용 큰 화면(키오스크) 열기 →</a></div>
 
+    <button class="settings-toggle" onclick="toggleAdminKeyPanel()">🔑 이미지 조회 키 <span id="adminKeyStatus">(미설정)</span></button>
+    <div class="settings-panel" id="adminKeyPanel">
+      <div class="inner">
+        <label for="adminKeyInput">관리자 키</label>
+        <input type="password" id="adminKeyInput" placeholder="관리자 키 입력" onkeydown="if(event.key==='Enter') saveAdminKey()">
+        <button class="settings-save" onclick="saveAdminKey()">저장</button>
+        <div class="settings-hint">명단에서 손글씨로 받은 성명·소속 이미지를 보려면 관리자 키가 필요해요. (다른 관리 화면에 저장한 키가 있으면 자동으로 적용돼요)</div>
+      </div>
+    </div>
+
     <button class="settings-toggle" onclick="toggleSettings()">⚙️ 시간대 설정</button>
     <div class="settings-panel" id="settingsPanel">
       <div class="inner">
@@ -167,6 +195,7 @@
   </div>
 
   <div class="card" id="mainCard">
+    <div class="performance-banner" id="performanceBanner"></div>
     <div class="summary" id="summaryRow"></div>
     <div class="slot-list" id="slotList"></div>
     <div class="empty-msg hidden" id="emptyMsg">아직 시간대가 설정되지 않았어요. 위 "⚙️ 시간대 설정"에서 만들어주세요.</div>
@@ -183,11 +212,35 @@
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
   const queueDate = todayStr();
+  const programId = `${queueDate}-vr`;
   let ws = null;
   let currentData = { slots: [] };
   let openIndex = new Set();
 
   document.getElementById('dateLabel').textContent = `${queueDate} 기준`;
+
+  // ---------- 이미지 조회용 관리자 키 (다른 관리 화면과 localStorage를 공유해서 한 번만 넣으면 됨) ----------
+  let adminKey = localStorage.getItem('admin_key') || '';
+  const thumbCache = {}; // `${rowKey}:${field}` -> dataUrl(문자열) | '' (없음) | 'unauthorized'
+  updateAdminKeyStatus();
+
+  function updateAdminKeyStatus() {
+    document.getElementById('adminKeyStatus').textContent = adminKey ? '(설정됨)' : '(미설정)';
+  }
+  function toggleAdminKeyPanel() {
+    document.getElementById('adminKeyPanel').classList.toggle('open');
+    document.getElementById('adminKeyInput').value = adminKey;
+  }
+  function saveAdminKey() {
+    const key = document.getElementById('adminKeyInput').value.trim();
+    adminKey = key;
+    if (key) localStorage.setItem('admin_key', key);
+    else localStorage.removeItem('admin_key');
+    Object.keys(thumbCache).forEach((k) => delete thumbCache[k]); // 키가 바뀌었으니 이전에 캐시된 결과(권한 없음 등)를 지우고 다시 시도
+    updateAdminKeyStatus();
+    document.getElementById('adminKeyPanel').classList.remove('open');
+    renderSlots();
+  }
 
   function openWebSocket() {
     setConnStatus(false, '연결 중...');
@@ -240,6 +293,21 @@
     return '';
   }
 
+  // 실적 집계 대상(재직자/미래인재)만 구분해서 셀 때 씀 — 일반시민은 실적에 안 들어감
+  const needsAffilCat = (cat) => cat === '재직자' || cat === '미래인재';
+
+  // rowKey로 조회한 이미지는 한 번 불러오면 캐시해서, 목록이 다시 그려져도(웹소켓 갱신 등) 또 안 불러옴
+  function lazyThumb(rowKey, field) {
+    const cacheKey = `${rowKey}:${field}`;
+    if (cacheKey in thumbCache) {
+      const val = thumbCache[cacheKey];
+      if (val === 'unauthorized') return `<span class="entry-lazy">(관리자 키 필요)</span>`;
+      if (!val) return `<span class="entry-lazy">(없음)</span>`;
+      return `<img class="entry-thumb" src="${val}" alt="손글씨">`;
+    }
+    return `<span class="entry-lazy q-lazy-thumb" data-rowkey="${rowKey}" data-field="${field}">불러오는 중…</span>`;
+  }
+
   function renderSlots() {
     const list = document.getElementById('slotList');
     const emptyMsg = document.getElementById('emptyMsg');
@@ -249,6 +317,7 @@
       list.innerHTML = '';
       emptyMsg.classList.remove('hidden');
       document.getElementById('summaryRow').innerHTML = '';
+      document.getElementById('performanceBanner').innerHTML = '';
       return;
     }
     emptyMsg.classList.add('hidden');
@@ -256,6 +325,11 @@
     const nowIdx = currentSlotIndex();
     const totalCount = slots.reduce((s, x) => s + x.entries.length, 0);
     const totalCapacity = slots.reduce((s, x) => s + x.capacity, 0);
+    const performanceCount = slots.reduce(
+      (s, x) => s + x.entries.filter((e) => needsAffilCat(e.재직자여부)).length, 0
+    );
+    document.getElementById('performanceBanner').innerHTML =
+      `<div class="label">오늘 실적 (재직자 + 미래인재)</div><div class="num">${performanceCount}명</div>`;
     document.getElementById('summaryRow').innerHTML = `<span>오늘 누적 <b>${totalCount}</b>명</span><span>전체 정원 <b>${totalCapacity}</b>명</span>`;
 
     list.innerHTML = slots.map((s, i) => {
@@ -266,10 +340,17 @@
         ? s.entries.map((e, ei) => {
             const cat = e.재직자여부 || '';
             const soso = deriveSoso(e);
-            const metaText = [cat, soso].filter(Boolean).join(' · ');
+            const nameCell = e.성명 ? escapeHtml(e.성명) : (e.rowKey ? lazyThumb(e.rowKey, '성명서명이미지') : '-');
+            const sosoCell = soso
+              ? escapeHtml(soso)
+              : (needsAffilCat(cat) && e.rowKey ? lazyThumb(e.rowKey, '소속이미지') : (needsAffilCat(cat) ? '-' : ''));
             return `
             <div class="entry-row">
-              <div><span class="entry-name">${escapeHtml(e.성명)}</span>${metaText ? `<span class="entry-meta">${escapeHtml(metaText)}</span>` : ''}</div>
+              <div class="entry-fields">
+                ${cat ? `<span class="entry-cat-badge">${escapeHtml(cat)}</span>` : ''}
+                <span class="entry-field"><span class="field-label">성명</span><span class="entry-name">${nameCell}</span></span>
+                ${sosoCell ? `<span class="entry-field"><span class="field-label">소속</span>${sosoCell}</span>` : ''}
+              </div>
               <button class="entry-del" onclick="removeEntry(${i}, ${ei})">삭제</button>
             </div>`;
           }).join('')
@@ -304,6 +385,43 @@
         </div>
       `;
     }).join('');
+
+    loadPendingThumbs();
+  }
+
+  // 펼쳐진 시간대(.entry-list.open) 안에서 아직 못 불러온 이미지만, 한 명씩(최대 3개씩 동시) 불러옴
+  async function loadPendingThumbs() {
+    const els = Array.from(document.querySelectorAll('.entry-list.open .q-lazy-thumb'));
+    if (els.length === 0) return;
+    if (!adminKey) {
+      els.forEach((el) => { el.outerHTML = '<span class="entry-lazy">(관리자 키 필요)</span>'; });
+      return;
+    }
+    let idx = 0;
+    async function worker() {
+      while (idx < els.length) {
+        const el = els[idx++];
+        const rowKey = el.dataset.rowkey;
+        const field = el.dataset.field;
+        const cacheKey = `${rowKey}:${field}`;
+        try {
+          const res = await fetch(`${WORKER_HTTP_URL}/admin/row-image?programId=${encodeURIComponent(programId)}&rowKey=${encodeURIComponent(rowKey)}&field=${encodeURIComponent(field)}&key=${encodeURIComponent(adminKey)}`);
+          if (res.status === 401) {
+            thumbCache[cacheKey] = 'unauthorized';
+            el.outerHTML = '<span class="entry-lazy">(관리자 키가 올바르지 않아요)</span>';
+            continue;
+          }
+          const data = await res.json().catch(() => ({}));
+          thumbCache[cacheKey] = data.dataUrl || '';
+          el.outerHTML = data.dataUrl
+            ? `<img class="entry-thumb" src="${data.dataUrl}" alt="손글씨">`
+            : '<span class="entry-lazy">(없음)</span>';
+        } catch (err) {
+          el.textContent = '(불러오기 실패)';
+        }
+      }
+    }
+    await Promise.all([worker(), worker(), worker()]);
   }
 
   // 직업계고/대학생은 UI 선택지일 뿐, 실제 저장되는 값은 '미래인재'로 합쳐짐
