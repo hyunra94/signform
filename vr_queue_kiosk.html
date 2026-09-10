@@ -530,9 +530,17 @@
   function initOrResizePad(canvasEl, existingPad, placeholderEl) {
     if (canvasEl.offsetWidth === 0) return existingPad; // 아직 숨겨진 칸(예: 소속)이라 크기를 잴 수 없음 — 나중에 보일 때 다시 호출됨
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const targetW = Math.round(canvasEl.offsetWidth * ratio);
+    const targetH = Math.round(canvasEl.offsetHeight * ratio);
+    // 실제 크기가 안 바뀌었으면 다시 그리지 않음 — 모바일 브라우저 주소창이 접혔다 펴지는 등
+    // 화면 크기와 무관한 resize 이벤트가 필기 도중에 튀면, 여기서 캔버스를 지웠다 복원하는
+    // 과정 자체가 선을 미세하게 울퉁불퉁하게 만드는 원인이었음
+    if (existingPad && canvasEl.width === targetW && canvasEl.height === targetH) {
+      return existingPad;
+    }
     const savedData = existingPad ? existingPad.toData() : null;
-    canvasEl.width = canvasEl.offsetWidth * ratio;
-    canvasEl.height = canvasEl.offsetHeight * ratio;
+    canvasEl.width = targetW;
+    canvasEl.height = targetH;
     canvasEl.getContext('2d').scale(ratio, ratio);
     if (!existingPad) {
       const pad = new SignaturePad(canvasEl, {

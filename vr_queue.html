@@ -17,132 +17,109 @@
     --shadow: rgba(232, 143, 162, 0.25);
     --full: #F0A0A8; --ok: #6FA875;
   }
-  * { box-sizing: border-box; }
-  body {
-    font-family: 'Noto Sans KR', sans-serif;
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    min-height: 100%; margin: 0; font-family: 'Noto Sans KR', sans-serif;
     background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
-    margin: 0; padding: 20px 14px; color: var(--text); min-height: 100vh;
+    color: var(--text);
+    -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    overscroll-behavior: none;
   }
-  .wrap { max-width: 860px; margin: 0 auto; }
-  .card {
-    background: var(--white); border-radius: 20px; box-shadow: 0 8px 24px var(--shadow);
-    padding: 22px 20px; margin-bottom: 16px;
+  input, textarea {
+    -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text;
   }
-  h1 { font-size: 19px; font-weight: 700; text-align: center; margin: 0 0 4px; color: var(--accent-dark); }
-  .subtitle { text-align: center; font-size: 12.5px; color: #a98a92; margin-bottom: 4px; }
-  .kiosk-link { text-align: center; margin-top: 6px; }
+  .screen { display: flex; flex-direction: column; align-items: center; padding: 28px 20px 60px; }
+
+  .clock { font-size: clamp(28px, 5vw, 44px); font-weight: 700; color: var(--accent-dark); margin-bottom: 4px; }
+  .headline { font-size: clamp(15px, 2vw, 19px); font-weight: 700; margin-bottom: 4px; text-align: center; }
+  .admin-stats { text-align: center; font-size: 13px; color: var(--accent-dark); font-weight: 700; margin-bottom: 2px; }
+  .admin-stats .sub { font-size: 12px; color: #a98a92; font-weight: 500; margin-top: 2px; }
+  .kiosk-link { text-align: center; margin-bottom: 18px; }
   .kiosk-link a { font-size: 12px; color: var(--accent-dark); }
 
-  .conn-status {
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    font-size: 11.5px; color: #a98a92; margin-bottom: 4px;
-  }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
-  .dot.on { background: var(--ok); }
-  .dot.off { background: #D97070; }
-
-  .settings-toggle {
-    display: block; margin: 10px auto 0; background: none; border: none;
-    color: #c9a8b0; font-size: 12px; cursor: pointer; text-align: center;
-  }
-  .settings-panel { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.25s ease; }
-  .settings-panel.open { max-height: 320px; opacity: 1; margin-top: 14px; }
-  .settings-panel .inner { background: #FDF3F6; border-radius: 14px; padding: 16px; }
-  .settings-panel label { display: block; font-size: 12px; font-weight: 500; margin: 10px 0 5px; }
-  .settings-panel label:first-child { margin-top: 0; }
-  .settings-panel input {
-    width: 100%; padding: 9px 12px; border: 1.5px solid var(--lavender); border-radius: 10px;
-    font-family: inherit; font-size: 13px; background: var(--white); outline: none;
-  }
-  .settings-row { display: flex; gap: 10px; }
-  .settings-row > div { flex: 1; }
-  .settings-save {
-    margin-top: 12px; width: 100%; padding: 10px; border: none; border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
-    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
-  }
-  .settings-hint { font-size: 11px; color: #c9a8b0; margin-top: 8px; line-height: 1.5; }
-
-  .performance-banner {
-    text-align: center; margin-bottom: 12px; padding: 12px; border-radius: 14px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
-  }
-  .performance-banner .label { font-size: 12px; opacity: 0.9; }
-  .performance-banner .num { font-size: 26px; font-weight: 700; margin-top: 2px; }
-
-  .summary { display: flex; justify-content: center; gap: 20px; margin-bottom: 14px; font-size: 12.5px; color: #a98a92; }
-  .summary b { color: var(--accent-dark); font-size: 15px; }
-
-  /* ---- 시간대 그리드 (키오스크 화면과 동일한 방식 — 버튼을 눌러야 그 시간대 명단만 보임) ---- */
   .slots-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px; width: 100%; max-width: 1200px;
   }
   .slot-btn {
-    position: relative; border: 1.5px solid var(--lavender); border-radius: 16px; background: #FDFBFF;
-    box-shadow: 0 4px 14px var(--shadow); padding: 16px 10px; cursor: pointer; font-family: inherit;
-    text-align: center; transition: transform 0.15s;
+    position: relative; border: none; border-radius: 20px; background: var(--white); box-shadow: 0 8px 22px var(--shadow);
+    padding: 20px 14px; cursor: pointer; font-family: inherit; text-align: center; transition: transform 0.15s;
   }
   .slot-btn:active { transform: scale(0.97); }
-  .slot-btn.now { box-shadow: 0 0 0 3px var(--accent-dark), 0 4px 14px var(--shadow); }
-  .slot-btn.full { opacity: 0.6; }
-  .slot-btn.selected { border-color: var(--accent-dark); background: #FDF3F6; }
-  .slot-time { font-size: 17px; font-weight: 700; }
-  .slot-now-badge {
-    display: inline-block; font-size: 9.5px; background: var(--accent-dark); color: white;
-    border-radius: 8px; padding: 1px 6px; margin-left: 4px; vertical-align: middle;
+  .slot-btn.now { box-shadow: 0 0 0 4px var(--accent-dark), 0 8px 22px var(--shadow); }
+  .slot-btn.full { opacity: 0.7; }
+  .slot-btn .time { font-size: clamp(20px, 2.6vw, 28px); font-weight: 700; color: var(--text); }
+  .slot-btn .now-badge {
+    display: inline-block; font-size: 11px; background: var(--accent-dark); color: white;
+    border-radius: 10px; padding: 2px 9px; margin-top: 6px;
   }
-  .slot-count { margin-top: 6px; font-size: 12.5px; color: #a98a92; }
-  .slot-count b { color: var(--accent-dark); font-size: 15px; }
-  .slot-btn.full .slot-count b { color: var(--full); }
+  .slot-btn .avail { margin-top: 10px; font-size: clamp(12px, 1.4vw, 14px); color: #a98a92; }
+  .slot-btn .avail b { color: var(--ok); font-size: clamp(16px, 2vw, 20px); }
+  .slot-btn.full .avail b { color: var(--full); }
   .slot-btn-del {
-    position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%;
-    border: none; background: #FDEDED; color: #D97070; font-size: 11px; line-height: 22px;
+    position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%;
+    border: none; background: #FDEDED; color: #D97070; font-size: 11px; line-height: 24px;
     padding: 0; cursor: pointer; font-family: inherit;
   }
 
-  /* ---- 선택한 시간대 명단 카드 ---- */
-  .detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
-  .detail-time { font-size: 17px; font-weight: 700; color: var(--accent-dark); }
-  .detail-count { font-size: 12.5px; color: #a98a92; margin-top: 2px; }
-  .detail-header-btns { display: flex; gap: 6px; flex-shrink: 0; }
-  .detail-del {
-    background: none; border: 1px solid #F0A0A8; color: #D97070; border-radius: 8px;
-    padding: 6px 10px; font-size: 11px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  .empty-state { text-align: center; color: #b89aa2; font-size: 16px; margin-top: 40px; }
+
+  /* ---- 명단 모달 / 설정 모달 공통 ---- */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.45);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10;
   }
-  .detail-close {
-    width: 30px; height: 30px; border-radius: 50%; border: none; background: #FDF3F6;
-    color: var(--accent-dark); font-size: 14px; cursor: pointer; font-family: inherit;
+  .modal-backdrop.open { display: flex; }
+  .modal-card {
+    background: var(--white); border-radius: 24px; padding: 20px 22px; width: 100%; max-width: 420px;
+    max-height: 96vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
   }
-  .entry-row {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 7px 0; font-size: 12.5px;
+  .modal-card.wide { max-width: 780px; }
+  .modal-card h2 { text-align: center; font-size: 18px; margin: 0 0 4px; color: var(--accent-dark); }
+  .modal-card .modal-time { text-align: center; font-size: 13px; color: #a98a92; margin-bottom: 10px; }
+  .modal-card label { display: block; font-size: 13px; font-weight: 500; margin: 8px 0 3px; }
+  .modal-card input {
+    width: 100%; padding: 12px; border: 1.5px solid var(--lavender); border-radius: 12px;
+    font-family: inherit; font-size: 16px; outline: none;
   }
-  .entry-row + .entry-row { border-top: 1px solid #FDF3F6; }
-  .entry-fields { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
-  .entry-field { display: flex; align-items: center; gap: 5px; }
-  .entry-field .field-label { color: #c9a8b0; font-size: 10.5px; }
+  .modal-card input:focus { border-color: var(--accent); }
+  .modal-hint { font-size: 11px; color: #b89aa2; margin: -2px 0 5px; line-height: 1.35; }
+  .modal-btns { display: flex; gap: 10px; margin-top: 14px; }
+  .modal-btns button {
+    flex: 1; padding: 13px; border: none; border-radius: 14px; font-family: inherit;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .btn-cancel { background: #FDF3F6; color: var(--accent-dark); }
+  .btn-danger { background: #FDEDED; color: #D97070; }
+  .btn-confirm { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; }
+  .btn-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
+  .modal-status { text-align: center; font-size: 13px; margin-top: 8px; min-height: 16px; color: #D97070; }
+
+  /* ---- 명단 표 (구분 / 성명 / 소속) ---- */
+  .entry-table-wrap { max-height: 38vh; overflow-y: auto; margin-top: 10px; border: 1px solid var(--lavender); border-radius: 12px; }
+  .entry-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .entry-table th {
+    position: sticky; top: 0; text-align: left; padding: 8px 10px; background: #FDF3F6;
+    color: var(--accent-dark); font-size: 11px;
+  }
+  .entry-table td { padding: 7px 10px; border-top: 1px solid #FDF3F6; vertical-align: middle; }
+  .entry-table tr:first-child td { border-top: none; }
   .entry-cat-badge {
     display: inline-block; font-size: 10px; font-weight: 700; color: var(--accent-dark);
     background: #FDF3F6; border-radius: 8px; padding: 2px 7px; white-space: nowrap;
   }
-  .entry-name { font-weight: 700; }
   .entry-thumb {
     max-height: 26px; max-width: 90px; vertical-align: middle; border-radius: 4px;
     border: 1px solid var(--lavender); background: white;
   }
   .entry-lazy { color: #c9a8b0; font-size: 11px; }
   .entry-del { background: none; border: none; color: #D97070; font-size: 11px; cursor: pointer; text-decoration: underline; white-space: nowrap; }
-  .empty-entries { font-size: 12px; color: #c9a8b0; padding: 4px 0; }
+  .empty-entries-row td { text-align: center; color: #c9a8b0; font-size: 12px; padding: 14px 0; }
 
   /* ---- 관리자 특수 상황 추가 (이름 텍스트 + 소속은 선택 + 서명은 필수) ---- */
   .quick-add-panel { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--lavender); }
   .quick-add-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin-bottom: 2px; }
-  .modal-hint { font-size: 11px; color: #b89aa2; margin: 2px 0 0; line-height: 1.4; }
-  .quick-add-panel input {
-    width: 100%; margin-top: 8px; padding: 10px 12px; border: 1.5px solid var(--lavender); border-radius: 10px;
-    font-family: inherit; font-size: 13px; outline: none;
-  }
   .quick-add-cats { display: flex; gap: 6px; margin-top: 8px; }
   .quick-cat-btn {
     flex: 1; padding: 8px 4px; border-radius: 8px; border: 1.5px solid var(--lavender);
@@ -169,10 +146,59 @@
   }
   .qa-status { text-align: center; font-size: 12px; margin-top: 6px; min-height: 14px; color: #D97070; }
 
-  .empty-msg { text-align: center; color: #c9a8b0; font-size: 13px; padding: 20px 0; }
-  .reset-row { text-align: center; margin-top: 14px; }
-  .reset-row button { background: none; border: none; color: #D97070; font-size: 12px; text-decoration: underline; cursor: pointer; }
+  .conn-dot {
+    position: fixed; top: 14px; right: 16px; width: 8px; height: 8px; border-radius: 50%; background: #ccc;
+  }
+  .conn-dot.on { background: var(--ok); }
   .hidden { display: none !important; }
+
+  /* ---- 우측 하단 플로팅 설정 버튼 ---- */
+  .settings-fab {
+    position: fixed; bottom: 16px; right: 16px; z-index: 20;
+    display: flex; align-items: center; gap: 6px; padding: 12px 18px; border-radius: 30px; border: none;
+    background: var(--white); color: var(--accent-dark); font-family: inherit; font-size: 13px; font-weight: 700;
+    box-shadow: 0 4px 14px var(--shadow); cursor: pointer;
+  }
+  .settings-fab:active { transform: scale(0.96); }
+
+  .settings-row { display: flex; gap: 10px; }
+  .settings-row > div { flex: 1; }
+  .settings-status { text-align: center; font-size: 13px; margin-top: 10px; min-height: 16px; color: #a98a92; }
+  .settings-status.err { color: #D97070; }
+  .settings-current {
+    margin-top: 14px; padding: 10px 12px; background: #FDF3F6; border-radius: 10px;
+    font-size: 12.5px; color: var(--accent-dark); font-weight: 700; text-align: center;
+  }
+  .settings-save {
+    margin-top: 8px; width: 100%; padding: 10px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white;
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .settings-slot-label { font-size: 12px; font-weight: 500; margin: 16px 0 6px; color: var(--text); }
+  .settings-slot-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .settings-slot-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 9px 11px; border: 1.5px solid var(--lavender); border-radius: 10px;
+    background: #FDFBFF; font-size: 12.5px;
+  }
+  .settings-slot-row.now { border-color: var(--accent-dark); background: #FDF3F6; }
+  .settings-slot-time { font-weight: 700; }
+  .settings-slot-count { color: #a98a92; margin-left: 6px; }
+  .settings-slot-del {
+    background: none; border: 1px solid #F0A0A8; color: #D97070; border-radius: 8px;
+    padding: 4px 9px; font-size: 11px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .settings-slot-empty { text-align: center; color: #c9a8b0; font-size: 12px; padding: 8px 0; }
+  .settings-lock-link {
+    display: block; margin: 14px auto 0; text-align: center; font-size: 11.5px; color: #c9a8b0;
+    background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit;
+  }
+  .settings-danger-link {
+    display: block; margin: 10px auto 0; text-align: center; font-size: 11.5px; color: #D97070;
+    background: none; border: none; cursor: pointer; text-decoration: underline; font-family: inherit;
+  }
+  .remember-row { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; }
+  .remember-row label { display: inline; font-size: 12px; color: #a98a92; margin: 0; }
 
   .home-fab {
     position: fixed; top: 12px; left: 12px; z-index: 5;
@@ -186,71 +212,29 @@
 </head>
 <body>
 <a href="./index.html" class="home-fab" title="메인으로">🏠</a>
-<div class="wrap">
-  <div class="card">
-    <h1>🚌 VR체험버스 대기열 - 관리</h1>
-    <p class="subtitle" id="dateLabel">-</p>
-    <div class="conn-status"><span class="dot" id="connDot"></span><span id="connText">연결 중...</span></div>
-    <div class="kiosk-link"><a href="./vr_queue_kiosk.html" target="_blank">🖥 현장용 큰 화면(키오스크) 열기 →</a></div>
+<div class="screen">
+  <div class="clock" id="clock">--:--</div>
+  <div class="headline">🚌 VR체험버스 대기열 관리</div>
+  <div class="admin-stats" id="adminStats">-</div>
+  <div class="kiosk-link"><a href="./vr_queue_kiosk.html" target="_blank">🖥 현장용 큰 화면(키오스크) 열기 →</a></div>
+  <div class="slots-grid" id="slotsGrid"></div>
+  <div class="empty-state hidden" id="emptyState">아직 시간대가 설정되지 않았어요. 우측 하단 "⚙️ 관리"에서 만들어주세요.</div>
+</div>
 
-    <button class="settings-toggle" onclick="toggleAdminKeyPanel()">🔑 이미지 조회 키 <span id="adminKeyStatus">(미설정)</span></button>
-    <div class="settings-panel" id="adminKeyPanel">
-      <div class="inner">
-        <label for="adminKeyInput">관리자 키</label>
-        <input type="password" id="adminKeyInput" placeholder="관리자 키 입력" onkeydown="if(event.key==='Enter') saveAdminKey()">
-        <button class="settings-save" onclick="saveAdminKey()">저장</button>
-        <div class="settings-hint">명단에서 손글씨 이미지를 보거나, 특수 상황에 관리자가 직접 등록할 때 필요해요. (다른 관리 화면에 저장한 키가 있으면 자동으로 적용돼요)</div>
-      </div>
+<div class="conn-dot" id="connDot"></div>
+
+<!-- 시간대별 명단 모달 -->
+<div class="modal-backdrop" id="entryBackdrop" onclick="if(event.target===this) closeDetail()">
+  <div class="modal-card wide">
+    <h2 id="detailTime">-</h2>
+    <div class="modal-time" id="detailCount"></div>
+
+    <div class="entry-table-wrap">
+      <table class="entry-table">
+        <thead><tr><th>구분</th><th>성명</th><th>소속</th><th></th></tr></thead>
+        <tbody id="detailEntries"></tbody>
+      </table>
     </div>
-
-    <button class="settings-toggle" onclick="toggleSettings()">⚙️ 시간대 설정</button>
-    <div class="settings-panel" id="settingsPanel">
-      <div class="inner">
-        <div class="settings-row">
-          <div><label for="startTime">시작 시간</label><input type="time" id="startTime" value="09:00"></div>
-          <div><label for="endTime">종료 시간</label><input type="time" id="endTime" value="17:00"></div>
-        </div>
-        <div class="settings-row">
-          <div><label for="intervalMinutes">회차 간격(분)</label><input type="number" id="intervalMinutes" value="20" min="5" step="5"></div>
-          <div><label for="capacity">회차당 정원</label><input type="number" id="capacity" value="10" min="1"></div>
-        </div>
-        <div class="settings-row">
-          <div><label for="lunchStart">점심시간 시작 (선택)</label><input type="time" id="lunchStart"></div>
-          <div><label for="lunchEnd">점심시간 종료 (선택)</label><input type="time" id="lunchEnd"></div>
-        </div>
-        <button class="settings-save" onclick="applySettings()">시간대 생성 / 다시 만들기</button>
-        <div class="settings-hint">⚠️ 다시 만들면 지금까지 등록된 명단이 전부 초기화돼요. 점심시간은 비워두면 종일 시간대로 생성돼요.</div>
-
-        <label for="addSlotTime" style="margin-top:16px;">시간대 하나만 추가 (기존 명단은 그대로 둠)</label>
-        <div class="settings-row">
-          <div><input type="time" id="addSlotTime"></div>
-          <div><input type="number" id="addSlotCapacity" value="10" min="1" placeholder="정원"></div>
-        </div>
-        <button class="settings-save" onclick="addSingleSlot()">이 시간대만 추가</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card" id="mainCard">
-    <div class="performance-banner" id="performanceBanner"></div>
-    <div class="summary" id="summaryRow"></div>
-    <div class="slots-grid" id="slotsGrid"></div>
-    <div class="empty-msg hidden" id="emptyMsg">아직 시간대가 설정되지 않았어요. 위 "⚙️ 시간대 설정"에서 만들어주세요.</div>
-    <div class="reset-row"><button onclick="resetAll()">전체 명단 초기화</button></div>
-  </div>
-
-  <div class="card hidden" id="detailCard">
-    <div class="detail-header">
-      <div>
-        <div class="detail-time" id="detailTime">-</div>
-        <div class="detail-count" id="detailCount"></div>
-      </div>
-      <div class="detail-header-btns">
-        <button type="button" class="detail-del" onclick="removeSelectedSlot()">시간대 삭제</button>
-        <button type="button" class="detail-close" onclick="closeDetail()">✕</button>
-      </div>
-    </div>
-    <div id="detailEntries"></div>
 
     <div class="quick-add-panel">
       <div class="quick-add-title">⚠️ 특수 상황 추가 (관리자)</div>
@@ -271,6 +255,67 @@
       <button type="button" class="add-btn" onclick="submitQuickAdd()">+ 추가</button>
       <div class="qa-status" id="qaStatus"></div>
     </div>
+
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeDetail()">닫기</button>
+      <button class="btn-danger" onclick="removeSelectedSlot()">이 시간대 삭제</button>
+    </div>
+  </div>
+</div>
+
+<button type="button" class="settings-fab" onclick="openSettingsModal()">⚙️ 관리</button>
+
+<div class="modal-backdrop" id="settingsBackdrop" onclick="if(event.target===this) closeSettingsModal()">
+  <div class="modal-card">
+    <div id="settingsLoginArea">
+      <h2>🔐 관리자 확인</h2>
+      <div class="modal-time">시간대 설정을 바꾸거나 명단 이미지를 보려면 관리자 키가 필요해요.</div>
+      <label for="settingsKeyInput">관리자 키</label>
+      <input type="password" id="settingsKeyInput" placeholder="관리자 키 입력" onkeydown="if(event.key==='Enter') validateSettingsKey()">
+      <div class="remember-row">
+        <input type="checkbox" id="settingsRememberKey" style="width:14px;height:14px;">
+        <label for="settingsRememberKey">이 기기에 기억하기</label>
+      </div>
+      <div class="settings-status" id="settingsLoginStatus"></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeSettingsModal()">닫기</button>
+        <button class="btn-confirm" onclick="validateSettingsKey()">확인</button>
+      </div>
+    </div>
+    <div id="settingsConfigArea" class="hidden">
+      <h2>⚙️ 시간대 설정</h2>
+      <div class="modal-time">오늘 VR체험버스 시간대를 만들거나 다시 설정해요.</div>
+      <div class="settings-row">
+        <div><label for="cfgStartTime">시작 시간</label><input type="time" id="cfgStartTime" value="09:00"></div>
+        <div><label for="cfgEndTime">종료 시간</label><input type="time" id="cfgEndTime" value="17:00"></div>
+      </div>
+      <div class="settings-row">
+        <div><label for="cfgInterval">회차 간격(분)</label><input type="number" id="cfgInterval" value="20" min="5" step="5"></div>
+        <div><label for="cfgCapacity">회차당 정원</label><input type="number" id="cfgCapacity" value="10" min="1"></div>
+      </div>
+      <div class="settings-row">
+        <div><label for="cfgLunchStart">점심시간 시작 (선택)</label><input type="time" id="cfgLunchStart"></div>
+        <div><label for="cfgLunchEnd">점심시간 종료 (선택)</label><input type="time" id="cfgLunchEnd"></div>
+      </div>
+      <div class="settings-current" id="settingsCurrent">시간대 아직 없음</div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeSettingsModal()">닫기</button>
+        <button class="btn-confirm" onclick="applySettingsConfig()">시간대 생성 / 다시 만들기</button>
+      </div>
+
+      <div class="settings-slot-label">시간대 하나만 추가 (기존 명단은 그대로 둠)</div>
+      <div class="settings-row">
+        <div><label for="addSlotTime">시간</label><input type="time" id="addSlotTime"></div>
+        <div><label for="addSlotCapacity">정원</label><input type="number" id="addSlotCapacity" value="10" min="1"></div>
+      </div>
+      <button class="settings-save" onclick="addSingleSlot()">이 시간대만 추가</button>
+
+      <div class="settings-slot-label">현재 시간대 (개별 삭제 가능)</div>
+      <div class="settings-slot-list" id="settingsSlotList"></div>
+
+      <button type="button" class="settings-danger-link" onclick="resetAll()">🗑️ 오늘 명단 전체 초기화</button>
+      <button type="button" class="settings-lock-link" onclick="lockSettings()">🔒 다시 잠그기</button>
+    </div>
   </div>
 </div>
 
@@ -288,95 +333,55 @@
   let currentData = { slots: [] };
   let selectedSlotIndex = null;
 
-  document.getElementById('dateLabel').textContent = `${queueDate} 기준`;
-
-  // ---------- 이미지 조회용 관리자 키 (다른 관리 화면과 localStorage를 공유해서 한 번만 넣으면 됨) ----------
-  let adminKey = localStorage.getItem('admin_key') || '';
-  const thumbCache = {}; // `${rowKey}:${field}` -> dataUrl(문자열) | '' (없음) | 'unauthorized'
-  updateAdminKeyStatus();
-
-  function updateAdminKeyStatus() {
-    document.getElementById('adminKeyStatus').textContent = adminKey ? '(설정됨)' : '(미설정)';
-  }
-  function toggleAdminKeyPanel() {
-    document.getElementById('adminKeyPanel').classList.toggle('open');
-    document.getElementById('adminKeyInput').value = adminKey;
-  }
-  function saveAdminKey() {
-    const key = document.getElementById('adminKeyInput').value.trim();
-    adminKey = key;
-    if (key) localStorage.setItem('admin_key', key);
-    else localStorage.removeItem('admin_key');
-    Object.keys(thumbCache).forEach((k) => delete thumbCache[k]); // 키가 바뀌었으니 이전에 캐시된 결과(권한 없음 등)를 지우고 다시 시도
-    updateAdminKeyStatus();
-    document.getElementById('adminKeyPanel').classList.remove('open');
-    renderSlots();
-  }
-
-  function openWebSocket() {
-    setConnStatus(false, '연결 중...');
-    ws = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${queueDate}`);
-    ws.onopen = () => setConnStatus(true, '실시간 연결됨');
-    ws.onclose = () => { setConnStatus(false, '재연결 중...'); setTimeout(openWebSocket, 2000); };
-    ws.onerror = () => setConnStatus(false, '연결 오류');
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'state') { currentData = msg.data; renderSlots(); }
-    };
-  }
-  openWebSocket();
-  setInterval(renderSlots, 30000); // '지금' 배지 갱신용
-
-  function setConnStatus(on, text) {
-    document.getElementById('connDot').className = 'dot ' + (on ? 'on' : 'off');
-    document.getElementById('connText').textContent = text;
-  }
-  function send(payload) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload)); }
-
-  function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('open'); }
-
-  function applySettings() {
-    const startTime = document.getElementById('startTime').value || '09:00';
-    const endTime = document.getElementById('endTime').value || '17:00';
-    const intervalMinutes = Number(document.getElementById('intervalMinutes').value) || 20;
-    const capacity = Number(document.getElementById('capacity').value) || 10;
-    const lunchStart = document.getElementById('lunchStart').value || null;
-    const lunchEnd = document.getElementById('lunchEnd').value || null;
-    if (currentData.slots.length > 0 && !confirm('시간대를 다시 만들면 지금까지 등록된 명단이 모두 초기화돼요. 계속할까요?')) return;
-    send({ type: 'configure', startTime, endTime, intervalMinutes, capacity, lunchStart, lunchEnd });
-    document.getElementById('settingsPanel').classList.remove('open');
-  }
-
-  // 전체를 다시 만들지 않고 특정 시간대 하나만 끼워 넣음 — 이미 만들어둔 시간대 명단이 지워지지 않음
-  function addSingleSlot() {
-    const time = document.getElementById('addSlotTime').value;
-    const capacity = Number(document.getElementById('addSlotCapacity').value) || 10;
-    if (!time) { alert('추가할 시간을 선택해주세요.'); return; }
-    if ((currentData.slots || []).some((s) => s.time === time)) {
-      alert('이미 같은 시간대가 있어요.');
-      return;
-    }
-    send({ type: 'addSlot', time, capacity });
-    document.getElementById('addSlotTime').value = '';
-  }
-
-  function currentSlotIndex() {
+  function updateClock() {
     const now = new Date();
-    const nowMin = now.getHours() * 60 + now.getMinutes();
+    document.getElementById('clock').textContent =
+      `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  }
+  updateClock();
+  setInterval(() => { updateClock(); renderSlots(); }, 15000);
+
+  function minutesNow() {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+  function currentSlotIndex(slots) {
+    const nowMin = minutesNow();
     let best = -1;
-    currentData.slots.forEach((s, i) => {
+    slots.forEach((s, i) => {
       const [h, m] = s.time.split(':').map(Number);
       if (h * 60 + m <= nowMin) best = i;
     });
     return best;
   }
 
+  // ---------- 관리자 키 (설정/이미지 조회/특수 추가에 공통으로 씀 — 다른 관리 화면과 localStorage 공유) ----------
+  let adminKey = '';
+  const thumbCache = {}; // `${rowKey}:${field}` -> dataUrl(문자열) | '' (없음) | 'unauthorized'
+
+  function openWebSocket() {
+    setConnStatus(false);
+    ws = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${queueDate}`);
+    ws.onopen = () => setConnStatus(true);
+    ws.onclose = () => { setConnStatus(false); setTimeout(openWebSocket, 2000); };
+    ws.onerror = () => setConnStatus(false);
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'state') { currentData = msg.data; renderSlots(); }
+    };
+  }
+  openWebSocket();
+
+  function setConnStatus(on) {
+    document.getElementById('connDot').className = 'conn-dot ' + (on ? 'on' : '');
+  }
+  function send(payload) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload)); }
+
   function deriveSoso(e) {
     if (e.재직자여부 === '재직자') return e.회사명 || '';
     if (e.재직자여부 === '미래인재') return e.학교명 || '';
     return '';
   }
-
   // 실적 집계 대상(재직자/미래인재)만 구분해서 셀 때 씀 — 일반시민은 실적에 안 들어감
   const needsAffilCat = (cat) => cat === '재직자' || cat === '미래인재';
 
@@ -392,42 +397,44 @@
     return `<span class="entry-lazy q-lazy-thumb" data-rowkey="${rowKey}" data-field="${field}">불러오는 중…</span>`;
   }
 
+  // 하루 전체 시간대를 다 보여줌 — 키오스크와 달리 지난 시간대도 항상 눌러서 관리할 수 있음
   function renderSlots() {
     const grid = document.getElementById('slotsGrid');
-    const emptyMsg = document.getElementById('emptyMsg');
+    const emptyState = document.getElementById('emptyState');
     const slots = currentData.slots || [];
 
     if (slots.length === 0) {
       grid.innerHTML = '';
-      emptyMsg.classList.remove('hidden');
-      document.getElementById('summaryRow').innerHTML = '';
-      document.getElementById('performanceBanner').innerHTML = '';
+      emptyState.classList.remove('hidden');
+      document.getElementById('adminStats').innerHTML = '-';
       closeDetail();
       return;
     }
-    emptyMsg.classList.add('hidden');
+    emptyState.classList.add('hidden');
 
-    const nowIdx = currentSlotIndex();
+    if (!document.getElementById('settingsConfigArea').classList.contains('hidden')) {
+      updateSettingsCurrent();
+      renderSettingsSlotList();
+    }
+
+    const nowIdx = currentSlotIndex(slots);
     const totalCount = slots.reduce((s, x) => s + x.entries.length, 0);
     const totalCapacity = slots.reduce((s, x) => s + x.capacity, 0);
     const performanceCount = slots.reduce(
       (s, x) => s + x.entries.filter((e) => needsAffilCat(e.재직자여부)).length, 0
     );
-    document.getElementById('performanceBanner').innerHTML =
-      `<div class="label">오늘 실적 (재직자 + 미래인재)</div><div class="num">${performanceCount}명</div>`;
-    document.getElementById('summaryRow').innerHTML = `<span>오늘 누적 <b>${totalCount}</b>명</span><span>전체 정원 <b>${totalCapacity}</b>명</span>`;
+    document.getElementById('adminStats').innerHTML =
+      `오늘 실적(재직자+미래인재) <b>${performanceCount}</b>명<div class="sub">오늘 누적 ${totalCount}명 · 전체 정원 ${totalCapacity}명</div>`;
 
-    // 키오스크 화면과 똑같이 시간대를 큰 버튼들로 배열 — 눌러야 그 시간대 명단만 아래에 표시됨
     grid.innerHTML = slots.map((s, i) => {
       const isFull = s.entries.length >= s.capacity;
       const isCurrent = i === nowIdx;
-      const isSelected = i === selectedSlotIndex;
       return `
-        <button type="button" class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isSelected ? 'selected' : ''}" onclick="selectSlot(${i})">
+        <div class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''}" role="button" tabindex="0" onclick="selectSlot(${i})">
           <button type="button" class="slot-btn-del" onclick="event.stopPropagation(); removeSlot(${i}, '${s.time}')" title="이 시간대 삭제">✕</button>
-          <div class="slot-time">${s.time}${isCurrent ? '<span class="slot-now-badge">지금</span>' : ''}</div>
-          <div class="slot-count"><b>${s.entries.length}</b> / ${s.capacity}명</div>
-        </button>
+          <div class="time">${s.time}${isCurrent ? '<div class="now-badge">지금 시간대</div>' : ''}</div>
+          <div class="avail"><b>${s.entries.length}</b><span> / ${s.capacity}명</span></div>
+        </div>
       `;
     }).join('');
 
@@ -451,16 +458,14 @@
             ? escapeHtml(soso)
             : (needsAffilCat(cat) && e.rowKey ? lazyThumb(e.rowKey, '소속이미지') : (needsAffilCat(cat) ? '-' : ''));
           return `
-          <div class="entry-row">
-            <div class="entry-fields">
-              ${cat ? `<span class="entry-cat-badge">${escapeHtml(cat)}</span>` : ''}
-              <span class="entry-field"><span class="field-label">성명</span><span class="entry-name">${nameCell}</span></span>
-              ${sosoCell ? `<span class="entry-field"><span class="field-label">소속</span>${sosoCell}</span>` : ''}
-            </div>
-            <button class="entry-del" onclick="removeEntry(${i}, ${ei})">삭제</button>
-          </div>`;
+          <tr>
+            <td>${cat ? `<span class="entry-cat-badge">${escapeHtml(cat)}</span>` : '-'}</td>
+            <td>${nameCell}</td>
+            <td>${sosoCell || '-'}</td>
+            <td><button class="entry-del" onclick="removeEntry(${i}, ${ei})">삭제</button></td>
+          </tr>`;
         }).join('')
-      : '<div class="empty-entries">아직 등록된 사람이 없어요.</div>';
+      : '<tr class="empty-entries-row"><td colspan="4">아직 등록된 사람이 없어요.</td></tr>';
     loadPendingThumbs();
   }
 
@@ -472,15 +477,15 @@
     qaCat = '';
     document.querySelectorAll('#qaCats .quick-cat-btn').forEach((btn) => btn.classList.remove('active'));
     document.getElementById('qaStatus').textContent = '';
-    document.getElementById('detailCard').classList.remove('hidden');
+    document.getElementById('entryBackdrop').classList.add('open');
     renderSlots();
-    requestAnimationFrame(initOrResizeQaSigPad);
-    document.getElementById('detailCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    initOrResizeQaSigPad();
+    clearQaSig();
   }
 
   function closeDetail() {
     selectedSlotIndex = null;
-    document.getElementById('detailCard').classList.add('hidden');
+    document.getElementById('entryBackdrop').classList.remove('open');
   }
 
   function removeSelectedSlot() {
@@ -490,7 +495,7 @@
     removeSlot(selectedSlotIndex, slot.time);
   }
 
-  // 이 시간대 명단이 열려있는 동안 아직 못 불러온 이미지만, 한 명씩(최대 3개씩 동시) 불러옴
+  // 명단 모달이 열려있는 동안 아직 못 불러온 이미지만, 한 명씩(최대 3개씩 동시) 불러옴
   async function loadPendingThumbs() {
     const els = Array.from(document.querySelectorAll('#detailEntries .q-lazy-thumb'));
     if (els.length === 0) return;
@@ -546,11 +551,15 @@
   const qaSigPlaceholder = document.getElementById('qaSigPlaceholder');
 
   function initOrResizeQaSigPad() {
-    if (qaSigCanvas.offsetWidth === 0) return; // 아직 detailCard가 숨겨져 있어서 크기를 잴 수 없음
+    if (qaSigCanvas.offsetWidth === 0) return; // 아직 모달이 숨겨져 있어서 크기를 잴 수 없음
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const targetW = Math.round(qaSigCanvas.offsetWidth * ratio);
+    const targetH = Math.round(qaSigCanvas.offsetHeight * ratio);
+    // 실제 크기가 안 바뀌었으면 다시 그리지 않음 (불필요한 지움+복원이 선을 미세하게 울퉁불퉁하게 만듦)
+    if (qaSigPad && qaSigCanvas.width === targetW && qaSigCanvas.height === targetH) return;
     const savedData = qaSigPad ? qaSigPad.toData() : null;
-    qaSigCanvas.width = qaSigCanvas.offsetWidth * ratio;
-    qaSigCanvas.height = qaSigCanvas.offsetHeight * ratio;
+    qaSigCanvas.width = targetW;
+    qaSigCanvas.height = targetH;
     qaSigCanvas.getContext('2d').scale(ratio, ratio);
     if (!qaSigPad) {
       qaSigPad = new SignaturePad(qaSigCanvas, {
@@ -610,7 +619,7 @@
     if (!name) { statusEl.textContent = '이름을 입력해주세요.'; statusEl.style.color = '#D97070'; return; }
     if (!qaCat) { statusEl.textContent = '재직자 여부를 선택해주세요.'; statusEl.style.color = '#D97070'; return; }
     if (!qaSigPad || qaSigPad.isEmpty()) { statusEl.textContent = '서명은 꼭 받아야 해요.'; statusEl.style.color = '#D97070'; return; }
-    if (!adminKey) { statusEl.textContent = '위쪽 "🔑 이미지 조회 키"에 관리자 키를 먼저 입력해주세요.'; statusEl.style.color = '#D97070'; return; }
+    if (!adminKey) { statusEl.textContent = '먼저 우측 하단 "⚙️ 관리"에서 관리자 키를 입력해주세요.'; statusEl.style.color = '#D97070'; return; }
     if (selectedSlotIndex === null) return;
     const slot = currentData.slots[selectedSlotIndex];
     if (slot && slot.entries.length >= slot.capacity) {
@@ -686,6 +695,125 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- 설정 모달 (우측 하단 플로팅 버튼, 관리자 키 필요) ----------
+  function openSettingsModal() {
+    document.getElementById('settingsBackdrop').classList.add('open');
+    if (adminKey) { showSettingsConfig(); return; }
+    const saved = localStorage.getItem('admin_key');
+    if (saved) {
+      document.getElementById('settingsKeyInput').value = saved;
+      document.getElementById('settingsRememberKey').checked = true;
+      validateSettingsKey();
+    } else {
+      showSettingsLogin();
+    }
+  }
+  function closeSettingsModal() {
+    document.getElementById('settingsBackdrop').classList.remove('open');
+  }
+  function showSettingsLogin() {
+    document.getElementById('settingsLoginArea').classList.remove('hidden');
+    document.getElementById('settingsConfigArea').classList.add('hidden');
+    document.getElementById('settingsKeyInput').focus();
+  }
+  function showSettingsConfig() {
+    document.getElementById('settingsLoginArea').classList.add('hidden');
+    document.getElementById('settingsConfigArea').classList.remove('hidden');
+    updateSettingsCurrent();
+    renderSettingsSlotList();
+  }
+  function lockSettings() {
+    adminKey = '';
+    document.getElementById('settingsLoginStatus').textContent = '';
+    showSettingsLogin();
+  }
+
+  async function validateSettingsKey() {
+    const key = document.getElementById('settingsKeyInput').value.trim();
+    const statusEl = document.getElementById('settingsLoginStatus');
+    if (!key) { statusEl.textContent = '관리자 키를 입력해주세요.'; statusEl.className = 'settings-status err'; return; }
+    statusEl.textContent = '확인 중...';
+    statusEl.className = 'settings-status';
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/rows?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(key)}`);
+      if (res.status === 401) {
+        statusEl.textContent = '관리자 키가 올바르지 않아요.';
+        statusEl.className = 'settings-status err';
+        return;
+      }
+      if (!res.ok) { statusEl.textContent = '확인 중 오류가 발생했어요.'; statusEl.className = 'settings-status err'; return; }
+      adminKey = key;
+      if (document.getElementById('settingsRememberKey').checked) localStorage.setItem('admin_key', key);
+      else localStorage.removeItem('admin_key');
+      Object.keys(thumbCache).forEach((k) => delete thumbCache[k]); // 키가 새로 확인됐으니 이전에 캐시된 결과를 지우고 다시 시도
+      statusEl.textContent = '';
+      showSettingsConfig();
+      if (selectedSlotIndex !== null) renderSlots(); // 명단 모달이 열려있었으면 이미지도 바로 다시 불러옴
+    } catch (err) {
+      statusEl.textContent = '서버 연결에 실패했어요.';
+      statusEl.className = 'settings-status err';
+    }
+  }
+
+  function updateSettingsCurrent() {
+    const el = document.getElementById('settingsCurrent');
+    const slots = currentData.slots || [];
+    if (slots.length === 0) { el.textContent = '시간대 아직 없음'; return; }
+    const totalCount = slots.reduce((s, x) => s + x.entries.length, 0);
+    const totalCapacity = slots.reduce((s, x) => s + x.capacity, 0);
+    el.textContent = `${slots[0].time} ~ ${slots[slots.length - 1].time} · ${slots.length}개 시간대 · 누적 ${totalCount}/${totalCapacity}명`;
+  }
+
+  function renderSettingsSlotList() {
+    const listEl = document.getElementById('settingsSlotList');
+    const slots = currentData.slots || [];
+    if (slots.length === 0) {
+      listEl.innerHTML = '<div class="settings-slot-empty">아직 시간대가 없어요.</div>';
+      return;
+    }
+    const nowIdx = currentSlotIndex(slots);
+    listEl.innerHTML = slots.map((s, i) => `
+      <div class="settings-slot-row ${i === nowIdx ? 'now' : ''}">
+        <span><span class="settings-slot-time">${s.time}</span><span class="settings-slot-count">${s.entries.length}/${s.capacity}명</span></span>
+        <button type="button" class="settings-slot-del" onclick="removeSettingsSlot(${i}, '${s.time}')">삭제</button>
+      </div>
+    `).join('');
+  }
+
+  function removeSettingsSlot(index, time) {
+    const slot = currentData.slots[index];
+    const count = slot ? slot.entries.length : 0;
+    const warn = count > 0 ? `\n(등록된 ${count}명도 같이 삭제돼요)` : '';
+    if (!confirm(`${time} 시간대를 통째로 삭제할까요?${warn}`)) return;
+    send({ type: 'removeSlot', slotIndex: index });
+  }
+
+  // 전체를 다시 만들지 않고 특정 시간대 하나만 끼워 넣음 — 이미 만들어둔 시간대 명단이 지워지지 않음
+  function addSingleSlot() {
+    const time = document.getElementById('addSlotTime').value;
+    const capacity = Number(document.getElementById('addSlotCapacity').value) || 10;
+    if (!time) { alert('추가할 시간을 선택해주세요.'); return; }
+    if ((currentData.slots || []).some((s) => s.time === time)) {
+      alert('이미 같은 시간대가 있어요.');
+      return;
+    }
+    send({ type: 'addSlot', time, capacity });
+    document.getElementById('addSlotTime').value = '';
+  }
+
+  function applySettingsConfig() {
+    const startTime = document.getElementById('cfgStartTime').value || '09:00';
+    const endTime = document.getElementById('cfgEndTime').value || '17:00';
+    const intervalMinutes = Number(document.getElementById('cfgInterval').value) || 20;
+    const capacity = Number(document.getElementById('cfgCapacity').value) || 10;
+    const lunchStart = document.getElementById('cfgLunchStart').value || null;
+    const lunchEnd = document.getElementById('cfgLunchEnd').value || null;
+    if ((currentData.slots || []).length > 0 &&
+        !confirm('시간대를 다시 만들까요? 같은 시간이 겹치면 그 명단은 유지되고, 새 범위 밖으로 벗어난 시간대의 명단만 사라져요.')) return;
+    send({ type: 'configure', startTime, endTime, intervalMinutes, capacity, lunchStart, lunchEnd });
+    closeSettingsModal();
   }
 </script>
 </body>
