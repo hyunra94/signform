@@ -128,7 +128,6 @@
     color: #a98a92; margin: -2px 0 6px; cursor: pointer;
   }
   .same-affil-check input { width: 14px; height: 14px; }
-  .same-affil-check:has(input:disabled) { color: #d8b8c0; cursor: default; }
   .modal-btns { display: flex; gap: 10px; margin-top: 14px; }
   .modal-btns button {
     flex: 1; padding: 13px; border: none; border-radius: 14px; font-family: inherit;
@@ -247,6 +246,10 @@
         <div class="form-col">
           <label>재직자 여부</label>
           <p class="modal-hint">재직 또는 재학 여부를 선택해주세요. 해당 없으면 일반 시민을 골라주세요.</p>
+          <label class="same-affil-check">
+            <input type="checkbox" id="sameAffilCheck" onchange="onSameAffilToggle()">
+            이전 사람과 소속 동일 (체크해두면 재직자 여부만 골라도 소속이 자동으로 채워져요)
+          </label>
           <div class="cat-row">
             <button type="button" class="cat-btn" id="catBtn-재직자" onclick="selectCat('재직자')">재직자</button>
             <button type="button" class="cat-btn" id="catBtn-직업계고" onclick="selectCat('직업계고')">직업계고</button>
@@ -257,10 +260,6 @@
           <div class="sub-field" id="affilField">
             <label>소속</label>
             <p class="modal-hint" id="affilHint">재직자·직업계고·대학생을 고르면 여기에 소속을 적어주세요.</p>
-            <label class="same-affil-check">
-              <input type="checkbox" id="sameAffilCheck" onchange="onSameAffilToggle()" disabled>
-              이전 사람과 소속 동일
-            </label>
             <div class="pad-wrap">
               <canvas id="affil-pad"></canvas>
               <span class="pad-placeholder" id="affilPlaceholder">소속 ✍️</span>
@@ -359,9 +358,31 @@
   let groupTargetCount = 1; // "몇 분이 함께 오셨나요?"로 미리 정한 인원 — 1이면 예전처럼 그만둘 때까지 계속 등록
   let lastCompanyData = null, lastSchoolData = null; // 같은 시간대에서 방금 전 사람이 쓴 소속(회사/학교) 손글씨 — 다음 사람 칸에 미리 채워줌
 
+  // 등록(checkin) 메시지가 와이파이 끊김 같은 일시적인 이유로 조용히 유실되지 않도록,
+  // 소켓이 닫혀있는 동안엔 보낼 메시지를 큐에 쌓아뒀다가 재연결되는 즉시 순서대로 흘려보냄.
+  // 새로고침/탭이 죽는 극단적인 경우까지 대비해 localStorage에도 같이 저장해둠
+  // (단, 실제 서명/신청 기록 자체는 이 큐와 무관하게 /submit 응답을 받아야만 성공 처리되므로
+  //  이 큐가 하는 일은 "대기열 화면의 인원수 집계"가 안 밀리게 하는 것 — 원본 기록은 항상 안전함).
+  const PENDING_QUEUE_KEY = `pending_queue_msgs_${queueDate}`;
+  function loadPendingMessages() {
+    try { return JSON.parse(localStorage.getItem(PENDING_QUEUE_KEY) || '[]'); } catch { return []; }
+  }
+  function savePendingMessages() {
+    try { localStorage.setItem(PENDING_QUEUE_KEY, JSON.stringify(pendingMessages)); } catch {}
+  }
+  let pendingMessages = loadPendingMessages();
+
+  function flushPendingMessages() {
+    if (!pendingMessages.length || !ws || ws.readyState !== WebSocket.OPEN) return;
+    const toSend = pendingMessages;
+    pendingMessages = [];
+    savePendingMessages();
+    toSend.forEach((m) => ws.send(JSON.stringify(m)));
+  }
+
   function openWebSocket() {
     ws = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${queueDate}`);
-    ws.onopen = () => document.getElementById('connDot').classList.add('on');
+    ws.onopen = () => { document.getElementById('connDot').classList.add('on'); flushPendingMessages(); };
     ws.onclose = () => { document.getElementById('connDot').classList.remove('on'); setTimeout(openWebSocket, 2000); };
     ws.onerror = () => document.getElementById('connDot').classList.remove('on');
     ws.onmessage = (event) => {
@@ -371,7 +392,14 @@
   }
   openWebSocket();
 
-  function send(payload) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload)); }
+  function send(payload) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(payload));
+    } else {
+      pendingMessages.push(payload);
+      savePendingMessages();
+    }
+  }
 
   function updateClock() {
     const now = new Date();
@@ -446,7 +474,6 @@
   // 직업계고/대학생은 UI 선택지일 뿐, 실제 저장되는 값은 '미래인재'로 합쳐짐
   const isFutureTalent = (value) => value === '직업계고' || value === '대학생';
   function selectCat(cat) {
-    const catChanged = cat !== selectedCat; // 이미 고른 칸을 또 눌러서 방금 손으로 고친 소속이 지워지는 일 방지
     selectedCat = cat;
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
       document.getElementById(`catBtn-${c}`).classList.toggle('active', c === cat);
@@ -455,25 +482,16 @@
     // 소속 칸은 항상 그 자리에 보이고(레이아웃이 안 흔들림), 필요 없을 때만 흐리게+터치 불가 처리
     document.getElementById('affilField').classList.toggle('show', needsAffil);
     document.getElementById('affilHint').textContent = cat === '재직자' ? '회사명을 아래 칸에 적어주세요.' : '학교명을 아래 칸에 적어주세요.';
-
-    const sameCheck = document.getElementById('sameAffilCheck');
-    if (!needsAffil) {
-      clearAffilPad();
-      sameCheck.checked = false;
-      sameCheck.disabled = true;
-    } else if (catChanged) {
-      // 종류(회사/학교)가 바뀌었으니 체크박스는 매번 새로 판단 — 같은 시간대에서 그 종류로 쓴
-      // 소속이 있을 때만 체크할 수 있게 하고, 기본은 꺼둠(직접 켜야만 이전 내용을 가져옴)
-      const cached = cat === '재직자' ? lastCompanyData : lastSchoolData;
-      sameCheck.checked = false;
-      sameCheck.disabled = !(cached && cached.length);
-      clearAffilPad();
-    }
+    applyAffilFromCheckbox();
   }
 
-  // "이전 사람과 소속 동일" 체크박스 — 켜면 방금 전 같은 종류(회사/학교)의 소속 손글씨를 그대로 가져오고,
-  // 끄면 비워서 직접 새로 쓸 수 있게 함
-  function onSameAffilToggle() {
+  // "이전 사람과 소속 동일" 체크박스 — 재직자 여부를 고를 때마다 매번 다시 체크할 필요 없이
+  // 한 번 켜두면 그 시간대에서 계속 켜진 채로 유지되고, 카테고리를 고르는 즉시 같은 종류(회사/학교)의
+  // 직전 소속 손글씨를 자동으로 채워줌. 끄면 그 즉시 비워서 새로 쓸 수 있음.
+  function applyAffilFromCheckbox() {
+    const needsAffil = selectedCat === '재직자' || isFutureTalent(selectedCat);
+    if (!needsAffil) { clearAffilPad(); return; }
+    if (!affilPad) return;
     const checked = document.getElementById('sameAffilCheck').checked;
     const cached = selectedCat === '재직자' ? lastCompanyData : lastSchoolData;
     if (checked && cached && cached.length) {
@@ -484,6 +502,7 @@
       clearAffilPad();
     }
   }
+  function onSameAffilToggle() { applyAffilFromCheckbox(); }
 
   let signaturePad = null, affilPad = null;
   const sigCanvas = document.getElementById('signature-pad');
@@ -586,6 +605,7 @@
     groupTargetCount = 1;
     lastCompanyData = null;
     lastSchoolData = null;
+    document.getElementById('sameAffilCheck').checked = false;
     checkinInProgress = false;
     document.getElementById('confirmBtn').disabled = false;
     document.getElementById('groupCount').classList.add('hidden');
@@ -755,9 +775,8 @@
     document.getElementById('affilField').classList.remove('show');
     ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => document.getElementById(`catBtn-${c}`).classList.remove('active'));
     document.getElementById('modalStatus').textContent = '';
-    const sameCheck = document.getElementById('sameAffilCheck');
-    sameCheck.checked = false;
-    sameCheck.disabled = true;
+    // "이전 사람과 소속 동일" 체크박스는 일부러 안 건드림 — 여러 명 등록하는 동안 계속
+    // 켜진 채로 유지돼서, 다음 사람도 재직자 여부만 고르면 소속이 자동으로 채워짐
     clearAffilPad();
     clearSignature();
   }

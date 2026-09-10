@@ -369,10 +369,32 @@
   let adminKey = '';
   const thumbCache = {}; // `${rowKey}:${field}` -> dataUrl(문자열) | '' (없음) | 'unauthorized'
 
+  // 등록(checkin) 등의 메시지가 와이파이 끊김 같은 일시적인 이유로 조용히 유실되지 않도록,
+  // 소켓이 닫혀있는 동안엔 큐에 쌓아뒀다가 재연결되는 즉시 순서대로 보냄 (localStorage에도
+  // 같이 저장해서 새로고침해도 안 사라짐). 실제 서명/신청 기록 자체는 이 큐와 무관하게
+  // /submit·/admin/add-row 응답을 받아야만 성공 처리되므로 원본 기록은 항상 안전함 —
+  // 이 큐는 대기열 화면의 인원수 집계가 안 밀리게 하는 역할만 함.
+  const PENDING_QUEUE_KEY = `pending_queue_msgs_${queueDate}`;
+  function loadPendingMessages() {
+    try { return JSON.parse(localStorage.getItem(PENDING_QUEUE_KEY) || '[]'); } catch { return []; }
+  }
+  function savePendingMessages() {
+    try { localStorage.setItem(PENDING_QUEUE_KEY, JSON.stringify(pendingMessages)); } catch {}
+  }
+  let pendingMessages = loadPendingMessages();
+
+  function flushPendingMessages() {
+    if (!pendingMessages.length || !ws || ws.readyState !== WebSocket.OPEN) return;
+    const toSend = pendingMessages;
+    pendingMessages = [];
+    savePendingMessages();
+    toSend.forEach((m) => ws.send(JSON.stringify(m)));
+  }
+
   function openWebSocket() {
     setConnStatus(false);
     ws = new WebSocket(`${WS_URL_BASE}/queue/ws?date=${queueDate}`);
-    ws.onopen = () => setConnStatus(true);
+    ws.onopen = () => { setConnStatus(true); flushPendingMessages(); };
     ws.onclose = () => { setConnStatus(false); setTimeout(openWebSocket, 2000); };
     ws.onerror = () => setConnStatus(false);
     ws.onmessage = (event) => {
@@ -385,7 +407,14 @@
   function setConnStatus(on) {
     document.getElementById('connDot').className = 'conn-dot ' + (on ? 'on' : '');
   }
-  function send(payload) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload)); }
+  function send(payload) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(payload));
+    } else {
+      pendingMessages.push(payload);
+      savePendingMessages();
+    }
+  }
 
   function deriveSoso(e) {
     if (e.재직자여부 === '재직자') return e.회사명 || '';
