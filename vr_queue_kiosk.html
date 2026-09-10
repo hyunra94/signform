@@ -201,6 +201,14 @@
         <button type="button" class="cat-btn" id="catBtn-일반시민" onclick="selectCat('일반시민')">일반 시민</button>
       </div>
 
+      <label>성명 + 서명</label>
+      <p class="modal-hint">이름을 적고 이어서 서명까지 아래 칸에 같이 적어주세요.</p>
+      <div class="pad-wrap">
+        <canvas id="signature-pad"></canvas>
+        <span class="pad-placeholder" id="padPlaceholder">이름 + 서명 ✍️</span>
+      </div>
+      <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearSignature()">다시 쓰기</button></div>
+
       <div class="sub-field" id="affilField">
         <label>소속</label>
         <p class="modal-hint" id="affilHint">회사명을 아래 칸에 적어주세요.</p>
@@ -210,14 +218,6 @@
         </div>
         <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearAffilPad()">다시 쓰기</button></div>
       </div>
-
-      <label>성명 + 서명</label>
-      <p class="modal-hint">이름을 적고 이어서 서명까지 아래 칸에 같이 적어주세요.</p>
-      <div class="pad-wrap">
-        <canvas id="signature-pad"></canvas>
-        <span class="pad-placeholder" id="padPlaceholder">이름 + 서명 ✍️</span>
-      </div>
-      <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearSignature()">다시 쓰기</button></div>
 
       <div class="modal-btns">
         <button class="btn-cancel" id="cancelBtn" onclick="closeModal()">취소</button>
