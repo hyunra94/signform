@@ -369,6 +369,15 @@
   let adminKey = '';
   const thumbCache = {}; // `${rowKey}:${field}` -> dataUrl(문자열) | '' (없음) | 'unauthorized'
 
+  // 이 기기에 저장해둔 관리자 키가 있으면, "⚙️ 관리"를 굳이 안 눌러도 페이지를 열자마자
+  // 조용히 검증해서 이미지 조회/특수 상황 추가가 바로 되게 함 (검증만 하고 설정창은 안 띄움)
+  const savedAdminKey = localStorage.getItem('admin_key');
+  if (savedAdminKey) {
+    document.getElementById('settingsKeyInput').value = savedAdminKey;
+    document.getElementById('settingsRememberKey').checked = true;
+    validateSettingsKey();
+  }
+
   // 등록(checkin) 등의 메시지가 와이파이 끊김 같은 일시적인 이유로 조용히 유실되지 않도록,
   // 소켓이 닫혀있는 동안엔 큐에 쌓아뒀다가 재연결되는 즉시 순서대로 보냄 (localStorage에도
   // 같이 저장해서 새로고침해도 안 사라짐). 실제 서명/신청 기록 자체는 이 큐와 무관하게
