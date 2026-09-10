@@ -415,18 +415,26 @@
     }
 
     const nowIdx = currentSlotIndex(slots);
-    grid.innerHTML = slots.map((s, i) => {
+    // 비활성화된 시간대는 키오스크에서는 아예 안 보이게 함(참여자가 헷갈리지 않도록) —
+    // 관리 화면/설정 목록에는 계속 나오고 거기서만 다시 켤 수 있음
+    const visibleSlots = slots.map((s, i) => ({ s, i })).filter(({ s }) => !s.disabled);
+    if (visibleSlots.length === 0) {
+      grid.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      return;
+    }
+    grid.innerHTML = visibleSlots.map(({ s, i }) => {
       const isFull = s.entries.length >= s.capacity;
       const isCurrent = i === nowIdx;
       const isPast = nowIdx >= 0 && i < nowIdx;
       const remain = Math.max(s.capacity - s.entries.length, 0);
-      const disabled = isFull || isPast || s.disabled;
+      const disabled = isFull || isPast;
       return `
-        <button class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isPast ? 'past' : ''} ${s.disabled ? 'past' : ''}"
+        <button class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isPast ? 'past' : ''}"
                 ${disabled ? 'disabled' : ''} onclick="openModal(${i})">
           <div class="time">${s.time}${isCurrent ? '<div class="now-badge">지금 시간대</div>' : ''}</div>
           <div class="avail">
-            ${s.disabled ? '운영중지' : isPast ? '종료' : isFull
+            ${isPast ? '종료' : isFull
               ? '마감'
               : `<b>${remain}</b><span class="avail-label">자리 남음 (${s.entries.length}/${s.capacity})</span>`}
           </div>
