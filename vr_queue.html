@@ -8,6 +8,7 @@
 <meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
 <meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
 <style>
   :root {
     --bg-1: #FFF0F5; --bg-2: #FFE4E1;
@@ -72,33 +73,47 @@
   .summary { display: flex; justify-content: center; gap: 20px; margin-bottom: 14px; font-size: 12.5px; color: #a98a92; }
   .summary b { color: var(--accent-dark); font-size: 15px; }
 
-  .slot-list { display: flex; flex-direction: column; gap: 10px; }
-  .slot-row {
-    border: 1.5px solid var(--lavender); border-radius: 14px; padding: 12px 14px; background: #FDFBFF;
+  /* ---- 시간대 그리드 (키오스크 화면과 동일한 방식 — 버튼을 눌러야 그 시간대 명단만 보임) ---- */
+  .slots-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
   }
-  .slot-row.current { border-color: var(--accent-dark); background: #FDF3F6; }
-  .slot-row.full { border-color: var(--full); }
-  .slot-head-row { display: flex; align-items: center; gap: 8px; }
-  .slot-head {
-    flex: 1; display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+  .slot-btn {
+    position: relative; border: 1.5px solid var(--lavender); border-radius: 16px; background: #FDFBFF;
+    box-shadow: 0 4px 14px var(--shadow); padding: 16px 10px; cursor: pointer; font-family: inherit;
+    text-align: center; transition: transform 0.15s;
   }
-  .slot-del {
-    background: none; border: 1px solid #F0A0A8; color: #D97070; border-radius: 8px;
-    padding: 5px 9px; font-size: 11px; cursor: pointer; white-space: nowrap; font-family: inherit;
-  }
-  .slot-del:hover { background: #FDEDED; }
-  .slot-time { font-size: 15px; font-weight: 700; }
+  .slot-btn:active { transform: scale(0.97); }
+  .slot-btn.now { box-shadow: 0 0 0 3px var(--accent-dark), 0 4px 14px var(--shadow); }
+  .slot-btn.full { opacity: 0.6; }
+  .slot-btn.selected { border-color: var(--accent-dark); background: #FDF3F6; }
+  .slot-time { font-size: 17px; font-weight: 700; }
   .slot-now-badge {
     display: inline-block; font-size: 9.5px; background: var(--accent-dark); color: white;
-    border-radius: 8px; padding: 1px 6px; margin-left: 6px; vertical-align: middle;
+    border-radius: 8px; padding: 1px 6px; margin-left: 4px; vertical-align: middle;
   }
-  .slot-count { font-size: 13px; color: #a98a92; }
+  .slot-count { margin-top: 6px; font-size: 12.5px; color: #a98a92; }
   .slot-count b { color: var(--accent-dark); font-size: 15px; }
-  .slot-count.full-text b { color: var(--full); }
-  .slot-toggle { font-size: 11px; color: var(--accent-dark); }
+  .slot-btn.full .slot-count b { color: var(--full); }
+  .slot-btn-del {
+    position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%;
+    border: none; background: #FDEDED; color: #D97070; font-size: 11px; line-height: 22px;
+    padding: 0; cursor: pointer; font-family: inherit;
+  }
 
-  .entry-list { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--lavender); display: none; }
-  .entry-list.open { display: block; }
+  /* ---- 선택한 시간대 명단 카드 ---- */
+  .detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .detail-time { font-size: 17px; font-weight: 700; color: var(--accent-dark); }
+  .detail-count { font-size: 12.5px; color: #a98a92; margin-top: 2px; }
+  .detail-header-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  .detail-del {
+    background: none; border: 1px solid #F0A0A8; color: #D97070; border-radius: 8px;
+    padding: 6px 10px; font-size: 11px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .detail-close {
+    width: 30px; height: 30px; border-radius: 50%; border: none; background: #FDF3F6;
+    color: var(--accent-dark); font-size: 14px; cursor: pointer; font-family: inherit;
+  }
   .entry-row {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 7px 0; font-size: 12.5px;
@@ -118,26 +133,41 @@
   }
   .entry-lazy { color: #c9a8b0; font-size: 11px; }
   .entry-del { background: none; border: none; color: #D97070; font-size: 11px; cursor: pointer; text-decoration: underline; white-space: nowrap; }
-  .quick-add { margin-top: 8px; }
-  .quick-add-row1 { display: flex; gap: 6px; }
-  .quick-add input {
-    flex: 1; min-width: 0; padding: 7px 9px; border: 1.5px solid var(--lavender); border-radius: 8px;
-    font-family: inherit; font-size: 12.5px;
+  .empty-entries { font-size: 12px; color: #c9a8b0; padding: 4px 0; }
+
+  /* ---- 관리자 특수 상황 추가 (이름 텍스트 + 소속은 선택 + 서명은 필수) ---- */
+  .quick-add-panel { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--lavender); }
+  .quick-add-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin-bottom: 2px; }
+  .modal-hint { font-size: 11px; color: #b89aa2; margin: 2px 0 0; line-height: 1.4; }
+  .quick-add-panel input {
+    width: 100%; margin-top: 8px; padding: 10px 12px; border: 1.5px solid var(--lavender); border-radius: 10px;
+    font-family: inherit; font-size: 13px; outline: none;
   }
-  .quick-add-cats { display: flex; gap: 4px; margin-top: 6px; }
+  .quick-add-cats { display: flex; gap: 6px; margin-top: 8px; }
   .quick-cat-btn {
-    flex: 1; padding: 6px 4px; border-radius: 8px; border: 1.5px solid var(--lavender);
-    background: #FDFBFF; font-family: inherit; font-size: 11px; cursor: pointer;
+    flex: 1; padding: 8px 4px; border-radius: 8px; border: 1.5px solid var(--lavender);
+    background: #FDFBFF; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
   }
   .quick-cat-btn.active { border-color: var(--accent-dark); background: #FDF3F6; color: var(--accent-dark); }
-  .quick-add-sub { margin-top: 6px; display: none; }
-  .quick-add-sub.show { display: block; }
-  .quick-add button.add-btn {
-    width: 100%; margin-top: 6px; padding: 7px 12px; border: none; border-radius: 8px; background: var(--ok); color: white;
-    font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  .pad-wrap {
+    position: relative; margin-top: 8px; border: 2px dashed var(--accent); border-radius: 14px;
+    background: #FFFDFE; overflow: hidden; touch-action: none;
   }
-  .quick-add button.add-btn:disabled { background: #ddd; cursor: not-allowed; }
-  .empty-entries { font-size: 12px; color: #c9a8b0; padding: 4px 0; }
+  #qaSigCanvas { display: block; width: 100%; height: 130px; touch-action: none; cursor: crosshair; }
+  .pad-placeholder {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #d8b8c0; font-size: 13px; pointer-events: none;
+  }
+  .pad-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .btn-clear-sig {
+    background: none; border: none; color: var(--accent-dark); font-size: 12px;
+    font-weight: 500; cursor: pointer; padding: 2px 8px; font-family: inherit;
+  }
+  .add-btn {
+    width: 100%; margin-top: 8px; padding: 10px 12px; border: none; border-radius: 10px; background: var(--ok); color: white;
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .qa-status { text-align: center; font-size: 12px; margin-top: 6px; min-height: 14px; color: #D97070; }
 
   .empty-msg { text-align: center; color: #c9a8b0; font-size: 13px; padding: 20px 0; }
   .reset-row { text-align: center; margin-top: 14px; }
@@ -169,7 +199,7 @@
         <label for="adminKeyInput">관리자 키</label>
         <input type="password" id="adminKeyInput" placeholder="관리자 키 입력" onkeydown="if(event.key==='Enter') saveAdminKey()">
         <button class="settings-save" onclick="saveAdminKey()">저장</button>
-        <div class="settings-hint">명단에서 손글씨로 받은 성명·소속 이미지를 보려면 관리자 키가 필요해요. (다른 관리 화면에 저장한 키가 있으면 자동으로 적용돼요)</div>
+        <div class="settings-hint">명단에서 손글씨 이미지를 보거나, 특수 상황에 관리자가 직접 등록할 때 필요해요. (다른 관리 화면에 저장한 키가 있으면 자동으로 적용돼요)</div>
       </div>
     </div>
 
@@ -204,9 +234,43 @@
   <div class="card" id="mainCard">
     <div class="performance-banner" id="performanceBanner"></div>
     <div class="summary" id="summaryRow"></div>
-    <div class="slot-list" id="slotList"></div>
+    <div class="slots-grid" id="slotsGrid"></div>
     <div class="empty-msg hidden" id="emptyMsg">아직 시간대가 설정되지 않았어요. 위 "⚙️ 시간대 설정"에서 만들어주세요.</div>
     <div class="reset-row"><button onclick="resetAll()">전체 명단 초기화</button></div>
+  </div>
+
+  <div class="card hidden" id="detailCard">
+    <div class="detail-header">
+      <div>
+        <div class="detail-time" id="detailTime">-</div>
+        <div class="detail-count" id="detailCount"></div>
+      </div>
+      <div class="detail-header-btns">
+        <button type="button" class="detail-del" onclick="removeSelectedSlot()">시간대 삭제</button>
+        <button type="button" class="detail-close" onclick="closeDetail()">✕</button>
+      </div>
+    </div>
+    <div id="detailEntries"></div>
+
+    <div class="quick-add-panel">
+      <div class="quick-add-title">⚠️ 특수 상황 추가 (관리자)</div>
+      <p class="modal-hint">부득이한 경우에만 관리자가 대신 등록하세요. 소속은 몰라도 되지만 서명은 꼭 받아야 해요.</p>
+      <input type="text" id="qaName" placeholder="이름">
+      <div class="quick-add-cats" id="qaCats">
+        <button type="button" class="quick-cat-btn" data-cat="재직자" onclick="setQaCat('재직자')">재직자</button>
+        <button type="button" class="quick-cat-btn" data-cat="직업계고" onclick="setQaCat('직업계고')">직업계고</button>
+        <button type="button" class="quick-cat-btn" data-cat="대학생" onclick="setQaCat('대학생')">대학생</button>
+        <button type="button" class="quick-cat-btn" data-cat="일반시민" onclick="setQaCat('일반시민')">일반시민</button>
+      </div>
+      <input type="text" id="qaSoso" class="hidden" placeholder="소속 (선택)">
+      <div class="pad-wrap">
+        <canvas id="qaSigCanvas"></canvas>
+        <span class="pad-placeholder" id="qaSigPlaceholder">서명 ✍️</span>
+      </div>
+      <div class="pad-actions"><button type="button" class="btn-clear-sig" onclick="clearQaSig()">다시 쓰기</button></div>
+      <button type="button" class="add-btn" onclick="submitQuickAdd()">+ 추가</button>
+      <div class="qa-status" id="qaStatus"></div>
+    </div>
   </div>
 </div>
 
@@ -222,7 +286,7 @@
   const programId = `${queueDate}-vr`;
   let ws = null;
   let currentData = { slots: [] };
-  let openIndex = new Set();
+  let selectedSlotIndex = null;
 
   document.getElementById('dateLabel').textContent = `${queueDate} 기준`;
 
@@ -329,15 +393,16 @@
   }
 
   function renderSlots() {
-    const list = document.getElementById('slotList');
+    const grid = document.getElementById('slotsGrid');
     const emptyMsg = document.getElementById('emptyMsg');
     const slots = currentData.slots || [];
 
     if (slots.length === 0) {
-      list.innerHTML = '';
+      grid.innerHTML = '';
       emptyMsg.classList.remove('hidden');
       document.getElementById('summaryRow').innerHTML = '';
       document.getElementById('performanceBanner').innerHTML = '';
+      closeDetail();
       return;
     }
     emptyMsg.classList.add('hidden');
@@ -352,66 +417,82 @@
       `<div class="label">오늘 실적 (재직자 + 미래인재)</div><div class="num">${performanceCount}명</div>`;
     document.getElementById('summaryRow').innerHTML = `<span>오늘 누적 <b>${totalCount}</b>명</span><span>전체 정원 <b>${totalCapacity}</b>명</span>`;
 
-    list.innerHTML = slots.map((s, i) => {
+    // 키오스크 화면과 똑같이 시간대를 큰 버튼들로 배열 — 눌러야 그 시간대 명단만 아래에 표시됨
+    grid.innerHTML = slots.map((s, i) => {
       const isFull = s.entries.length >= s.capacity;
       const isCurrent = i === nowIdx;
-      const isOpen = openIndex.has(i);
-      const entriesHtml = s.entries.length
-        ? s.entries.map((e, ei) => {
-            const cat = e.재직자여부 || '';
-            const soso = deriveSoso(e);
-            const nameCell = e.성명 ? escapeHtml(e.성명) : (e.rowKey ? lazyThumb(e.rowKey, '성명서명이미지') : '-');
-            const sosoCell = soso
-              ? escapeHtml(soso)
-              : (needsAffilCat(cat) && e.rowKey ? lazyThumb(e.rowKey, '소속이미지') : (needsAffilCat(cat) ? '-' : ''));
-            return `
-            <div class="entry-row">
-              <div class="entry-fields">
-                ${cat ? `<span class="entry-cat-badge">${escapeHtml(cat)}</span>` : ''}
-                <span class="entry-field"><span class="field-label">성명</span><span class="entry-name">${nameCell}</span></span>
-                ${sosoCell ? `<span class="entry-field"><span class="field-label">소속</span>${sosoCell}</span>` : ''}
-              </div>
-              <button class="entry-del" onclick="removeEntry(${i}, ${ei})">삭제</button>
-            </div>`;
-          }).join('')
-        : '<div class="empty-entries">아직 등록된 사람이 없어요.</div>';
-
+      const isSelected = i === selectedSlotIndex;
       return `
-        <div class="slot-row ${isCurrent ? 'current' : ''} ${isFull ? 'full' : ''}">
-          <div class="slot-head-row">
-            <div class="slot-head" onclick="toggleEntries(${i})">
-              <div class="slot-time">${s.time}${isCurrent ? '<span class="slot-now-badge">지금</span>' : ''}</div>
-              <div class="slot-count ${isFull ? 'full-text' : ''}"><b>${s.entries.length}</b> / ${s.capacity}명 <span class="slot-toggle">${isOpen ? '▲ 접기' : '▼ 명단보기'}</span></div>
-            </div>
-            <button class="slot-del" onclick="removeSlot(${i}, '${s.time}')" title="이 시간대 자체를 삭제">시간대 삭제</button>
-          </div>
-          <div class="entry-list ${isOpen ? 'open' : ''}" id="entries-${i}">
-            ${entriesHtml}
-            <div class="quick-add">
-              <div class="quick-add-row1">
-                <input type="text" id="qname-${i}" placeholder="이름">
-              </div>
-              <div class="quick-add-cats">
-                <button type="button" class="quick-cat-btn" id="qcat-${i}-재직자" onclick="setQuickCat(${i},'재직자')">재직자</button>
-                <button type="button" class="quick-cat-btn" id="qcat-${i}-직업계고" onclick="setQuickCat(${i},'직업계고')">직업계고</button>
-                <button type="button" class="quick-cat-btn" id="qcat-${i}-대학생" onclick="setQuickCat(${i},'대학생')">대학생</button>
-                <button type="button" class="quick-cat-btn" id="qcat-${i}-일반시민" onclick="setQuickCat(${i},'일반시민')">일반시민</button>
-              </div>
-              <div class="quick-add-sub" id="qsub-company-${i}"><input type="text" id="qcompany-${i}" placeholder="회사명"></div>
-              <div class="quick-add-sub" id="qsub-school-${i}"><input type="text" id="qschool-${i}" placeholder="학교명"></div>
-              <button class="add-btn" ${isFull ? 'disabled' : ''} onclick="quickAdd(${i})">+ 추가</button>
-            </div>
-          </div>
-        </div>
+        <button type="button" class="slot-btn ${isCurrent ? 'now' : ''} ${isFull ? 'full' : ''} ${isSelected ? 'selected' : ''}" onclick="selectSlot(${i})">
+          <button type="button" class="slot-btn-del" onclick="event.stopPropagation(); removeSlot(${i}, '${s.time}')" title="이 시간대 삭제">✕</button>
+          <div class="slot-time">${s.time}${isCurrent ? '<span class="slot-now-badge">지금</span>' : ''}</div>
+          <div class="slot-count"><b>${s.entries.length}</b> / ${s.capacity}명</div>
+        </button>
       `;
     }).join('');
 
+    if (selectedSlotIndex !== null && slots[selectedSlotIndex]) {
+      renderDetail(slots[selectedSlotIndex], selectedSlotIndex);
+    } else if (selectedSlotIndex !== null) {
+      closeDetail(); // 선택했던 시간대 자체가 삭제된 경우
+    }
+  }
+
+  function renderDetail(s, i) {
+    document.getElementById('detailTime').textContent = `${s.time} 시간대`;
+    document.getElementById('detailCount').textContent = `${s.entries.length} / ${s.capacity}명`;
+    const entriesEl = document.getElementById('detailEntries');
+    entriesEl.innerHTML = s.entries.length
+      ? s.entries.map((e, ei) => {
+          const cat = e.재직자여부 || '';
+          const soso = deriveSoso(e);
+          const nameCell = e.성명 ? escapeHtml(e.성명) : (e.rowKey ? lazyThumb(e.rowKey, '성명서명이미지') : '-');
+          const sosoCell = soso
+            ? escapeHtml(soso)
+            : (needsAffilCat(cat) && e.rowKey ? lazyThumb(e.rowKey, '소속이미지') : (needsAffilCat(cat) ? '-' : ''));
+          return `
+          <div class="entry-row">
+            <div class="entry-fields">
+              ${cat ? `<span class="entry-cat-badge">${escapeHtml(cat)}</span>` : ''}
+              <span class="entry-field"><span class="field-label">성명</span><span class="entry-name">${nameCell}</span></span>
+              ${sosoCell ? `<span class="entry-field"><span class="field-label">소속</span>${sosoCell}</span>` : ''}
+            </div>
+            <button class="entry-del" onclick="removeEntry(${i}, ${ei})">삭제</button>
+          </div>`;
+        }).join('')
+      : '<div class="empty-entries">아직 등록된 사람이 없어요.</div>';
     loadPendingThumbs();
   }
 
-  // 펼쳐진 시간대(.entry-list.open) 안에서 아직 못 불러온 이미지만, 한 명씩(최대 3개씩 동시) 불러옴
+  function selectSlot(i) {
+    selectedSlotIndex = i;
+    document.getElementById('qaName').value = '';
+    document.getElementById('qaSoso').value = '';
+    document.getElementById('qaSoso').classList.add('hidden');
+    qaCat = '';
+    document.querySelectorAll('#qaCats .quick-cat-btn').forEach((btn) => btn.classList.remove('active'));
+    document.getElementById('qaStatus').textContent = '';
+    document.getElementById('detailCard').classList.remove('hidden');
+    renderSlots();
+    requestAnimationFrame(initOrResizeQaSigPad);
+    document.getElementById('detailCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeDetail() {
+    selectedSlotIndex = null;
+    document.getElementById('detailCard').classList.add('hidden');
+  }
+
+  function removeSelectedSlot() {
+    if (selectedSlotIndex === null) return;
+    const slot = currentData.slots[selectedSlotIndex];
+    if (!slot) return;
+    removeSlot(selectedSlotIndex, slot.time);
+  }
+
+  // 이 시간대 명단이 열려있는 동안 아직 못 불러온 이미지만, 한 명씩(최대 3개씩 동시) 불러옴
   async function loadPendingThumbs() {
-    const els = Array.from(document.querySelectorAll('.entry-list.open .q-lazy-thumb'));
+    const els = Array.from(document.querySelectorAll('#detailEntries .q-lazy-thumb'));
     if (els.length === 0) return;
     if (!adminKey) {
       els.forEach((el) => { el.outerHTML = '<span class="entry-lazy">(관리자 키 필요)</span>'; });
@@ -446,30 +527,142 @@
 
   // 직업계고/대학생은 UI 선택지일 뿐, 실제 저장되는 값은 '미래인재'로 합쳐짐
   const isFutureTalent = (value) => value === '직업계고' || value === '대학생';
-  const quickCatState = {}; // { [slotIndex]: '재직자'|'직업계고'|'대학생'|'일반시민' }
-  function setQuickCat(i, cat) {
-    quickCatState[i] = cat;
-    ['재직자', '직업계고', '대학생', '일반시민'].forEach(c => {
-      document.getElementById(`qcat-${i}-${c}`).classList.toggle('active', c === cat);
+
+  let qaCat = '';
+  function setQaCat(cat) {
+    qaCat = cat;
+    document.querySelectorAll('#qaCats .quick-cat-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.cat === cat);
     });
-    document.getElementById(`qsub-company-${i}`).classList.toggle('show', cat === '재직자');
-    document.getElementById(`qsub-school-${i}`).classList.toggle('show', isFutureTalent(cat));
+    const needsSoso = cat === '재직자' || isFutureTalent(cat);
+    const sosoEl = document.getElementById('qaSoso');
+    sosoEl.classList.toggle('hidden', !needsSoso);
+    sosoEl.placeholder = cat === '재직자' ? '회사명 (선택)' : '학교명 (선택)';
   }
 
-  function toggleEntries(i) {
-    if (openIndex.has(i)) openIndex.delete(i); else openIndex.add(i);
-    renderSlots();
+  // ---------- 특수 상황 추가용 서명 캔버스 (이름/소속은 텍스트로 받되, 서명만은 반드시 손글씨로 받음) ----------
+  let qaSigPad = null;
+  const qaSigCanvas = document.getElementById('qaSigCanvas');
+  const qaSigPlaceholder = document.getElementById('qaSigPlaceholder');
+
+  function initOrResizeQaSigPad() {
+    if (qaSigCanvas.offsetWidth === 0) return; // 아직 detailCard가 숨겨져 있어서 크기를 잴 수 없음
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const savedData = qaSigPad ? qaSigPad.toData() : null;
+    qaSigCanvas.width = qaSigCanvas.offsetWidth * ratio;
+    qaSigCanvas.height = qaSigCanvas.offsetHeight * ratio;
+    qaSigCanvas.getContext('2d').scale(ratio, ratio);
+    if (!qaSigPad) {
+      qaSigPad = new SignaturePad(qaSigCanvas, {
+        backgroundColor: 'rgba(255,255,255,0)', penColor: '#5A4A50', minWidth: 1.2, maxWidth: 3.5,
+      });
+      qaSigPad.addEventListener('beginStroke', () => { qaSigPlaceholder.style.display = 'none'; });
+    } else {
+      qaSigPad.clear();
+      if (savedData && savedData.length) qaSigPad.fromData(savedData);
+    }
+  }
+  window.addEventListener('resize', () => { if (qaSigPad) initOrResizeQaSigPad(); });
+
+  function clearQaSig() {
+    if (qaSigPad) qaSigPad.clear();
+    qaSigPlaceholder.style.display = 'block';
   }
 
-  function quickAdd(i) {
-    const name = document.getElementById(`qname-${i}`).value.trim();
-    if (!name) { alert('이름을 입력해주세요.'); return; }
-    const catRaw = quickCatState[i] || '';
-    if (!catRaw) { alert('재직자 여부를 선택해주세요.'); return; }
-    const cat = isFutureTalent(catRaw) ? '미래인재' : catRaw;
-    const company = cat === '재직자' ? document.getElementById(`qcompany-${i}`).value.trim() : '';
-    const school = cat === '미래인재' ? document.getElementById(`qschool-${i}`).value.trim() : '';
-    send({ type: 'checkin', slotIndex: i, 성명: name, 재직자여부: cat, 회사명: company, 학교명: school });
+  // 캔버스 전체가 아니라 실제 잉크가 그려진 영역만 살짝 여백을 두고 잘라서 내보냄 (다른 화면들과 동일한 방식)
+  function cropPadToDataUrl(canvasEl, padInstance, marginRatio = 0.15) {
+    const data = padInstance.toData();
+    if (!data || !data.length) return canvasEl.toDataURL('image/png');
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    data.forEach((group) => group.points.forEach((p) => {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }));
+    const w = canvasEl.offsetWidth || 1;
+    const h = canvasEl.offsetHeight || 1;
+    const marginX = Math.max((maxX - minX) * marginRatio, 6);
+    const marginY = Math.max((maxY - minY) * marginRatio, 6);
+    minX = Math.max(0, minX - marginX);
+    minY = Math.max(0, minY - marginY);
+    maxX = Math.min(w, maxX + marginX);
+    maxY = Math.min(h, maxY + marginY);
+    const ratio = canvasEl.width / w;
+    const sx = minX * ratio, sy = minY * ratio;
+    const sw = Math.max((maxX - minX) * ratio, 1);
+    const sh = Math.max((maxY - minY) * ratio, 1);
+    const MAX_DIM = 640;
+    const scale = Math.min(1, MAX_DIM / Math.max(sw, sh));
+    const outW = Math.max(1, Math.round(sw * scale));
+    const outH = Math.max(1, Math.round(sh * scale));
+    const out = document.createElement('canvas');
+    out.width = outW; out.height = outH;
+    out.getContext('2d').drawImage(canvasEl, sx, sy, sw, sh, 0, 0, outW, outH);
+    return out.toDataURL('image/png');
+  }
+
+  let qaSubmitting = false;
+  async function submitQuickAdd() {
+    if (qaSubmitting) return;
+    const statusEl = document.getElementById('qaStatus');
+    const name = document.getElementById('qaName').value.trim();
+    if (!name) { statusEl.textContent = '이름을 입력해주세요.'; statusEl.style.color = '#D97070'; return; }
+    if (!qaCat) { statusEl.textContent = '재직자 여부를 선택해주세요.'; statusEl.style.color = '#D97070'; return; }
+    if (!qaSigPad || qaSigPad.isEmpty()) { statusEl.textContent = '서명은 꼭 받아야 해요.'; statusEl.style.color = '#D97070'; return; }
+    if (!adminKey) { statusEl.textContent = '위쪽 "🔑 이미지 조회 키"에 관리자 키를 먼저 입력해주세요.'; statusEl.style.color = '#D97070'; return; }
+    if (selectedSlotIndex === null) return;
+    const slot = currentData.slots[selectedSlotIndex];
+    if (slot && slot.entries.length >= slot.capacity) {
+      statusEl.textContent = '이 시간대 정원이 모두 찼어요.'; statusEl.style.color = '#D97070'; return;
+    }
+
+    qaSubmitting = true;
+    statusEl.style.color = '#a98a92';
+    statusEl.textContent = '등록 중...';
+
+    const cat = isFutureTalent(qaCat) ? '미래인재' : qaCat;
+    const soso = document.getElementById('qaSoso').value.trim();
+    const company = cat === '재직자' ? soso : '';
+    const school = cat === '미래인재' ? soso : '';
+    const signature = cropPadToDataUrl(qaSigCanvas, qaSigPad);
+
+    // 관리자 키로 인증된 /admin/add-row를 씀 — 서명록 관리자 화면(admin.html)의 "참석자 추가"와 같은 통로
+    let result;
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/admin/add-row?programId=${encodeURIComponent(programId)}&key=${encodeURIComponent(adminKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 성명: name, 재직자여부: cat, 회사명: company, 학교명: school, signature, 동의: true }),
+      });
+      if (res.status === 401) {
+        statusEl.textContent = '관리자 키가 올바르지 않아요.'; statusEl.style.color = '#D97070';
+        qaSubmitting = false;
+        return;
+      }
+      result = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        statusEl.textContent = result.error || '등록에 실패했어요.'; statusEl.style.color = '#D97070';
+        qaSubmitting = false;
+        return;
+      }
+    } catch (err) {
+      statusEl.textContent = '서버 연결에 실패했어요.'; statusEl.style.color = '#D97070';
+      qaSubmitting = false;
+      return;
+    }
+
+    send({ type: 'checkin', slotIndex: selectedSlotIndex, 성명: name, 재직자여부: cat, 회사명: company, 학교명: school, rowKey: result.rowKey || '' });
+
+    document.getElementById('qaName').value = '';
+    document.getElementById('qaSoso').value = '';
+    document.getElementById('qaSoso').classList.add('hidden');
+    qaCat = '';
+    document.querySelectorAll('#qaCats .quick-cat-btn').forEach((btn) => btn.classList.remove('active'));
+    clearQaSig();
+    statusEl.style.color = 'var(--ok)';
+    statusEl.textContent = '✅ 등록됐어요.';
+    qaSubmitting = false;
   }
 
   function removeSlot(index, time) {
@@ -478,6 +671,7 @@
     const warn = count > 0 ? `\n(등록된 ${count}명도 같이 삭제돼요)` : '';
     if (!confirm(`${time} 시간대를 통째로 삭제할까요?${warn}`)) return;
     send({ type: 'removeSlot', slotIndex: index });
+    if (selectedSlotIndex === index) closeDetail();
   }
 
   function removeEntry(slotIndex, entryIndex) {

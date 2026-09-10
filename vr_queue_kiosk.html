@@ -24,6 +24,7 @@
     color: var(--text);
     -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
     -webkit-touch-callout: none;
+    overscroll-behavior: none;
   }
   input, textarea {
     -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text;
@@ -100,7 +101,7 @@
   .modal-hint { font-size: 11px; color: #b89aa2; margin: -2px 0 5px; line-height: 1.35; }
   .pad-wrap {
     position: relative; margin-top: 4px; border: 2px dashed var(--accent); border-radius: 14px;
-    background: #FFFDFE; overflow: hidden;
+    background: #FFFDFE; overflow: hidden; touch-action: none;
   }
   #signature-pad { display: block; width: 100%; height: min(240px, 30vh); touch-action: none; cursor: crosshair; }
   #affil-pad { display: block; width: 100%; height: min(150px, 20vh); touch-action: none; cursor: crosshair; }
