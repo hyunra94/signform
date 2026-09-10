@@ -4,7 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>참석 확인서 - 시작하기</title>
-<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<link rel="icon" href="./icon_main.svg" type="image/svg+xml">
+<link rel="manifest" href="./manifest_main.json">
+<meta name="theme-color" content="#E88FA2">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="./icon_main.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="참석 확인서">
 <meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
 <meta property="og:url" content="https://hyunra94.github.io/[레포명]/">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -240,6 +247,11 @@
 </div>
 
 <script>
+  // PWA 설치(홈 화면에 추가) 지원 — signature_pad_assisted.html과 같은(공용) 서비스워커를 씀
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw_pad_assisted.js').catch(() => {});
+  }
+
   // ⚠️ 배포된 Worker 주소로 교체하세요
   const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
 

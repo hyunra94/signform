@@ -1,0 +1,14 @@
+{
+  "name": "참석 확인서 시스템",
+  "short_name": "참석 확인서",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "orientation": "any",
+  "background_color": "#FFF0F5",
+  "theme_color": "#E88FA2",
+  "icons": [
+    { "src": "./icon_main.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -11,6 +11,8 @@
 !/manifest_pad_assisted.json
 !/sw_pad_assisted.js
 !/icon_pad_assisted.svg
+!/manifest_main.json
+!/icon_main.svg
 !/vr_queue.html
 !/vr_queue_kiosk.html
 !/vr_form_assisted.html
