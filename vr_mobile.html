@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VR체험버스 - 탑승 신청</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
+<style>
+  :root {
+    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
+    --accent: #F7B8C4; --accent-dark: #E88FA2;
+    --text: #5A4A50; --muted: #a98a92; --white: #FFFFFF;
+    --shadow: rgba(232, 143, 162, 0.25);
+    --full: #F0A0A8; --ok: #6FA875; --error: #D97070;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    min-height: 100%; margin: 0; font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2)); background-attachment: fixed;
+    color: var(--text);
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 24px 16px 48px; }
+  .hidden { display: none !important; }
+  h1 { font-size: 22px; text-align: center; margin: 4px 0 4px; color: var(--accent-dark); }
+  .sub { text-align: center; font-size: 14px; color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--white); border-radius: 20px; box-shadow: 0 8px 22px var(--shadow); padding: 20px 18px; }
+
+  /* ---- 코드 입력 ---- */
+  .code-input {
+    width: 100%; font-size: 40px; letter-spacing: 16px; text-align: center; font-weight: 700;
+    border: 2px solid var(--accent); border-radius: 16px; padding: 12px 0 12px 16px; font-family: inherit;
+    color: var(--text); outline: none;
+  }
+  .code-input:focus { border-color: var(--accent-dark); }
+
+  /* ---- 시간대 ---- */
+  .slots-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .slot-btn {
+    border: none; border-radius: 18px; background: var(--white); box-shadow: 0 6px 16px var(--shadow);
+    padding: 16px 10px; font-family: inherit; text-align: center; color: var(--text); cursor: pointer;
+  }
+  .slot-btn:active { transform: scale(0.97); }
+  .slot-btn.now { box-shadow: 0 0 0 3px var(--accent-dark), 0 6px 16px var(--shadow); }
+  .slot-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .slot-btn .time { font-size: 24px; font-weight: 700; }
+  .slot-btn .avail { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .slot-btn .avail b { color: var(--ok); font-size: 17px; }
+  .now-badge {
+    display: inline-block; font-size: 11px; background: var(--accent-dark); color: white;
+    border-radius: 10px; padding: 2px 8px; margin-top: 4px;
+  }
+  .empty-state { text-align: center; color: var(--muted); font-size: 15px; padding: 30px 0; }
+
+  /* ---- 신청서 ---- */
+  .form-time { text-align: center; font-size: 15px; margin-bottom: 14px; }
+  .form-time b { font-size: 22px; color: var(--accent-dark); }
+  .field { margin-bottom: 16px; }
+  .field > label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .cat-btn {
+    border: 2px solid var(--accent); background: var(--white); color: var(--text); border-radius: 12px;
+    padding: 11px 0; font-size: 15px; font-family: inherit; font-weight: 500; cursor: pointer;
+  }
+  .cat-btn.active { background: var(--accent-dark); border-color: var(--accent-dark); color: white; font-weight: 700; }
+  .text-input {
+    width: 100%; font-size: 17px; padding: 12px 14px; border: 2px solid var(--accent); border-radius: 12px;
+    font-family: inherit; color: var(--text); outline: none;
+  }
+  .text-input:focus { border-color: var(--accent-dark); }
+  .sig-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .sig-head label { font-size: 14px; font-weight: 700; }
+  .link-btn { border: none; background: none; color: var(--accent-dark); font-size: 14px; font-family: inherit; padding: 4px; cursor: pointer; }
+  .sig-box { position: relative; border: 2px dashed var(--accent); border-radius: 14px; background: #FFFBFC; height: 190px; }
+  .sig-box canvas { width: 100%; height: 100%; display: block; touch-action: none; border-radius: 12px; }
+  .sig-placeholder {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #d8bcc3; font-size: 15px; pointer-events: none;
+  }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; cursor: pointer; }
+  .consent input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent-dark); flex-shrink: 0; }
+
+  .primary-btn {
+    width: 100%; border: none; border-radius: 16px; background: var(--accent-dark); color: white;
+    font-size: 18px; font-weight: 700; padding: 15px; font-family: inherit; cursor: pointer; margin-top: 4px;
+  }
+  .primary-btn:disabled { opacity: 0.6; }
+  .secondary-btn {
+    width: 100%; border: 2px solid var(--accent); border-radius: 16px; background: var(--white); color: var(--text);
+    font-size: 16px; font-weight: 500; padding: 13px; font-family: inherit; cursor: pointer; margin-top: 10px;
+  }
+  .status { min-height: 22px; text-align: center; font-size: 14px; margin-top: 10px; color: var(--error); }
+
+  .form-warn {
+    background: #FFF4E5; color: #9A5B13; border-radius: 12px; padding: 10px 12px;
+    font-size: 13.5px; line-height: 1.5; margin-bottom: 16px; text-align: center;
+  }
+
+  /* ---- 완료 (담당자에게 보여주는 화면) ---- */
+  .done-card { text-align: center; border: 4px solid var(--ok); }
+  .done-head { font-size: 20px; font-weight: 700; color: var(--ok); }
+  .done-time { font-size: 17px; margin-top: 12px; }
+  .done-time b { font-size: 30px; color: var(--text); }
+  .done-pos { margin: 6px 0 2px; font-size: 18px; }
+  .done-pos b { display: block; font-size: 72px; line-height: 1.1; color: var(--accent-dark); }
+  .done-name { font-size: 18px; font-weight: 700; margin: 10px 0 2px; }
+  .done-cat { color: var(--muted); font-size: 14px; }
+  .done-clock { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .done-clock b { font-variant-numeric: tabular-nums; color: var(--text); }
+  .show-staff {
+    margin: 16px 0; background: var(--ok); color: white; border-radius: 14px;
+    padding: 12px; font-size: 17px; font-weight: 700;
+  }
+  .done-warn { background: #FFF4E5; color: #9A5B13; border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.5; }
+
+  /* ---- 안내창 / 처리 중 ---- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(90, 74, 80, 0.55); z-index: 20;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .notice-card { background: var(--white); border-radius: 22px; padding: 24px 20px; max-width: 400px; width: 100%; text-align: center; }
+  .notice-icon { font-size: 44px; }
+  .notice-title { font-size: 20px; font-weight: 700; color: var(--error); margin: 6px 0 10px; }
+  .notice-body { font-size: 16px; line-height: 1.6; margin-bottom: 18px; }
+  .notice-body b { color: var(--accent-dark); }
+  .spinner {
+    width: 46px; height: 46px; border-radius: 50%; margin: 0 auto 14px;
+    border: 5px solid #F3D6DD; border-top-color: var(--accent-dark); animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🚌 VR체험버스 탑승 신청</h1>
+
+  <!-- 1) 현장 코드 입력 -->
+  <section id="codeScreen" class="hidden">
+    <p class="sub">현장 화면에 보이는 <b>4자리 코드</b>를 입력해주세요.<br>
+      <span style="font-size:13px">(현장에 붙은 QR을 찍었다면 자동으로 넘어가요)</span></p>
+    <div class="card">
+      <input id="codeInput" class="code-input" type="text" inputmode="numeric" pattern="[0-9]*"
+             maxlength="4" autocomplete="one-time-code" placeholder="····">
+      <button id="codeBtn" class="primary-btn" style="margin-top:14px" onclick="verifyCode()">확인</button>
+      <div id="codeStatus" class="status"></div>
+    </div>
+  </section>
+
+  <!-- 2) 시간대 선택 -->
+  <section id="slotScreen" class="hidden">
+    <p class="sub">탑승할 시간대를 골라주세요.</p>
+    <div id="slotsGrid" class="slots-grid"></div>
+    <div id="slotsEmpty" class="empty-state hidden">아직 열린 시간대가 없어요.<br>현장 스태프에게 문의해주세요.</div>
+  </section>
+
+  <!-- 3) 신청서 -->
+  <section id="formScreen" class="hidden">
+    <div class="card">
+      <div class="form-time"><b id="formTime"></b> 탑승</div>
+      <div class="form-warn">⚠️ 탑승하는 <b>모든 분</b>이 <b>한 명씩</b> 각각 신청해야 해요.</div>
+
+      <div class="field">
+        <label>구분</label>
+        <div class="cat-grid">
+          <button type="button" class="cat-btn" data-cat="재직자" onclick="selectCat('재직자')">재직자</button>
+          <button type="button" class="cat-btn" data-cat="직업계고" onclick="selectCat('직업계고')">직업계고</button>
+          <button type="button" class="cat-btn" data-cat="대학생" onclick="selectCat('대학생')">대학생</button>
+          <button type="button" class="cat-btn" data-cat="일반시민" onclick="selectCat('일반시민')">일반 시민</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="nameInput">이름</label>
+        <input id="nameInput" class="text-input" type="text" maxlength="30" autocomplete="name" placeholder="홍길동">
+      </div>
+
+      <div id="affilField" class="field hidden">
+        <label for="affilInput" id="affilLabel">소속</label>
+        <input id="affilInput" class="text-input" type="text" maxlength="50" autocomplete="organization">
+      </div>
+
+      <div class="field">
+        <div class="sig-head">
+          <label>서명</label>
+          <button type="button" class="link-btn" onclick="clearSignature()">지우기</button>
+        </div>
+        <div class="sig-box">
+          <canvas id="sigCanvas"></canvas>
+          <div id="sigPlaceholder" class="sig-placeholder">여기에 손가락으로 서명해주세요</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="consent">
+          <input type="checkbox" id="consentInput">
+          <span>VR체험버스 참석 확인을 위한 개인정보(이름·소속·서명) 수집·이용에 동의합니다.</span>
+        </label>
+      </div>
+
+      <button id="submitBtn" class="primary-btn" onclick="submitForm()">신청하기</button>
+      <button class="secondary-btn" onclick="backToSlots()">시간대 다시 고르기</button>
+      <div id="formStatus" class="status"></div>
+    </div>
+  </section>
+
+  <!-- 4) 완료 -->
+  <section id="doneScreen" class="hidden">
+    <div class="card done-card">
+      <div class="done-head">✅ 신청 완료</div>
+      <div class="done-time"><b id="doneTime"></b> 탑승</div>
+      <div class="done-pos"><b id="donePos"></b>번째 인원</div>
+      <div class="done-name" id="doneName"></div>
+      <div class="done-cat" id="doneCat"></div>
+      <!-- 스크린샷 재사용을 막기 위해 초 단위로 움직이는 현재 시각을 같이 보여줌 -->
+      <div class="done-clock">현재 시각 <b id="doneClock"></b></div>
+      <div class="show-staff">📱 이 화면을 담당자에게 보여주세요</div>
+      <div class="done-warn">⚠️ 함께 탑승하는 분이 있다면 <b>인원수만큼 한 명씩</b> 모두 신청해야 해요.</div>
+      <button class="primary-btn" style="margin-top:14px" onclick="addCompanion()">일행 추가 신청 (같은 시간대)</button>
+      <button class="secondary-btn" onclick="backToSlots()">처음으로</button>
+    </div>
+  </section>
+</div>
+
+<!-- 시간대를 고르면 반드시 확인해야 넘어가는 안내창 -->
+<div id="noticeOverlay" class="overlay hidden">
+  <div class="notice-card">
+    <div class="notice-icon">⚠️</div>
+    <div class="notice-title">꼭 확인해주세요</div>
+    <div class="notice-body">
+      탑승하는 <b>인원수만큼 한 명씩 모두</b> 신청해야 해요.<br>
+      (예: 3명이 타면 3번 신청)<br><br>
+      신청이 끝나면 나오는 화면을<br><b>담당자에게 보여주세요.</b>
+    </div>
+    <button class="primary-btn" onclick="confirmNotice()">확인했어요</button>
+    <button class="secondary-btn" onclick="closeNotice()">취소</button>
+  </div>
+</div>
+
+<!-- 신청 처리 중 — 순번이 확정될 때까지 기다리게 함 -->
+<div id="busyOverlay" class="overlay hidden">
+  <div class="notice-card">
+    <div class="spinner"></div>
+    <div class="notice-body" style="margin:0">신청 처리 중이에요...<br><b>창을 닫지 말고</b> 잠시만 기다려주세요.</div>
+  </div>
+</div>
+
+<script>
+  const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
+  const PASS_KEY = 'vr_mobile_pass';
+
+  let pass = null;
+  let slotsData = [];
+  let nowMin = 0;
+  let selectedTime = null;
+  let selectedCat = '';
+  let signaturePad = null;
+  let slotsTimer = null;
+
+  // ---- 통행증(현장 코드를 한 번 맞히면 30분간 유효) — 저장 실패해도 동작엔 지장 없음 ----
+  function loadPass() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PASS_KEY) || 'null');
+      if (saved && saved.expiresAt > Date.now()) return saved.pass;
+    } catch {}
+    return null;
+  }
+  function savePass(p, expiresAt) {
+    pass = p;
+    try { localStorage.setItem(PASS_KEY, JSON.stringify({ pass: p, expiresAt })); } catch {}
+  }
+  function dropPass() {
+    pass = null;
+    try { localStorage.removeItem(PASS_KEY); } catch {}
+  }
+
+  function show(id) {
+    ['codeScreen', 'slotScreen', 'formScreen', 'doneScreen'].forEach((s) =>
+      document.getElementById(s).classList.toggle('hidden', s !== id));
+    window.scrollTo(0, 0);
+    if (id === 'slotScreen') startSlotPolling(); else stopSlotPolling();
+    if (id === 'formScreen') setupSignaturePad();
+  }
+
+  // ---- 1) 현장 코드 ----
+  const codeInput = document.getElementById('codeInput');
+  codeInput.addEventListener('input', () => {
+    codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 4);
+    if (codeInput.value.length === 4) verifyCode();
+  });
+  codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyCode(); });
+
+  let verifying = false;
+  async function verifyCode() {
+    const code = codeInput.value.trim();
+    const statusEl = document.getElementById('codeStatus');
+    if (code.length !== 4) { statusEl.textContent = '4자리 숫자를 입력해주세요.'; return; }
+    if (verifying) return;
+    verifying = true;
+    document.getElementById('codeBtn').disabled = true;
+    statusEl.textContent = '';
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/vr/mobile/verify`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        statusEl.textContent = data.error || '코드 확인에 실패했어요.';
+        codeInput.value = '';
+        codeInput.focus();
+        return;
+      }
+      savePass(data.pass, data.expiresAt);
+      // 신청서 작성 중에 코드가 만료돼서 돌아온 경우엔 쓰던 신청서로 복귀
+      if (selectedTime && resumeFormAfterCode) { resumeFormAfterCode = false; show('formScreen'); }
+      else show('slotScreen');
+    } catch {
+      statusEl.textContent = '인터넷 연결을 확인해주세요.';
+    } finally {
+      verifying = false;
+      document.getElementById('codeBtn').disabled = false;
+    }
+  }
+
+  // ---- 2) 시간대 ----
+  async function loadSlots() {
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/vr/mobile/slots`, { cache: 'no-store' });
+      const data = await res.json();
+      slotsData = data.slots || [];
+      nowMin = data.nowMin;
+      renderSlots();
+    } catch {}
+  }
+  function startSlotPolling() {
+    stopSlotPolling();
+    loadSlots();
+    slotsTimer = setInterval(loadSlots, 10000);
+  }
+  function stopSlotPolling() {
+    if (slotsTimer) clearInterval(slotsTimer);
+    slotsTimer = null;
+  }
+
+  function slotMinutes(time) {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  }
+  // 키오스크와 같은 기준: 이미 시작한 시간대 중 가장 늦은 것이 "지금 시간대", 그보다 앞은 종료
+  function currentSlotIndex() {
+    let best = -1;
+    slotsData.forEach((s, i) => { if (slotMinutes(s.time) <= nowMin) best = i; });
+    return best;
+  }
+
+  function renderSlots() {
+    const grid = document.getElementById('slotsGrid');
+    const empty = document.getElementById('slotsEmpty');
+    empty.classList.toggle('hidden', slotsData.length > 0);
+    const nowIdx = currentSlotIndex();
+    grid.innerHTML = slotsData.map((s, i) => {
+      const isPast = nowIdx >= 0 && i < nowIdx;
+      if (isPast) return ''; // 폰 화면은 좁아서 지난 시간대는 아예 숨김
+      const remain = Math.max(s.capacity - s.count, 0);
+      const isFull = remain === 0;
+      const isNow = i === nowIdx;
+      return `
+        <button class="slot-btn ${isNow ? 'now' : ''}" ${isFull ? 'disabled' : ''} onclick="chooseSlot('${s.time}')">
+          <div class="time">${s.time}</div>
+          ${isNow ? '<div class="now-badge">지금 시간대</div>' : ''}
+          <div class="avail">${isFull ? '마감' : `<b>${remain}</b>자리 남음`}</div>
+        </button>`;
+    }).join('');
+    if (slotsData.length > 0 && !grid.innerHTML.trim()) empty.classList.remove('hidden');
+  }
+
+  // 시간대를 고르면 "인원수만큼 한 명씩" 안내창을 먼저 띄우고, 확인해야만 신청서로 넘어감
+  let pendingTime = null;
+  function chooseSlot(time) {
+    pendingTime = time;
+    document.getElementById('noticeOverlay').classList.remove('hidden');
+  }
+  function closeNotice() {
+    pendingTime = null;
+    document.getElementById('noticeOverlay').classList.add('hidden');
+  }
+  function confirmNotice() {
+    selectedTime = pendingTime;
+    closeNotice();
+    document.getElementById('formTime').textContent = selectedTime;
+    document.getElementById('formStatus').textContent = '';
+    show('formScreen');
+  }
+  function backToSlots() {
+    selectedTime = null;
+    resetForm({ keepAffil: false });
+    show('slotScreen');
+  }
+
+  // ---- 3) 신청서 ----
+  const isFutureTalent = (c) => c === '직업계고' || c === '대학생';
+  function selectCat(cat) {
+    selectedCat = cat;
+    document.querySelectorAll('.cat-btn').forEach((b) => b.classList.toggle('active', b.dataset.cat === cat));
+    const needsAffil = cat !== '일반시민';
+    document.getElementById('affilField').classList.toggle('hidden', !needsAffil);
+    document.getElementById('affilLabel').textContent = cat === '재직자' ? '회사명' : '학교명';
+    document.getElementById('affilInput').placeholder = cat === '재직자' ? '다니는 회사 이름' : '다니는 학교 이름';
+  }
+
+  function setupSignaturePad() {
+    const canvas = document.getElementById('sigCanvas');
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const saved = signaturePad && !signaturePad.isEmpty() ? signaturePad.toData() : null;
+    canvas.width = canvas.offsetWidth * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    canvas.getContext('2d').scale(ratio, ratio);
+    if (!signaturePad) {
+      signaturePad = new SignaturePad(canvas, { penColor: '#222', minWidth: 1.2, maxWidth: 3 });
+      signaturePad.addEventListener('beginStroke', () =>
+        document.getElementById('sigPlaceholder').classList.add('hidden'));
+    }
+    signaturePad.clear();
+    if (saved) signaturePad.fromData(saved);
+  }
+  // 화면을 돌리면 캔버스 크기가 바뀌므로 해상도를 다시 맞춤(쓰던 서명은 유지)
+  window.addEventListener('resize', () => {
+    if (!document.getElementById('formScreen').classList.contains('hidden')) setupSignaturePad();
+  });
+
+  function clearSignature() {
+    if (signaturePad) signaturePad.clear();
+    document.getElementById('sigPlaceholder').classList.remove('hidden');
+  }
+
+  // 잉크가 있는 영역만 잘라서 보냄 — PDF의 작은 서명 칸을 꽉 채우도록 (다른 서명 화면과 같은 방식)
+  function cropSignature(canvasEl, pad, marginRatio = 0.15) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    pad.toData().forEach((g) => g.points.forEach((p) => {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }));
+    const w = canvasEl.offsetWidth || 1, h = canvasEl.offsetHeight || 1;
+    const mx = Math.max((maxX - minX) * marginRatio, 6), my = Math.max((maxY - minY) * marginRatio, 6);
+    minX = Math.max(0, minX - mx); minY = Math.max(0, minY - my);
+    maxX = Math.min(w, maxX + mx); maxY = Math.min(h, maxY + my);
+    const ratio = canvasEl.width / w;
+    const sx = minX * ratio, sy = minY * ratio;
+    const sw = Math.max((maxX - minX) * ratio, 1), sh = Math.max((maxY - minY) * ratio, 1);
+    const scale = Math.min(1, 640 / Math.max(sw, sh));
+    const out = document.createElement('canvas');
+    out.width = Math.max(1, Math.round(sw * scale));
+    out.height = Math.max(1, Math.round(sh * scale));
+    out.getContext('2d').drawImage(canvasEl, sx, sy, sw, sh, 0, 0, out.width, out.height);
+    return out.toDataURL('image/png');
+  }
+
+  function resetForm({ keepAffil }) {
+    document.getElementById('nameInput').value = '';
+    document.getElementById('consentInput').checked = false;
+    clearSignature();
+    if (!keepAffil) {
+      selectedCat = '';
+      document.querySelectorAll('.cat-btn').forEach((b) => b.classList.remove('active'));
+      document.getElementById('affilField').classList.add('hidden');
+      document.getElementById('affilInput').value = '';
+    }
+    document.getElementById('formStatus').textContent = '';
+  }
+
+  let submitting = false;
+  let resumeFormAfterCode = false;
+  async function submitForm() {
+    const statusEl = document.getElementById('formStatus');
+    const 성명 = document.getElementById('nameInput').value.trim();
+    const 소속 = document.getElementById('affilInput').value.trim();
+    if (!selectedCat) { statusEl.textContent = '구분을 선택해주세요.'; return; }
+    if (!성명) { statusEl.textContent = '이름을 입력해주세요.'; return; }
+    if (selectedCat !== '일반시민' && !소속) {
+      statusEl.textContent = selectedCat === '재직자' ? '회사명을 입력해주세요.' : '학교명을 입력해주세요.';
+      return;
+    }
+    if (!signaturePad || signaturePad.isEmpty()) { statusEl.textContent = '서명을 해주세요.'; return; }
+    if (!document.getElementById('consentInput').checked) { statusEl.textContent = '개인정보 수집·이용에 동의해주세요.'; return; }
+    if (submitting) return;
+
+    submitting = true;
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    statusEl.textContent = '';
+    const busy = document.getElementById('busyOverlay');
+    busy.classList.remove('hidden');
+    try {
+      const res = await fetch(`${WORKER_HTTP_URL}/vr/mobile/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pass,
+          slotTime: selectedTime,
+          // 직업계고/대학생은 화면 선택지일 뿐, 서명록에는 '미래인재'로 합쳐서 저장됨
+          재직자여부: isFutureTalent(selectedCat) ? '미래인재' : selectedCat,
+          성명, 소속,
+          signature: cropSignature(document.getElementById('sigCanvas'), signaturePad),
+          동의: true,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401 && data.needCode) {
+        // 통행증 만료/코드 재발급 — 쓰던 내용은 그대로 두고 코드만 다시 받음
+        dropPass();
+        resumeFormAfterCode = true;
+        codeInput.value = '';
+        document.getElementById('codeStatus').textContent = '시간이 지나서 현장 코드를 한 번 더 입력해주세요.';
+        show('codeScreen');
+        return;
+      }
+      if (!res.ok) { statusEl.textContent = data.error || '신청에 실패했어요. 스태프에게 문의해주세요.'; return; }
+
+      document.getElementById('doneTime').textContent = selectedTime;
+      document.getElementById('donePos').textContent = data.position;
+      document.getElementById('doneName').textContent = `${성명}님`;
+      document.getElementById('doneCat').textContent = selectedCat === '일반시민' ? '일반 시민' : `${selectedCat} · ${소속}`;
+      show('doneScreen');
+    } catch {
+      statusEl.textContent = '인터넷 연결을 확인하고 다시 눌러주세요.';
+    } finally {
+      busy.classList.add('hidden');
+      submitting = false;
+      btn.disabled = false;
+    }
+  }
+
+  function tickClock() {
+    const d = new Date();
+    document.getElementById('doneClock').textContent =
+      [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // ---- 4) 완료 → 일행 추가: 같은 시간대, 구분/소속은 그대로 두고 이름·서명만 새로 ----
+  function addCompanion() {
+    resetForm({ keepAffil: true });
+    show('formScreen');
+  }
+
+  // ---- 시작 ----
+  // 인쇄 용지 QR은 주소에 코드(?c=1234)가 들어있어서 입력 없이 바로 확인함.
+  // 주소창에는 코드를 남기지 않음(화면 캡처로 코드가 퍼지지 않게).
+  const qrCode = new URLSearchParams(location.search).get('c');
+  if (qrCode) history.replaceState(null, '', location.pathname);
+  pass = loadPass();
+  if (qrCode && /^\d{4}$/.test(qrCode)) {
+    show('codeScreen');
+    document.getElementById('codeStatus').style.color = 'var(--muted)';
+    document.getElementById('codeStatus').textContent = 'QR 확인 중...';
+    codeInput.value = qrCode;
+    verifyCode().finally(() => { document.getElementById('codeStatus').style.color = ''; });
+  } else if (pass) {
+    show('slotScreen');
+  } else {
+    show('codeScreen');
+    codeInput.focus();
+  }
+</script>
+</body>
+</html>

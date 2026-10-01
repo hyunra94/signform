@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VR체험버스 - QR 셀프 신청</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+  :root {
+    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
+    --accent: #F7B8C4; --accent-dark: #E88FA2;
+    --text: #5A4A50; --muted: #a98a92; --white: #FFFFFF;
+    --shadow: rgba(232, 143, 162, 0.25); --error: #D97070; --ok: #6FA875;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    min-height: 100%; margin: 0; font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2)); color: var(--text);
+  }
+  .hidden { display: none !important; }
+  .card { background: var(--white); border-radius: 24px; box-shadow: 0 10px 28px var(--shadow); padding: 24px; }
+  .btn {
+    border: none; border-radius: 14px; background: var(--accent-dark); color: white; font-weight: 700;
+    font-size: 16px; padding: 12px 18px; font-family: inherit; cursor: pointer;
+  }
+  .ghost-btn {
+    border: 2px solid var(--accent); background: var(--white); color: var(--text); border-radius: 12px;
+    font-size: 14px; padding: 8px 14px; font-family: inherit; cursor: pointer;
+  }
+  .ghost-btn.danger { border-color: var(--error); color: var(--error); }
+  .status { min-height: 20px; color: var(--error); font-size: 14px; margin-top: 10px; text-align: center; }
+
+  /* 로그인 */
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .login { width: 100%; max-width: 360px; text-align: center; }
+  .login h2 { margin: 0 0 14px; color: var(--accent-dark); font-size: 20px; }
+  .login input {
+    width: 100%; font-size: 17px; padding: 12px; border: 2px solid var(--accent); border-radius: 12px;
+    font-family: inherit; outline: none;
+  }
+  .login .btn { width: 100%; margin-top: 12px; }
+
+  /* 상단 탭 */
+  .topbar { display: flex; justify-content: center; gap: 8px; padding: 16px 16px 0; flex-wrap: wrap; }
+  .tab { border: none; background: rgba(255,255,255,0.6); color: var(--text); border-radius: 12px; padding: 9px 16px; font-size: 15px; font-family: inherit; cursor: pointer; }
+  .tab.active { background: var(--accent-dark); color: white; font-weight: 700; }
+  .page { padding: 20px 16px 40px; max-width: 1100px; margin: 0 auto; }
+
+  /* 설정 */
+  .settings { max-width: 560px; margin: 0 auto; }
+  .settings h3 { margin: 0 0 12px; font-size: 17px; }
+  .mode-opt { display: flex; gap: 12px; align-items: flex-start; border: 2px solid var(--accent); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+  .mode-opt.active { border-color: var(--accent-dark); background: #FFF6F8; }
+  .mode-opt input { margin-top: 4px; accent-color: var(--accent-dark); width: 18px; height: 18px; }
+  .mode-opt b { display: block; font-size: 16px; }
+  .mode-opt span { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .sheet-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; }
+  .sheet-btn { border: 2px solid var(--accent); background: var(--white); border-radius: 12px; padding: 10px 0; font-size: 18px; font-weight: 700; font-family: inherit; color: var(--text); cursor: pointer; }
+  .sheet-btn.active { background: var(--accent-dark); border-color: var(--accent-dark); color: white; }
+  .current-box { margin-top: 18px; background: #F0FAF2; color: #3F7A47; border-radius: 12px; padding: 12px; text-align: center; font-size: 15px; font-weight: 700; }
+  .hint { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
+
+  /* 화면 코드 */
+  .mode-warn { max-width: 640px; margin: 0 auto 16px; background: #FFF4E5; color: #9A5B13; border-radius: 12px; padding: 10px 14px; text-align: center; font-size: 14px; }
+  .title { font-size: clamp(22px, 4vw, 40px); font-weight: 700; text-align: center; margin-bottom: 20px; }
+  .display { display: flex; gap: clamp(20px, 4vw, 56px); align-items: center; justify-content: center; flex-wrap: wrap; }
+  .step { font-size: clamp(16px, 2.2vw, 24px); font-weight: 700; color: var(--accent-dark); text-align: center; margin-bottom: 12px; }
+  .qr-box svg { display: block; width: clamp(200px, 32vw, 380px); height: auto; }
+  .code-box { text-align: center; }
+  .code {
+    font-size: clamp(72px, 14vw, 170px); font-weight: 700; letter-spacing: 0.12em; line-height: 1;
+    font-variant-numeric: tabular-nums; padding-left: 0.12em;
+  }
+  .timer-bar { height: 10px; border-radius: 5px; background: #F3D6DD; overflow: hidden; margin-top: 18px; }
+  .timer-fill { height: 100%; background: var(--accent-dark); transition: width 1s linear; }
+  .timer-text { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .footer { margin-top: 24px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+  /* 인쇄 용지 */
+  .paper-tools { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 18px; }
+  .sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .sheet {
+    background: var(--white); border-radius: 18px; box-shadow: 0 6px 16px var(--shadow); padding: 18px;
+    text-align: center; border: 3px solid transparent;
+  }
+  .sheet.active { border-color: var(--ok); }
+  .sheet-no { font-size: 14px; color: var(--muted); }
+  .sheet-no b { color: var(--text); font-size: 18px; }
+  .sheet-active-badge { display: inline-block; background: var(--ok); color: white; border-radius: 10px; font-size: 12px; padding: 2px 8px; margin-left: 4px; }
+  .sheet-title { font-size: 20px; font-weight: 700; margin: 6px 0 10px; }
+  .sheet-qr svg { width: 100%; max-width: 200px; height: auto; }
+  .sheet-guide { font-size: 14px; line-height: 1.6; margin-top: 8px; }
+  .sheet-code { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* 인쇄: 용지만, A4 한 장에 한 번호씩 크게 */
+  @media print {
+    @page { size: A4; margin: 14mm; }
+    html, body { background: white; }
+    .topbar, .paper-tools, .no-print, #settingsPage, #screenPage { display: none !important; }
+    .page { padding: 0; max-width: none; }
+    .sheets { display: block; }
+    .sheet {
+      box-shadow: none; border: none; border-radius: 0; padding: 0; height: 262mm;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      page-break-after: always; break-after: page;
+    }
+    .sheet:last-child { page-break-after: auto; break-after: auto; }
+    .sheet-active-badge { display: none; }
+    .sheet-no { font-size: 16pt; }
+    .sheet-no b { font-size: 16pt; }
+    .sheet-title { font-size: 34pt; margin: 8mm 0 10mm; }
+    .sheet-qr svg { width: 120mm; max-width: none; }
+    .sheet-guide { font-size: 20pt; margin-top: 10mm; }
+    .sheet-code { font-size: 11pt; margin-top: 6mm; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-wrap">
+  <div class="card login">
+    <h2>🔒 관리자 확인</h2>
+    <input id="keyInput" type="password" placeholder="관리자 비밀번호">
+    <button class="btn" onclick="login()">확인</button>
+    <div id="loginStatus" class="status"></div>
+  </div>
+</div>
+
+<div id="mainScreen" class="hidden">
+  <div class="topbar">
+    <button class="tab" data-tab="settings" onclick="showTab('settings')">⚙️ 설정</button>
+    <button class="tab" data-tab="screen" onclick="showTab('screen')">🖥️ 화면 코드</button>
+    <button class="tab" data-tab="paper" onclick="showTab('paper')">🖨️ 인쇄 용지</button>
+    <button class="tab" onclick="location.href='./index.html'">나가기</button>
+  </div>
+
+  <!-- 설정 -->
+  <div id="settingsPage" class="page hidden">
+    <div class="card settings">
+      <h3>참가자 폰 신청을 어떻게 받을까요?</h3>
+      <label class="mode-opt" id="modeOpt-paper">
+        <input type="radio" name="mode" value="paper" onchange="saveMode({ mode: 'paper' })">
+        <div><b>🖨️ 인쇄 용지</b><span>미리 뽑아둔 1~10번 용지 중 아래에서 고른 번호의 QR만 통해요. 찍으면 바로 신청 화면이 열려요.</span></div>
+      </label>
+      <label class="mode-opt" id="modeOpt-screen">
+        <input type="radio" name="mode" value="screen" onchange="saveMode({ mode: 'screen' })">
+        <div><b>🖥️ 화면 코드</b><span>현장 태블릿/모니터에 "화면 코드" 탭을 띄워두세요. 참가자가 10분마다 바뀌는 4자리 코드를 입력해야 해요.</span></div>
+      </label>
+
+      <div id="sheetPicker">
+        <h3 style="margin-top:18px">오늘 붙일 용지 번호</h3>
+        <div class="sheet-grid" id="sheetGrid"></div>
+        <div class="hint">용지 사진이 밖으로 퍼진 것 같으면 다른 번호를 고르고, 그 번호 용지로 갈아 붙이면 돼요.
+          번호를 바꾸는 즉시 이전 용지로 들어온 폰도 다시 QR을 찍어야 해요.</div>
+      </div>
+
+      <div id="currentBox" class="current-box"></div>
+      <div id="settingsStatus" class="status"></div>
+    </div>
+  </div>
+
+  <!-- 화면 코드 -->
+  <div id="screenPage" class="page hidden">
+    <div id="screenModeWarn" class="mode-warn hidden">⚠️ 지금은 <b>인쇄 용지</b> 방식이라 이 화면 코드는 통하지 않아요. 설정에서 "화면 코드"로 바꿔주세요.</div>
+    <div class="title">🚌 VR체험버스 탑승 신청</div>
+    <div class="display">
+      <div class="card">
+        <div class="step">① 휴대폰 카메라로 QR 찍기</div>
+        <div id="qrBox" class="qr-box"></div>
+      </div>
+      <div class="card code-box">
+        <div class="step">② 이 코드 입력하기</div>
+        <div id="codeText" class="code">····</div>
+        <div class="timer-bar"><div id="timerFill" class="timer-fill" style="width:100%"></div></div>
+        <div id="timerText" class="timer-text"></div>
+      </div>
+    </div>
+    <div class="footer">
+      <button id="resetBtn" class="ghost-btn danger" onclick="resetScreenCode()">코드 즉시 바꾸기</button>
+    </div>
+    <div id="screenStatus" class="status"></div>
+  </div>
+
+  <!-- 인쇄 용지 -->
+  <div id="paperPage" class="page hidden">
+    <div class="paper-tools">
+      <button class="btn" onclick="window.print()">🖨️ 10장 모두 인쇄 (A4 한 장에 한 번호)</button>
+      <button id="paperResetBtn" class="ghost-btn danger" onclick="resetPaper()">용지 전체 새로 발급</button>
+    </div>
+    <div id="sheets" class="sheets"></div>
+    <div id="paperStatus" class="status no-print"></div>
+  </div>
+</div>
+
+<script>
+  const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
+  const CODE_WINDOW_SEC = 10 * 60;
+  // 이 화면과 같은 폴더에 있는 폰 신청 화면 주소
+  const MOBILE_URL = new URL('vr_mobile.html', location.href).href;
+  const TAB_KEY = 'vr_code_display_tab';
+
+  let adminKey = null;
+  let settings = { mode: 'paper', activeSheet: 1 };
+  let sheets = [];
+  let expiresAt = 0;
+  let refreshTimer = null;
+
+  async function api(path, method = 'GET', body) {
+    const res = await fetch(`${WORKER_HTTP_URL}${path}?key=${encodeURIComponent(adminKey)}`, {
+      method, cache: 'no-store',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || '서버 요청에 실패했어요.'), { status: res.status });
+    return data;
+  }
+
+  function qrSvg(text) {
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    return qr.createSvgTag({ cellSize: 8, margin: 2, scalable: true });
+  }
+
+  // ---- 탭 ----
+  function showTab(tab) {
+    ['settings', 'screen', 'paper'].forEach((t) =>
+      document.getElementById(`${t}Page`).classList.toggle('hidden', t !== tab));
+    document.querySelectorAll('.tab[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+    try { localStorage.setItem(TAB_KEY, tab); } catch {}
+  }
+
+  // ---- 설정 ----
+  function renderSettings() {
+    ['paper', 'screen'].forEach((m) => {
+      document.getElementById(`modeOpt-${m}`).classList.toggle('active', settings.mode === m);
+      document.querySelector(`input[name=mode][value=${m}]`).checked = settings.mode === m;
+    });
+    document.getElementById('sheetPicker').classList.toggle('hidden', settings.mode !== 'paper');
+    document.getElementById('sheetGrid').innerHTML = Array.from({ length: 10 }, (_, i) => i + 1)
+      .map((n) => `<button class="sheet-btn ${settings.activeSheet === n ? 'active' : ''}" onclick="saveMode({ activeSheet: ${n} })">${n}</button>`)
+      .join('');
+    document.getElementById('currentBox').textContent = settings.mode === 'paper'
+      ? `✅ 지금 통하는 것: 인쇄 용지 ${settings.activeSheet}번`
+      : '✅ 지금 통하는 것: 화면 코드 (10분마다 바뀜)';
+    document.getElementById('screenModeWarn').classList.toggle('hidden', settings.mode === 'screen');
+    renderSheets();
+  }
+
+  async function saveMode(patch) {
+    const statusEl = document.getElementById('settingsStatus');
+    statusEl.textContent = '';
+    try {
+      settings = await api('/admin/vr-mode', 'POST', patch);
+    } catch (e) {
+      statusEl.textContent = e.message;
+    }
+    renderSettings();
+  }
+
+  // ---- 화면 코드 ----
+  function applyCode(data) {
+    document.getElementById('codeText').textContent = data.code;
+    expiresAt = Date.now() + data.expiresInSec * 1000;
+    tick();
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refreshCode, data.expiresInSec * 1000 + 500); // 코드가 바뀌는 순간 새로 받아옴
+  }
+
+  async function refreshCode() {
+    try {
+      const data = await api('/admin/vr-code');
+      settings = { mode: data.mode, activeSheet: data.activeSheet };
+      renderSettings();
+      applyCode(data);
+      document.getElementById('screenStatus').textContent = '';
+    } catch {
+      document.getElementById('screenStatus').textContent = '연결이 끊겼어요. 다시 시도하는 중...';
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(refreshCode, 5000);
+    }
+  }
+
+  function tick() {
+    const remain = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
+    document.getElementById('timerFill').style.width = `${(remain / CODE_WINDOW_SEC) * 100}%`;
+    document.getElementById('timerText').textContent =
+      `${Math.floor(remain / 60)}분 ${String(remain % 60).padStart(2, '0')}초 뒤에 코드가 바뀌어요`;
+  }
+  setInterval(tick, 1000);
+
+  // 위험한 버튼은 두 번 눌러야 실행
+  function armButton(btn, armedText, action) {
+    if (btn.dataset.armed !== '1') {
+      const original = btn.textContent;
+      btn.dataset.armed = '1';
+      btn.textContent = armedText;
+      setTimeout(() => { btn.dataset.armed = ''; btn.textContent = original; }, 4000);
+      return;
+    }
+    btn.dataset.armed = '';
+    action();
+  }
+
+  function resetScreenCode() {
+    const btn = document.getElementById('resetBtn');
+    armButton(btn, '한 번 더 누르면 바뀌어요 (신청 중인 폰도 코드 재입력)', async () => {
+      btn.textContent = '코드 즉시 바꾸기';
+      try { applyCode(await api('/admin/vr-code/reset', 'POST')); }
+      catch (e) { document.getElementById('screenStatus').textContent = e.message; }
+    });
+  }
+
+  // ---- 인쇄 용지 ----
+  function renderSheets() {
+    document.getElementById('sheets').innerHTML = sheets.map((s) => {
+      const isActive = settings.mode === 'paper' && settings.activeSheet === s.no;
+      return `
+        <div class="sheet ${isActive ? 'active' : ''}">
+          <div class="sheet-no">용지 <b>${s.no}</b>번${isActive ? '<span class="sheet-active-badge">지금 사용 중</span>' : ''}</div>
+          <div class="sheet-title">🚌 VR체험버스 탑승 신청</div>
+          <div class="sheet-qr">${qrSvg(`${MOBILE_URL}?c=${s.code}`)}</div>
+          <div class="sheet-guide">휴대폰 카메라로 QR을 찍어주세요<br>탑승 인원 <b>한 명씩 모두</b> 신청해야 해요</div>
+          <div class="sheet-code">No.${s.no}</div>
+        </div>`;
+    }).join('');
+  }
+
+  async function loadPaper() {
+    try {
+      const data = await api('/admin/vr-paper');
+      sheets = data.sheets;
+      renderSheets();
+    } catch (e) {
+      document.getElementById('paperStatus').textContent = e.message;
+    }
+  }
+
+  function resetPaper() {
+    const btn = document.getElementById('paperResetBtn');
+    armButton(btn, '한 번 더 누르면 인쇄해둔 용지 10장이 모두 못 쓰게 돼요', async () => {
+      btn.textContent = '용지 전체 새로 발급';
+      try {
+        const data = await api('/admin/vr-paper/reset', 'POST');
+        sheets = data.sheets;
+        renderSheets();
+        document.getElementById('paperStatus').style.color = 'var(--ok)';
+        document.getElementById('paperStatus').textContent = '새로 발급했어요. 10장을 다시 인쇄해주세요.';
+      } catch (e) {
+        document.getElementById('paperStatus').style.color = '';
+        document.getElementById('paperStatus').textContent = e.message;
+      }
+    });
+  }
+
+  // ---- 로그인 ----
+  async function login(savedKey) {
+    const statusEl = document.getElementById('loginStatus');
+    adminKey = savedKey || document.getElementById('keyInput').value.trim();
+    if (!adminKey) { statusEl.textContent = '비밀번호를 입력해주세요.'; return; }
+    try {
+      const data = await api('/admin/vr-code');
+      try { localStorage.setItem('admin_key', adminKey); } catch {}
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('mainScreen').classList.remove('hidden');
+      settings = { mode: data.mode, activeSheet: data.activeSheet };
+      document.getElementById('qrBox').innerHTML = qrSvg(MOBILE_URL); // 화면 코드용 QR은 주소만(코드는 화면에만)
+      applyCode(data);
+      renderSettings();
+      loadPaper();
+      let tab = 'settings';
+      try { tab = localStorage.getItem(TAB_KEY) || 'settings'; } catch {}
+      showTab(tab);
+    } catch (e) {
+      adminKey = null;
+      statusEl.textContent = e.status === 401 ? '비밀번호가 맞지 않아요.' : e.message;
+      if (savedKey) { try { localStorage.removeItem('admin_key'); } catch {} }
+    }
+  }
+  document.getElementById('keyInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+
+  let savedKey = null;
+  try { savedKey = localStorage.getItem('admin_key'); } catch {}
+  if (savedKey) login(savedKey);
+</script>
+</body>
+</html>
