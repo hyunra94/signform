@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VR체험버스 - 담당자 승인</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-1: #FFF0F5; --bg-2: #FFE4E1;
+    --accent: #F7B8C4; --accent-dark: #E88FA2;
+    --text: #5A4A50; --muted: #a98a92; --white: #FFFFFF;
+    --shadow: rgba(232, 143, 162, 0.25); --error: #D97070; --ok: #6FA875; --wait: #F2C96B;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    min-height: 100%; margin: 0; font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2)); background-attachment: fixed; color: var(--text);
+  }
+  .hidden { display: none !important; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 16px 16px 48px; }
+  .card { background: var(--white); border-radius: 20px; box-shadow: 0 8px 22px var(--shadow); padding: 18px; }
+  .btn { border: none; border-radius: 12px; background: var(--accent-dark); color: white; font-weight: 700; font-size: 16px; padding: 11px 16px; font-family: inherit; cursor: pointer; }
+  .btn:disabled { opacity: 0.6; }
+  .status { min-height: 20px; color: var(--error); font-size: 14px; margin-top: 10px; text-align: center; }
+
+  /* 로그인 */
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .login { width: 100%; max-width: 340px; text-align: center; }
+  .login h2 { margin: 0 0 6px; color: var(--accent-dark); font-size: 20px; }
+  .login p { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .login input { width: 100%; font-size: 22px; letter-spacing: 6px; text-align: center; padding: 12px; border: 2px solid var(--accent); border-radius: 12px; font-family: inherit; outline: none; }
+  .login .btn { width: 100%; margin-top: 12px; }
+
+  /* 상단 */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .top h1 { font-size: 20px; margin: 0; color: var(--accent-dark); }
+  .top .right { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #ccc; display: inline-block; }
+  .dot.on { background: var(--ok); }
+  .ghost-btn { border: 2px solid var(--accent); background: var(--white); color: var(--text); border-radius: 10px; font-size: 13px; padding: 6px 10px; font-family: inherit; cursor: pointer; }
+
+  h2.sec { font-size: 17px; margin: 18px 0 10px; display: flex; align-items: center; gap: 8px; }
+  .count-badge { background: var(--wait); color: #6B4E08; border-radius: 10px; font-size: 13px; padding: 2px 9px; }
+  .search { width: 100%; font-size: 17px; padding: 10px 12px; border: 2px solid var(--accent); border-radius: 12px; font-family: inherit; outline: none; margin-bottom: 10px; }
+
+  /* 대기 카드 */
+  .pending-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .p-card { background: var(--white); border-radius: 16px; border: 3px solid var(--wait); padding: 14px; box-shadow: 0 4px 12px var(--shadow); }
+  .p-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .p-ticket { font-size: 28px; font-weight: 700; }
+  .p-ticket small { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .p-time { font-size: 18px; font-weight: 700; color: var(--accent-dark); }
+  .p-name { font-size: 18px; font-weight: 700; margin-top: 6px; }
+  .p-meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .p-people { margin-top: 8px; font-size: 14px; background: #FFF6DD; border-radius: 10px; padding: 6px 8px; }
+  .p-people b { font-size: 16px; }
+  .p-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .p-actions .approve { flex: 2; background: var(--ok); }
+  .p-actions .reject { flex: 1; background: var(--white); color: var(--error); border: 2px solid var(--error); }
+  .p-msg { font-size: 13px; color: var(--error); margin-top: 6px; min-height: 16px; }
+  .empty { text-align: center; color: var(--muted); padding: 18px 0; font-size: 14px; }
+
+  /* 정식 명단 */
+  .slot { background: var(--white); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 4px 12px var(--shadow); }
+  .slot.now { box-shadow: 0 0 0 3px var(--accent-dark), 0 4px 12px var(--shadow); }
+  .slot.past { opacity: 0.55; }
+  .slot-head { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .slot-head b { font-size: 18px; }
+  .slot-head .cnt { font-size: 14px; }
+  .slot-head .cnt.full { color: var(--error); font-weight: 700; }
+  .slot-body { margin-top: 8px; font-size: 14px; }
+  .row { display: flex; gap: 8px; padding: 5px 0; border-top: 1px solid #F6E3E8; }
+  .row .no { width: 28px; color: var(--muted); text-align: right; }
+  .row .src { font-size: 11px; border-radius: 8px; padding: 1px 6px; background: #EEE6F8; color: #6B5A8A; margin-left: 4px; }
+  .row.child { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-wrap">
+  <div class="card login">
+    <h2>🚌 담당자 승인</h2>
+    <p>관리자에게 받은 담당자 PIN을 입력해주세요.</p>
+    <input id="pinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN">
+    <button class="btn" onclick="login()">들어가기</button>
+    <div id="loginStatus" class="status"></div>
+  </div>
+</div>
+
+<div id="mainScreen" class="wrap hidden">
+  <div class="top">
+    <h1>🚌 담당자 승인</h1>
+    <div class="right"><span class="dot" id="connDot"></span><span id="clock"></span>
+      <button class="ghost-btn" onclick="logout()">나가기</button></div>
+  </div>
+
+  <h2 class="sec">⏳ 승인 대기 <span class="count-badge" id="pendingCount">0</span></h2>
+  <input id="searchInput" class="search" type="text" inputmode="numeric" placeholder="접수번호 또는 이름으로 찾기" oninput="renderPending()">
+  <div id="pendingList" class="pending-list"></div>
+  <div id="pendingEmpty" class="empty hidden">대기 중인 신청이 없어요.</div>
+
+  <h2 class="sec">✅ 시간대별 정식 명단</h2>
+  <div id="slotList"></div>
+  <div id="mainStatus" class="status"></div>
+</div>
+
+<script>
+  const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
+  // 담당자 PIN은 이 기기에만 저장(관리자 키와 따로) — "나가기"를 누르면 지워짐
+  const PIN_KEY = 'vr_staff_pin';
+
+  let pin = null;
+  let state = { pending: [], slots: [] };
+  let pollTimer = null;
+  const openSlots = new Set(); // 펼쳐 본 시간대 (기본: 지금 시간대만 펼침)
+  const cardMsgs = {};
+  const rejectArmed = {};
+
+  function escapeHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  async function api(path, method = 'GET', body) {
+    const res = await fetch(`${WORKER_HTTP_URL}${path}?pin=${encodeURIComponent(pin)}`, {
+      method, cache: 'no-store',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || '요청에 실패했어요.'), { status: res.status });
+    return data;
+  }
+
+  async function refresh() {
+    try {
+      state = await api('/staff/vr/state');
+      document.getElementById('connDot').classList.add('on');
+      document.getElementById('mainStatus').textContent = '';
+      render();
+    } catch (e) {
+      document.getElementById('connDot').classList.remove('on');
+      if (e.status === 401) { logout(e.message); return; }
+      document.getElementById('mainStatus').textContent = '연결이 불안정해요. 다시 시도하는 중...';
+    }
+  }
+
+  function render() {
+    renderPending();
+    renderSlots();
+  }
+
+  function renderPending() {
+    const q = document.getElementById('searchInput').value.trim();
+    const list = state.pending
+      .filter((p) => !q || String(p.ticket) === q || p.성명.includes(q))
+      .sort((a, b) => a.ticket - b.ticket);
+    document.getElementById('pendingCount').textContent = state.pending.length;
+    document.getElementById('pendingEmpty').classList.toggle('hidden', list.length > 0);
+    document.getElementById('pendingList').innerHTML = list.map((p) => {
+      const slot = state.slots.find((s) => s.time === p.slotTime);
+      const remain = slot ? slot.capacity - slot.entries.length : 0;
+      const people = 1 + p.childCount;
+      const cat = p.재직자여부 === '일반시민' ? '일반 시민' : `${escapeHtml(p.재직자여부)} · ${escapeHtml(p.소속)}`;
+      return `
+        <div class="p-card">
+          <div class="p-head">
+            <div class="p-ticket"><small>접수번호</small> ${p.ticket}</div>
+            <div class="p-time">${p.slotTime}</div>
+          </div>
+          <div class="p-name">${escapeHtml(p.성명)}</div>
+          <div class="p-meta">${cat}</div>
+          <div class="p-people">탑승 인원 <b>${people}명</b>${p.childCount ? ` (본인 + 자녀 ${p.childCount}명)` : ''}
+            · 남은 자리 <b>${Math.max(remain, 0)}</b></div>
+          <div class="p-actions">
+            <button class="btn approve" ${p.approving ? 'disabled' : ''} onclick="approve('${p.id}')">${p.approving ? '처리 중...' : '승인'}</button>
+            <button class="btn reject" ${p.approving ? 'disabled' : ''} onclick="reject('${p.id}')">${rejectArmed[p.id] ? '정말 거절' : '거절'}</button>
+          </div>
+          <div class="p-msg">${escapeHtml(cardMsgs[p.id] || '')}</div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderSlots() {
+    const nowSlot = state.slots.find((s) => s.isNow);
+    if (nowSlot && !openSlots.size) openSlots.add(nowSlot.time);
+    document.getElementById('slotList').innerHTML = state.slots.filter((s) => !s.disabled || s.entries.length).map((s) => {
+      const isOpen = openSlots.has(s.time);
+      const full = s.entries.length >= s.capacity;
+      const rows = s.entries.map((e) => {
+        const cat = e.child ? '' : (e.재직자여부 === '일반시민' || !e.재직자여부 ? '' : ` · ${escapeHtml(e.소속 || e.재직자여부)}`);
+        const src = e.source === 'mobile' ? `<span class="src">폰 #${e.ticket}</span>` : (e.source === 'kiosk' && !e.성명 ? '<span class="src">키오스크</span>' : '');
+        return `<div class="row ${e.child ? 'child' : ''}"><span class="no">${e.no}</span>
+          <span>${escapeHtml(e.성명 || '(손글씨 이름)')}${cat}${src}</span></div>`;
+      }).join('');
+      return `
+        <div class="slot ${s.isNow ? 'now' : ''} ${s.isPast ? 'past' : ''}">
+          <div class="slot-head" onclick="toggleSlot('${s.time}')">
+            <b>${s.time}${s.isNow ? ' · 지금' : ''}</b>
+            <span class="cnt ${full ? 'full' : ''}">${s.entries.length} / ${s.capacity}명 ${isOpen ? '▲' : '▼'}</span>
+          </div>
+          ${isOpen ? `<div class="slot-body">${rows || '<div class="empty">아직 없어요</div>'}</div>` : ''}
+        </div>`;
+    }).join('') || '<div class="empty">오늘 시간대가 아직 설정되지 않았어요.</div>';
+  }
+
+  function toggleSlot(time) {
+    if (openSlots.has(time)) openSlots.delete(time); else openSlots.add(time);
+    renderSlots();
+  }
+
+  async function approve(id) {
+    delete cardMsgs[id];
+    const p = state.pending.find((x) => x.id === id);
+    if (p) p.approving = true;
+    renderPending();
+    try {
+      await api('/staff/vr/approve', 'POST', { id });
+    } catch (e) {
+      cardMsgs[id] = e.message;
+    }
+    await refresh();
+  }
+
+  // 거절은 두 번 눌러야 실행
+  async function reject(id) {
+    if (!rejectArmed[id]) {
+      rejectArmed[id] = true;
+      renderPending();
+      setTimeout(() => { delete rejectArmed[id]; renderPending(); }, 4000);
+      return;
+    }
+    delete rejectArmed[id];
+    try {
+      await api('/staff/vr/reject', 'POST', { id });
+    } catch (e) {
+      cardMsgs[id] = e.message;
+    }
+    await refresh();
+  }
+
+  function updateClock() {
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  updateClock();
+  setInterval(updateClock, 15000);
+
+  async function login(saved) {
+    const statusEl = document.getElementById('loginStatus');
+    pin = saved || document.getElementById('pinInput').value.trim();
+    if (!pin) { statusEl.textContent = 'PIN을 입력해주세요.'; return; }
+    try {
+      state = await api('/staff/vr/state');
+      try { localStorage.setItem(PIN_KEY, pin); } catch {}
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('mainScreen').classList.remove('hidden');
+      document.getElementById('connDot').classList.add('on');
+      render();
+      clearInterval(pollTimer);
+      pollTimer = setInterval(refresh, 3000);
+    } catch (e) {
+      pin = null;
+      statusEl.textContent = e.message;
+      try { localStorage.removeItem(PIN_KEY); } catch {}
+    }
+  }
+  document.getElementById('pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+
+  function logout(message) {
+    clearInterval(pollTimer);
+    pin = null;
+    try { localStorage.removeItem(PIN_KEY); } catch {}
+    document.getElementById('mainScreen').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('pinInput').value = '';
+    document.getElementById('loginStatus').textContent = typeof message === 'string' ? message : '';
+  }
+
+  let savedPin = null;
+  try { savedPin = localStorage.getItem(PIN_KEY); } catch {}
+  if (savedPin) login(savedPin);
+</script>
+</body>
+</html>

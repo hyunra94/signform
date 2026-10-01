@@ -97,22 +97,35 @@
     font-size: 13.5px; line-height: 1.5; margin-bottom: 16px; text-align: center;
   }
 
-  /* ---- 완료 (담당자에게 보여주는 화면) ---- */
-  .done-card { text-align: center; border: 4px solid var(--ok); }
-  .done-head { font-size: 20px; font-weight: 700; color: var(--ok); }
-  .done-time { font-size: 17px; margin-top: 12px; }
-  .done-time b { font-size: 30px; color: var(--text); }
-  .done-pos { margin: 6px 0 2px; font-size: 18px; }
-  .done-pos b { display: block; font-size: 72px; line-height: 1.1; color: var(--accent-dark); }
-  .done-name { font-size: 18px; font-weight: 700; margin: 10px 0 2px; }
-  .done-cat { color: var(--muted); font-size: 14px; }
-  .done-clock { margin-top: 12px; font-size: 13px; color: var(--muted); }
-  .done-clock b { font-variant-numeric: tabular-nums; color: var(--text); }
+  /* ---- 동반 자녀 ---- */
+  .stepper { display: flex; align-items: center; gap: 14px; }
+  .stepper button {
+    width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--accent); background: var(--white);
+    font-size: 22px; color: var(--text); font-family: inherit; cursor: pointer;
+  }
+  .stepper b { font-size: 24px; min-width: 40px; text-align: center; }
+  .field-hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+  /* ---- 내 신청 현황 (담당자에게 보여주는 화면) ---- */
   .show-staff {
-    margin: 16px 0; background: var(--ok); color: white; border-radius: 14px;
+    background: var(--accent-dark); color: white; border-radius: 14px; text-align: center;
     padding: 12px; font-size: 17px; font-weight: 700;
   }
-  .done-warn { background: #FFF4E5; color: #9A5B13; border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.5; }
+  .my-clock { text-align: center; margin: 8px 0 14px; font-size: 13px; color: var(--muted); }
+  .my-clock b { font-variant-numeric: tabular-nums; color: var(--text); font-size: 15px; }
+  .my-item { border-radius: 18px; background: var(--white); padding: 16px; margin-bottom: 12px; border: 4px solid #F2C96B; text-align: center; }
+  .my-item.approved { border-color: var(--ok); }
+  .my-item.rejected, .my-item.expired { border-color: #D8D0D2; opacity: 0.75; }
+  .my-badge { display: inline-block; border-radius: 10px; padding: 3px 10px; font-size: 13px; font-weight: 700; background: #FFF1CC; color: #8A6510; }
+  .my-item.approved .my-badge { background: #E5F4E7; color: #3F7A47; }
+  .my-item.rejected .my-badge, .my-item.expired .my-badge { background: #EEE; color: #777; }
+  .my-big { font-size: 52px; font-weight: 700; line-height: 1.15; margin-top: 6px; }
+  .my-item.approved .my-big { color: var(--ok); }
+  .my-big small { font-size: 18px; font-weight: 500; }
+  .my-sub { font-size: 15px; margin-top: 4px; }
+  .my-sub b { font-size: 18px; }
+  .my-meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .my-warn { background: #FFF4E5; color: #9A5B13; border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.5; text-align: center; }
 
   /* ---- 안내창 / 처리 중 ---- */
   .overlay {
@@ -181,6 +194,17 @@
       </div>
 
       <div class="field">
+        <label>함께 타는 자녀 (휴대폰 없는 경우만)</label>
+        <div class="stepper">
+          <button type="button" onclick="changeChildren(-1)">−</button>
+          <b id="childCount">0</b>
+          <button type="button" onclick="changeChildren(1)">+</button>
+          <span>명</span>
+        </div>
+        <div class="field-hint">자녀는 서명 없이 탑승 인원으로만 등록돼요. 휴대폰이 있는 분은 각자 따로 신청해주세요.</div>
+      </div>
+
+      <div class="field">
         <div class="sig-head">
           <label>서명</label>
           <button type="button" class="link-btn" onclick="clearSignature()">지우기</button>
@@ -204,21 +228,15 @@
     </div>
   </section>
 
-  <!-- 4) 완료 -->
-  <section id="doneScreen" class="hidden">
-    <div class="card done-card">
-      <div class="done-head">✅ 신청 완료</div>
-      <div class="done-time"><b id="doneTime"></b> 탑승</div>
-      <div class="done-pos"><b id="donePos"></b>번째 인원</div>
-      <div class="done-name" id="doneName"></div>
-      <div class="done-cat" id="doneCat"></div>
-      <!-- 스크린샷 재사용을 막기 위해 초 단위로 움직이는 현재 시각을 같이 보여줌 -->
-      <div class="done-clock">현재 시각 <b id="doneClock"></b></div>
-      <div class="show-staff">📱 이 화면을 담당자에게 보여주세요</div>
-      <div class="done-warn">⚠️ 함께 탑승하는 분이 있다면 <b>인원수만큼 한 명씩</b> 모두 신청해야 해요.</div>
-      <button class="primary-btn" style="margin-top:14px" onclick="addCompanion()">일행 추가 신청 (같은 시간대)</button>
-      <button class="secondary-btn" onclick="backToSlots()">처음으로</button>
-    </div>
+  <!-- 4) 내 신청 현황 — 담당자에게 보여주고 승인받는 화면 -->
+  <section id="myScreen" class="hidden">
+    <div class="show-staff">📱 이 화면을 담당자에게 보여주세요</div>
+    <!-- 스크린샷 재사용을 막기 위해 초 단위로 움직이는 현재 시각을 같이 보여줌 -->
+    <div class="my-clock">현재 시각 <b id="myClock"></b></div>
+    <div id="myList"></div>
+    <div class="my-warn">⚠️ 담당자가 <b>승인</b>해야 정식 탑승 순번이 생겨요.<br>함께 탑승하는 분은 <b>인원수만큼 한 명씩</b> 모두 신청해야 해요.</div>
+    <button id="addCompanionBtn" class="primary-btn" style="margin-top:14px" onclick="addCompanion()">일행 추가 신청 (같은 시간대)</button>
+    <button class="secondary-btn" onclick="backToSlots()">다른 시간대 신청하기</button>
   </section>
 </div>
 
@@ -230,7 +248,7 @@
     <div class="notice-body">
       탑승하는 <b>인원수만큼 한 명씩 모두</b> 신청해야 해요.<br>
       (예: 3명이 타면 3번 신청)<br><br>
-      신청이 끝나면 나오는 화면을<br><b>담당자에게 보여주세요.</b>
+      신청 후 나오는 화면을 <b>담당자에게 보여주고<br>승인을 받아야</b> 정식 탑승 순번이 생겨요.
     </div>
     <button class="primary-btn" onclick="confirmNotice()">확인했어요</button>
     <button class="secondary-btn" onclick="closeNotice()">취소</button>
@@ -241,13 +259,19 @@
 <div id="busyOverlay" class="overlay hidden">
   <div class="notice-card">
     <div class="spinner"></div>
-    <div class="notice-body" style="margin:0">신청 처리 중이에요...<br><b>창을 닫지 말고</b> 잠시만 기다려주세요.</div>
+    <div class="notice-body" style="margin:0">신청 접수 중이에요...<br><b>창을 닫지 말고</b> 잠시만 기다려주세요.</div>
   </div>
 </div>
 
 <script>
   const WORKER_HTTP_URL = 'https://signform.hyunra94.workers.dev';
   const PASS_KEY = 'vr_mobile_pass';
+  const MAX_CHILDREN = 5;
+  // 오늘 이 폰으로 한 신청 목록 — 새로고침해도 승인 현황을 계속 보여주기 위함
+  const MY_KEY = (() => {
+    const d = new Date();
+    return `vr_mobile_my_${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
 
   let pass = null;
   let slotsData = [];
@@ -275,11 +299,12 @@
   }
 
   function show(id) {
-    ['codeScreen', 'slotScreen', 'formScreen', 'doneScreen'].forEach((s) =>
+    ['codeScreen', 'slotScreen', 'formScreen', 'myScreen'].forEach((s) =>
       document.getElementById(s).classList.toggle('hidden', s !== id));
     window.scrollTo(0, 0);
     if (id === 'slotScreen') startSlotPolling(); else stopSlotPolling();
     if (id === 'formScreen') setupSignaturePad();
+    if (id === 'myScreen') startStatusPolling(); else stopStatusPolling();
   }
 
   // ---- 1) 현장 코드 ----
@@ -460,6 +485,7 @@
   function resetForm({ keepAffil }) {
     document.getElementById('nameInput').value = '';
     document.getElementById('consentInput').checked = false;
+    setChildren(0);
     clearSignature();
     if (!keepAffil) {
       selectedCat = '';
@@ -485,6 +511,7 @@
     if (!signaturePad || signaturePad.isEmpty()) { statusEl.textContent = '서명을 해주세요.'; return; }
     if (!document.getElementById('consentInput').checked) { statusEl.textContent = '개인정보 수집·이용에 동의해주세요.'; return; }
     if (submitting) return;
+    const childCount = currentChildren;
 
     submitting = true;
     const btn = document.getElementById('submitBtn');
@@ -503,6 +530,7 @@
           재직자여부: isFutureTalent(selectedCat) ? '미래인재' : selectedCat,
           성명, 소속,
           signature: cropSignature(document.getElementById('sigCanvas'), signaturePad),
+          childCount,
           동의: true,
         }),
       });
@@ -518,11 +546,12 @@
       }
       if (!res.ok) { statusEl.textContent = data.error || '신청에 실패했어요. 스태프에게 문의해주세요.'; return; }
 
-      document.getElementById('doneTime').textContent = selectedTime;
-      document.getElementById('donePos').textContent = data.position;
-      document.getElementById('doneName').textContent = `${성명}님`;
-      document.getElementById('doneCat').textContent = selectedCat === '일반시민' ? '일반 시민' : `${selectedCat} · ${소속}`;
-      show('doneScreen');
+      addMyItem({
+        id: data.id, ticket: data.ticket, slotTime: selectedTime, 성명,
+        catLabel: selectedCat === '일반시민' ? '일반 시민' : `${selectedCat} · ${소속}`,
+        childCount, status: 'pending',
+      });
+      show('myScreen');
     } catch {
       statusEl.textContent = '인터넷 연결을 확인하고 다시 눌러주세요.';
     } finally {
@@ -534,7 +563,7 @@
 
   function tickClock() {
     const d = new Date();
-    document.getElementById('doneClock').textContent =
+    document.getElementById('myClock').textContent =
       [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':');
   }
   tickClock();
@@ -542,8 +571,93 @@
 
   // ---- 4) 완료 → 일행 추가: 같은 시간대, 구분/소속은 그대로 두고 이름·서명만 새로 ----
   function addCompanion() {
+    const last = loadMy()[0];
+    if (!last) { backToSlots(); return; }
+    selectedTime = last.slotTime;
+    document.getElementById('formTime').textContent = selectedTime;
     resetForm({ keepAffil: true });
     show('formScreen');
+  }
+
+  // ---- 동반 자녀 ----
+  let currentChildren = 0;
+  function setChildren(n) {
+    currentChildren = Math.max(0, Math.min(MAX_CHILDREN, n));
+    document.getElementById('childCount').textContent = currentChildren;
+  }
+  function changeChildren(delta) { setChildren(currentChildren + delta); }
+
+  // ---- 내 신청 현황 (승인 대기 → 담당자 승인 시 정식 순번) ----
+  function loadMy() {
+    try { return JSON.parse(localStorage.getItem(MY_KEY) || '[]'); } catch { return myMemory; }
+  }
+  let myMemory = []; // 저장소를 못 쓰는 브라우저용
+  function saveMy(list) {
+    myMemory = list;
+    try { localStorage.setItem(MY_KEY, JSON.stringify(list)); } catch {}
+  }
+  function addMyItem(item) {
+    saveMy([item, ...loadMy()].slice(0, 20));
+  }
+
+  function escapeHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function renderMy() {
+    const list = loadMy();
+    document.getElementById('addCompanionBtn').classList.toggle('hidden', !list.length);
+    document.getElementById('myList').innerHTML = list.map((m) => {
+      const who = `<div class="my-sub"><b>${escapeHtml(m.성명)}</b>님${m.childCount ? ` + 자녀 ${m.childCount}명` : ''}</div>
+        <div class="my-meta">${escapeHtml(m.catLabel)} · ${m.slotTime} 탑승</div>`;
+      if (m.status === 'approved') {
+        const kids = (m.childPositions || []).length ? `<div class="my-meta">자녀: ${m.childPositions.join(', ')}번째</div>` : '';
+        return `<div class="my-item approved"><span class="my-badge">✅ 승인 완료 · 정식 탑승</span>
+          <div class="my-big">${m.position}<small>번째</small></div>${who}${kids}
+          <div class="my-meta">접수번호 ${m.ticket}</div></div>`;
+      }
+      if (m.status === 'rejected' || m.status === 'expired') {
+        const label = m.status === 'rejected' ? '승인되지 않았어요 — 담당자에게 문의해주세요' : '시간대가 지나 자동 취소됐어요';
+        return `<div class="my-item ${m.status}"><span class="my-badge">${label}</span>
+          <div class="my-big"><small>접수번호</small> ${m.ticket}</div>${who}</div>`;
+      }
+      return `<div class="my-item"><span class="my-badge">⏳ 승인 대기 중</span>
+        <div class="my-big"><small>접수번호</small> ${m.ticket}</div>${who}</div>`;
+    }).join('');
+  }
+
+  let statusTimer = null;
+  async function refreshStatus() {
+    const list = loadMy();
+    const ids = list.filter((m) => m.status === 'pending').map((m) => m.id);
+    if (ids.length) {
+      try {
+        const res = await fetch(`${WORKER_HTTP_URL}/vr/mobile/status?ids=${ids.join(',')}`, { cache: 'no-store' });
+        const data = await res.json();
+        const byId = Object.fromEntries((data.items || []).map((it) => [it.id, it]));
+        list.forEach((m) => {
+          const it = byId[m.id];
+          if (!it || it.status === 'pending' || it.status === 'unknown') return;
+          m.status = it.status;
+          if (it.status === 'approved') {
+            m.position = it.position;
+            m.childPositions = it.childPositions;
+            m.slotTime = it.slotTime;
+          }
+        });
+        saveMy(list);
+      } catch {}
+    }
+    renderMy();
+  }
+  function startStatusPolling() {
+    stopStatusPolling();
+    refreshStatus();
+    statusTimer = setInterval(refreshStatus, 3000);
+  }
+  function stopStatusPolling() {
+    if (statusTimer) clearInterval(statusTimer);
+    statusTimer = null;
   }
 
   // ---- 시작 ----
@@ -558,6 +672,8 @@
     document.getElementById('codeStatus').textContent = 'QR 확인 중...';
     codeInput.value = qrCode;
     verifyCode().finally(() => { document.getElementById('codeStatus').style.color = ''; });
+  } else if (loadMy().length) {
+    show('myScreen');
   } else if (pass) {
     show('slotScreen');
   } else {

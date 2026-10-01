@@ -61,6 +61,8 @@
   .sheet-btn.active { background: var(--accent-dark); border-color: var(--accent-dark); color: white; }
   .current-box { margin-top: 18px; background: #F0FAF2; color: #3F7A47; border-radius: 12px; padding: 12px; text-align: center; font-size: 15px; font-weight: 700; }
   .hint { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
+  .pin-row { display: flex; gap: 8px; margin-top: 12px; }
+  .pin-row input { flex: 1; font-size: 20px; letter-spacing: 4px; text-align: center; padding: 10px; border: 2px solid var(--accent); border-radius: 12px; font-family: inherit; outline: none; }
 
   /* 화면 코드 */
   .mode-warn { max-width: 640px; margin: 0 auto 16px; background: #FFF4E5; color: #9A5B13; border-radius: 12px; padding: 10px 14px; text-align: center; font-size: 14px; }
@@ -93,6 +95,19 @@
   .sheet-qr svg { width: 100%; max-width: 200px; height: auto; }
   .sheet-guide { font-size: 14px; line-height: 1.6; margin-top: 8px; }
   .sheet-code { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .code-edit { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #F3D6DD; font-size: 13px; }
+  .code-edit .cur { font-size: 15px; }
+  .code-edit .cur b { font-size: 20px; letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+  .code-edit .tag { display: inline-block; font-size: 11px; border-radius: 8px; padding: 1px 6px; margin-left: 4px; background: #EEE6F8; color: #6B5A8A; }
+  .code-edit .row { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+  .code-edit input {
+    width: 90px; font-size: 18px; text-align: center; letter-spacing: 3px; padding: 6px; font-family: inherit;
+    border: 2px solid var(--accent); border-radius: 10px; outline: none;
+  }
+  .code-edit .small-btn { border: none; border-radius: 10px; background: var(--accent-dark); color: white; font-size: 13px; padding: 6px 10px; font-family: inherit; cursor: pointer; }
+  .code-edit .small-btn.ghost { background: var(--white); color: var(--text); border: 2px solid var(--accent); }
+  .code-edit .msg { min-height: 18px; margin-top: 6px; color: var(--error); }
+  .code-edit .msg.ok { color: var(--ok); }
 
   /* 인쇄: 용지만, A4 한 장에 한 번호씩 크게 */
   @media print {
@@ -107,7 +122,7 @@
       page-break-after: always; break-after: page;
     }
     .sheet:last-child { page-break-after: auto; break-after: auto; }
-    .sheet-active-badge { display: none; }
+    .sheet-active-badge, .code-edit { display: none !important; }
     .sheet-no { font-size: 16pt; }
     .sheet-no b { font-size: 16pt; }
     .sheet-title { font-size: 34pt; margin: 8mm 0 10mm; }
@@ -158,6 +173,20 @@
 
       <div id="currentBox" class="current-box"></div>
       <div id="settingsStatus" class="status"></div>
+    </div>
+
+    <div class="card settings" style="margin-top:16px">
+      <h3>👤 담당자(알바) PIN</h3>
+      <div class="hint" style="margin-top:0">폰 신청을 승인하는 담당자 화면(vr_staff.html)에 들어갈 때 쓰는 숫자예요.
+        이 PIN으로는 <b>승인·거절과 명단 보기만</b> 할 수 있고, 설정·삭제·PDF·용지 코드는 볼 수 없어요.
+        행사가 끝나면 바꿔주세요.</div>
+      <div class="pin-row">
+        <input id="staffPinInput" type="text" inputmode="numeric" maxlength="8" placeholder="숫자 4~8자리"
+               oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <button class="btn" onclick="saveStaffPin()">저장</button>
+      </div>
+      <div id="staffPinCurrent" class="hint"></div>
+      <div id="staffPinStatus" class="status"></div>
     </div>
   </div>
 
@@ -261,6 +290,30 @@
     renderSettings();
   }
 
+  // ---- 담당자 PIN ----
+  function renderStaffPin(current) {
+    document.getElementById('staffPinCurrent').textContent = current
+      ? `지금 담당자 PIN: ${current}`
+      : '아직 정하지 않았어요 — 정하기 전에는 담당자 화면에 아무도 못 들어가요(관리자 비밀번호로는 가능).';
+  }
+  async function loadStaffPin() {
+    try { renderStaffPin((await api('/admin/vr-staff-pin')).pin); } catch {}
+  }
+  async function saveStaffPin() {
+    const statusEl = document.getElementById('staffPinStatus');
+    statusEl.style.color = '';
+    statusEl.textContent = '';
+    try {
+      const data = await api('/admin/vr-staff-pin', 'POST', { pin: document.getElementById('staffPinInput').value.trim() });
+      renderStaffPin(data.pin);
+      document.getElementById('staffPinInput').value = '';
+      statusEl.style.color = 'var(--ok)';
+      statusEl.textContent = data.pin ? '저장했어요. 이전 PIN으로 들어와 있던 기기는 바로 로그아웃돼요.' : '담당자 PIN을 지웠어요.';
+    } catch (e) {
+      statusEl.textContent = e.message;
+    }
+  }
+
   // ---- 화면 코드 ----
   function applyCode(data) {
     document.getElementById('codeText').textContent = data.code;
@@ -325,8 +378,39 @@
           <div class="sheet-qr">${qrSvg(`${MOBILE_URL}?c=${s.code}`)}</div>
           <div class="sheet-guide">휴대폰 카메라로 QR을 찍어주세요<br>탑승 인원 <b>한 명씩 모두</b> 신청해야 해요</div>
           <div class="sheet-code">No.${s.no}</div>
+          <div class="code-edit">
+            <div class="cur">코드 <b>${s.code}</b><span class="tag">${s.custom ? '직접 정함' : '자동'}</span></div>
+            <div class="row">
+              <input id="codeEdit-${s.no}" type="text" inputmode="numeric" maxlength="4" placeholder="4자리"
+                     oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">
+              <button class="small-btn" onclick="saveSheetCode(${s.no})">바꾸기</button>
+              ${s.custom ? `<button class="small-btn ghost" onclick="saveSheetCode(${s.no}, true)">자동으로</button>` : ''}
+            </div>
+            <div class="msg ${sheetMsgs[s.no]?.ok ? 'ok' : ''}">${sheetMsgs[s.no]?.text || ''}</div>
+          </div>
         </div>`;
     }).join('');
+  }
+
+  // 용지 한 장의 코드를 직접 정하거나(4자리) 자동 코드로 되돌림 — QR에 코드가 들어가므로 그 용지는 다시 인쇄해야 함
+  const sheetMsgs = {};
+  async function saveSheetCode(no, toAuto = false) {
+    const code = toAuto ? '' : document.getElementById(`codeEdit-${no}`).value.trim();
+    if (!toAuto && !/^\d{4}$/.test(code)) {
+      sheetMsgs[no] = { text: '숫자 4자리를 입력해주세요.' };
+      renderSheets();
+      return;
+    }
+    try {
+      const data = await api('/admin/vr-paper/code', 'POST', { sheet: no, code });
+      sheets = data.sheets;
+      const inUse = settings.mode === 'paper' && settings.activeSheet === no;
+      sheets.forEach((s) => { delete sheetMsgs[s.no]; });
+      sheetMsgs[no] = { ok: true, text: `바뀌었어요. ${no}번 용지를 다시 인쇄해주세요.${inUse ? ' (지금 사용 중인 용지라 기존에 붙인 QR은 바로 막혀요)' : ''}` };
+    } catch (e) {
+      sheetMsgs[no] = { text: e.message };
+    }
+    renderSheets();
   }
 
   async function loadPaper() {
@@ -371,6 +455,7 @@
       applyCode(data);
       renderSettings();
       loadPaper();
+      loadStaffPin();
       let tab = 'settings';
       try { tab = localStorage.getItem(TAB_KEY) || 'settings'; } catch {}
       showTab(tab);
