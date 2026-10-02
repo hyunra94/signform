@@ -59,6 +59,7 @@
   .sheet-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; }
   .sheet-btn { border: 2px solid var(--accent); background: var(--white); border-radius: 12px; padding: 10px 0; font-size: 18px; font-weight: 700; font-family: inherit; color: var(--text); cursor: pointer; }
   .sheet-btn.active { background: var(--accent-dark); border-color: var(--accent-dark); color: white; }
+  .sheet-btn small { display: block; font-size: 12px; font-weight: 500; letter-spacing: 1px; opacity: 0.75; margin-top: 2px; font-variant-numeric: tabular-nums; }
   .current-box { margin-top: 18px; background: #F0FAF2; color: #3F7A47; border-radius: 12px; padding: 12px; text-align: center; font-size: 15px; font-weight: 700; }
   .hint { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
   .pin-row { display: flex; gap: 8px; margin-top: 12px; }
@@ -109,11 +110,15 @@
   .code-edit .msg { min-height: 18px; margin-top: 6px; color: var(--error); }
   .code-edit .msg.ok { color: var(--ok); }
 
+  .qr-overlay { position: fixed; inset: 0; background: rgba(90, 74, 80, 0.55); z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .qr-overlay-card { max-width: 420px; width: 100%; }
+  .qr-overlay-card .qr-box svg { margin: 0 auto; }
+
   /* 인쇄: 용지만, A4 한 장에 한 번호씩 크게 */
   @media print {
     @page { size: A4; margin: 14mm; }
     html, body { background: white; }
-    .topbar, .paper-tools, .no-print, #settingsPage, #screenPage { display: none !important; }
+    .topbar, .paper-tools, .no-print, #settingsPage, #screenPage, #staffQrOverlay { display: none !important; }
     .page { padding: 0; max-width: none; }
     .sheets { display: block; }
     .sheet {
@@ -133,6 +138,16 @@
 </style>
 </head>
 <body>
+
+<!-- 담당자 화면 QR (현장에서 알바생 폰으로 찍게 함) -->
+<div id="staffQrOverlay" class="qr-overlay hidden" onclick="closeStaffQr()">
+  <div class="card qr-overlay-card" onclick="event.stopPropagation()">
+    <div class="step">👤 담당자 승인 화면</div>
+    <div id="staffQrBox" class="qr-box"></div>
+    <div class="hint" style="text-align:center">휴대폰 카메라로 찍은 뒤, 안내받은 PIN을 입력하세요.</div>
+    <button class="ghost-btn" style="width:100%;margin-top:12px" onclick="closeStaffQr()">닫기</button>
+  </div>
+</div>
 
 <div id="loginScreen" class="login-wrap">
   <div class="card login">
@@ -187,6 +202,8 @@
       </div>
       <div id="staffPinCurrent" class="hint"></div>
       <div id="staffPinStatus" class="status"></div>
+      <button class="btn" style="width:100%;margin-top:6px" onclick="showStaffQr()">📷 담당자 화면 QR 보기</button>
+      <div class="hint">알바생에게 주소를 메신저로 보내지 말고, 현장에서 이 QR을 찍게 하세요. QR에는 주소만 들어있고 PIN은 따로 말로 알려주세요.</div>
     </div>
   </div>
 
@@ -270,10 +287,13 @@
     });
     document.getElementById('sheetPicker').classList.toggle('hidden', settings.mode !== 'paper');
     document.getElementById('sheetGrid').innerHTML = Array.from({ length: 10 }, (_, i) => i + 1)
-      .map((n) => `<button class="sheet-btn ${settings.activeSheet === n ? 'active' : ''}" onclick="saveMode({ activeSheet: ${n} })">${n}</button>`)
+      .map((n) => {
+        const code = sheets[n - 1] ? sheets[n - 1].code : '····';
+        return `<button class="sheet-btn ${settings.activeSheet === n ? 'active' : ''}" onclick="saveMode({ activeSheet: ${n} })">${n}<small>${code}</small></button>`;
+      })
       .join('');
     document.getElementById('currentBox').textContent = settings.mode === 'paper'
-      ? `✅ 지금 통하는 것: 인쇄 용지 ${settings.activeSheet}번`
+      ? `✅ 지금 통하는 것: 인쇄 용지 ${settings.activeSheet}번${sheets[settings.activeSheet - 1] ? ` (코드 ${sheets[settings.activeSheet - 1].code})` : ''}`
       : '✅ 지금 통하는 것: 화면 코드 (10분마다 바뀜)';
     document.getElementById('screenModeWarn').classList.toggle('hidden', settings.mode === 'screen');
     renderSheets();
@@ -312,6 +332,15 @@
     } catch (e) {
       statusEl.textContent = e.message;
     }
+  }
+
+  const STAFF_URL = new URL('vr_staff.html', location.href).href;
+  function showStaffQr() {
+    document.getElementById('staffQrBox').innerHTML = qrSvg(STAFF_URL);
+    document.getElementById('staffQrOverlay').classList.remove('hidden');
+  }
+  function closeStaffQr() {
+    document.getElementById('staffQrOverlay').classList.add('hidden');
   }
 
   // ---- 화면 코드 ----
@@ -410,14 +439,14 @@
     } catch (e) {
       sheetMsgs[no] = { text: e.message };
     }
-    renderSheets();
+    renderSettings(); // 설정 탭 용지 버튼의 코드도 같이 갱신
   }
 
   async function loadPaper() {
     try {
       const data = await api('/admin/vr-paper');
       sheets = data.sheets;
-      renderSheets();
+      renderSettings();
     } catch (e) {
       document.getElementById('paperStatus').textContent = e.message;
     }
@@ -430,7 +459,7 @@
       try {
         const data = await api('/admin/vr-paper/reset', 'POST');
         sheets = data.sheets;
-        renderSheets();
+        renderSettings();
         document.getElementById('paperStatus').style.color = 'var(--ok)';
         document.getElementById('paperStatus').textContent = '새로 발급했어요. 10장을 다시 인쇄해주세요.';
       } catch (e) {
